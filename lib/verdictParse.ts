@@ -1,6 +1,32 @@
 import { extractBalancedJsonObject } from "@/lib/extractJson";
 import type { Verdict } from "@/lib/types";
 
+function clampScore(n: number): number {
+  if (!Number.isFinite(n)) return 50;
+  return Math.min(100, Math.max(0, n));
+}
+
+function normalizePair(raw: unknown): [number, number] | null {
+  if (!Array.isArray(raw) || raw.length < 2) return null;
+  const a = Number(raw[0]);
+  const b = Number(raw[1]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return [clampScore(a), clampScore(b)];
+}
+
+function normalizeBreakdown(
+  b: unknown,
+): Verdict["breakdown"] | null {
+  if (!b || typeof b !== "object") return null;
+  const o = b as Record<string, unknown>;
+  const factual = normalizePair(o.factual);
+  const logic = normalizePair(o.logic);
+  const relevance = normalizePair(o.relevance);
+  const rhetoric = normalizePair(o.rhetoric);
+  if (!factual || !logic || !relevance || !rhetoric) return null;
+  return { factual, logic, relevance, rhetoric };
+}
+
 export const VERDICT_PARSE_FALLBACK: Verdict = {
   score_player: 50,
   score_opponent: 50,
@@ -27,22 +53,27 @@ export function parseVerdictJson(raw: string): Verdict {
 
   for (const text of candidates) {
     try {
-      const parsed = JSON.parse(text) as Verdict;
-      if (
-        typeof parsed.score_player !== "number" ||
-        typeof parsed.score_opponent !== "number" ||
-        !parsed.breakdown ||
-        typeof parsed.summary !== "string"
-      ) {
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      const sp = Number(parsed.score_player);
+      const so = Number(parsed.score_opponent);
+      if (!Number.isFinite(sp) || !Number.isFinite(so) || typeof parsed.summary !== "string") {
         continue;
       }
+      const breakdown = normalizeBreakdown(parsed.breakdown);
+      if (!breakdown) continue;
       return {
-        score_player: parsed.score_player,
-        score_opponent: parsed.score_opponent,
-        breakdown: parsed.breakdown,
+        score_player: clampScore(sp),
+        score_opponent: clampScore(so),
+        breakdown,
         summary: parsed.summary,
-        best_arg_player: parsed.best_arg_player ?? "—",
-        best_arg_opponent: parsed.best_arg_opponent ?? "—",
+        best_arg_player:
+          typeof parsed.best_arg_player === "string"
+            ? parsed.best_arg_player
+            : "—",
+        best_arg_opponent:
+          typeof parsed.best_arg_opponent === "string"
+            ? parsed.best_arg_opponent
+            : "—",
       };
     } catch {
       /* try next candidate */

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
+import { VERDICT_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
 import { JUDGE_VERDICT_SYSTEM, judgeVerdictUserPrompt } from "@/lib/prompts";
 import { parseVerdictJson, VERDICT_PARSE_FALLBACK } from "@/lib/verdictParse";
 import type { RoundData, Side } from "@/lib/types";
@@ -29,24 +31,51 @@ export async function POST(request: Request) {
       ? Math.floor(body.skippedTurns)
       : 0;
 
+  const verdictParams = {
+    systemInstruction: JUDGE_VERDICT_SYSTEM,
+    userPrompt: judgeVerdictUserPrompt({
+      topic,
+      playerSide,
+      opponentSide,
+      history,
+      skippedTurns,
+    }),
+    maxOutputTokens: 2048,
+    responseMimeType: "application/json" as const,
+    temperature: 0.35,
+  };
+
   try {
-    const raw = await generateGeminiText({
-      systemInstruction: JUDGE_VERDICT_SYSTEM,
-      userPrompt: judgeVerdictUserPrompt({
-        topic,
-        playerSide,
-        opponentSide,
-        history,
-        skippedTurns,
-      }),
-      maxOutputTokens: 2048,
-      responseMimeType: "application/json",
-      temperature: 0.35,
-    });
+    let raw: string;
+    try {
+      raw = await generateGeminiText({
+        ...verdictParams,
+        responseSchema: VERDICT_RESPONSE_SCHEMA,
+      });
+    } catch (schemaErr) {
+      debatelyLog("verdict", "warn", "retry without responseSchema", {
+        err: String(schemaErr),
+      });
+      raw = await generateGeminiText(verdictParams);
+    }
+
     const verdict = parseVerdictJson(raw);
+    if (verdict === VERDICT_PARSE_FALLBACK) {
+      debatelyLog("verdict", "warn", "JSON parse produced fallback", {
+        rawLen: raw.length,
+        rawPreview: raw.slice(0, 500),
+      });
+    } else {
+      debatelyLog("verdict", "info", "verdict ok", {
+        rawLen: raw.length,
+        scores: [verdict.score_player, verdict.score_opponent],
+      });
+    }
     return NextResponse.json(verdict);
   } catch (e) {
-    console.error("[verdict]", e);
-    return NextResponse.json(VERDICT_PARSE_FALLBACK, { status: 502 });
+    debatelyLog("verdict", "error", "Gemini failed; returning fallback verdict", {
+      err: e instanceof Error ? e.message : String(e),
+    });
+    return NextResponse.json(VERDICT_PARSE_FALLBACK);
   }
 }

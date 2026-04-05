@@ -1,5 +1,6 @@
 import type { ResponseSchema } from "@google/generative-ai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { debatelyLog } from "@/lib/debatelyLog";
 import { resolveGeminiApiKey } from "@/lib/geminiKey";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
@@ -35,14 +36,24 @@ export async function generateGeminiText(params: {
     },
   });
 
-  const result = await model.generateContent(
-    params.userPrompt,
-    { timeout: REQUEST_TIMEOUT_MS },
-  );
+  try {
+    const result = await model.generateContent(
+      params.userPrompt,
+      { timeout: REQUEST_TIMEOUT_MS },
+    );
 
-  const text = result.response.text();
-  if (!text?.trim()) {
-    throw new Error("Empty response from Gemini");
+    const text = result.response.text();
+    if (!text?.trim()) {
+      throw new Error("Empty response from Gemini");
+    }
+    return text;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    debatelyLog("gemini", "error", "generateContent failed", {
+      message: msg,
+      model: modelName,
+      hasSchema: Boolean(params.responseSchema),
+    });
+    throw e;
   }
-  return text;
 }

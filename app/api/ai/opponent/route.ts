@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
+import { debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
 import {
   formatOpponentTranscript,
   opponentSystemPrompt,
   opponentUserPrompt,
 } from "@/lib/prompts";
+import { countWords, truncateToMaxWords } from "@/lib/truncateWords";
 import type { RoundData, Side } from "@/lib/types";
+
+/** Hard cap (prompt also asks for ≤120 words). */
+const OPPONENT_MAX_WORDS = 120;
+const OPPONENT_MAX_OUTPUT_TOKENS = 384;
 
 type Body = {
   topic?: string;
@@ -43,7 +49,7 @@ export async function POST(request: Request) {
   );
 
   try {
-    const text = await generateGeminiText({
+    const raw = await generateGeminiText({
       systemInstruction: opponentSystemPrompt(opponentSide),
       userPrompt: opponentUserPrompt({
         topic,
@@ -53,13 +59,28 @@ export async function POST(request: Request) {
         transcript,
         lastPlayerMove,
       }),
-      maxOutputTokens: 2048,
+      maxOutputTokens: OPPONENT_MAX_OUTPUT_TOKENS,
     });
+    const trimmed = raw.trim();
+    const beforeWords = countWords(trimmed);
+    const text = truncateToMaxWords(trimmed, OPPONENT_MAX_WORDS);
+    const afterWords = countWords(text);
+    if (beforeWords > OPPONENT_MAX_WORDS) {
+      debatelyLog("opponent", "warn", "truncated opponent reply to word cap", {
+        beforeWords,
+        afterWords,
+        cap: OPPONENT_MAX_WORDS,
+      });
+    } else {
+      debatelyLog("opponent", "info", "opponent ok", { words: afterWords });
+    }
     return NextResponse.json({
-      text: text.trim() || "AI opponent returned an empty response.",
+      text: text || "AI opponent returned an empty response.",
     });
   } catch (e) {
-    console.error("[opponent]", e);
+    debatelyLog("opponent", "error", "Gemini failed for opponent", {
+      err: e instanceof Error ? e.message : String(e),
+    });
     return NextResponse.json(
       {
         text: "AI opponent failed to respond.",

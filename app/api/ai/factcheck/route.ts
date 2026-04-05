@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
 import { FACTCHECK_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
 import { parseFactcheckJson, FACTCHECK_PARSE_FALLBACK } from "@/lib/factcheckFallback";
@@ -57,12 +58,29 @@ export async function POST(request: Request) {
         responseSchema: FACTCHECK_RESPONSE_SCHEMA,
       });
     } catch (schemaErr) {
-      console.warn("[factcheck] retry without responseSchema", schemaErr);
+      debatelyLog("factcheck", "warn", "retry without responseSchema", {
+        err: String(schemaErr),
+      });
       raw = await generateGeminiText(factcheckParams);
     }
-    return NextResponse.json(parseFactcheckJson(raw));
+    const parsed = parseFactcheckJson(raw);
+    if (parsed === FACTCHECK_PARSE_FALLBACK) {
+      debatelyLog("factcheck", "warn", "JSON parse produced fallback", {
+        rawLen: raw.length,
+        rawPreview: raw.slice(0, 500),
+      });
+    } else {
+      debatelyLog("factcheck", "info", "factcheck ok", {
+        rawLen: raw.length,
+        facts: parsed.facts.length,
+        relevance: parsed.relevance,
+      });
+    }
+    return NextResponse.json(parsed);
   } catch (e) {
-    console.error("[factcheck]", e);
+    debatelyLog("factcheck", "error", "Gemini failed; returning fallback factcheck", {
+      err: e instanceof Error ? e.message : String(e),
+    });
     return NextResponse.json(FACTCHECK_PARSE_FALLBACK);
   }
 }
