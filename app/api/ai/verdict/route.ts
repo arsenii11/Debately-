@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         responseSchema: VERDICT_RESPONSE_SCHEMA,
       });
     } catch (schemaErr) {
-      debatelyLog("verdict", "warn", "retry without responseSchema", {
+      debatelyLog("verdict", "error", "structured output failed; retry without responseSchema", {
         err: String(schemaErr),
       });
       raw = await generateGeminiText(verdictParams);
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
 
     const verdict = parseVerdictJson(raw);
     if (verdict === VERDICT_PARSE_FALLBACK) {
-      debatelyLog("verdict", "warn", "JSON parse produced fallback", {
+      debatelyLog("verdict", "error", "JSON parse produced fallback", {
         rawLen: raw.length,
         rawPreview: raw.slice(0, 500),
       });

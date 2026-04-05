@@ -35,7 +35,7 @@ export function InputBar({ value, onChange, onSubmit, disabled }: Props) {
           onChange={(e) => onChange(e.target.value.slice(0, MAX))}
           onKeyDown={onKeyDown}
           placeholder="Make your argument… (Enter to send, Shift+Enter for newline)"
-          className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+          className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
         />
         <div className="flex items-center justify-between gap-3">
           <span

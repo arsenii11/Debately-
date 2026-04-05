@@ -59,7 +59,7 @@ export function SetupScreen({
           value={nickname}
           onChange={(e) => onNickname(e.target.value)}
           placeholder="e.g. Alex"
-          className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
         <span className="text-right text-xs text-zinc-600">
           {nickname.length}/20
@@ -76,7 +76,7 @@ export function SetupScreen({
           value={topic}
           onChange={(e) => onTopic(e.target.value)}
           placeholder='e.g. "Nuclear energy is essential for climate goals"'
-          className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
         <span className="text-right text-xs text-zinc-600">
           {topic.length}/200

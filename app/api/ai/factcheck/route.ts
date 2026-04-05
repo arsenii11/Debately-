@@ -58,14 +58,14 @@ export async function POST(request: Request) {
         responseSchema: FACTCHECK_RESPONSE_SCHEMA,
       });
     } catch (schemaErr) {
-      debatelyLog("factcheck", "warn", "retry without responseSchema", {
+      debatelyLog("factcheck", "error", "structured output failed; retry without responseSchema", {
         err: String(schemaErr),
       });
       raw = await generateGeminiText(factcheckParams);
     }
     const parsed = parseFactcheckJson(raw);
     if (parsed === FACTCHECK_PARSE_FALLBACK) {
-      debatelyLog("factcheck", "warn", "JSON parse produced fallback", {
+      debatelyLog("factcheck", "error", "JSON parse produced fallback", {
         rawLen: raw.length,
         rawPreview: raw.slice(0, 500),
       });

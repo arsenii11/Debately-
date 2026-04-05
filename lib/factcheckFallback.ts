@@ -1,6 +1,15 @@
 import { extractBalancedJsonObject } from "@/lib/extractJson";
 import type { FactCheck, FactStatus } from "./types";
 
+/** True when the API returned the hardcoded parse-failure placeholder. */
+export function isFactcheckFallback(fc: FactCheck): boolean {
+  return (
+    fc.facts.length === 1 &&
+    fc.facts[0].claim === "Could not parse" &&
+    fc.facts[0].comment === "Parse error"
+  );
+}
+
 export const FACTCHECK_PARSE_FALLBACK: FactCheck = {
   facts: [
     {

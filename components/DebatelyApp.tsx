@@ -15,6 +15,7 @@ import { VerdictCard } from "./VerdictCard";
 import {
   parseFactcheckJson,
   FACTCHECK_PARSE_FALLBACK,
+  isFactcheckFallback,
 } from "@/lib/factcheckFallback";
 import {
   clearDebatelySession,
@@ -227,7 +228,13 @@ export function DebatelyApp() {
             typeof res === "string"
               ? parseFactcheckJson(res)
               : (res as FactCheck);
-        } catch {
+          if (isFactcheckFallback(fcPlayer)) {
+            console.error(
+              "[Debately] Judge factcheck (player) is parse fallback — see server logs [debately:factcheck]",
+            );
+          }
+        } catch (e) {
+          console.error("[Debately] factcheck (player) request failed", e);
           fcPlayer = FACTCHECK_PARSE_FALLBACK;
         }
         updateRound(roundNumber, { aiFactcheckPlayer: fcPlayer });
@@ -258,7 +265,8 @@ export function DebatelyApp() {
           });
           opponentText =
             oppRes.text?.trim() || "AI opponent failed to respond.";
-        } catch {
+        } catch (e) {
+          console.error("[Debately] opponent API request failed", e);
           opponentText = "AI opponent failed to respond.";
         }
         updateRound(roundNumber, { opponentMove: opponentText });
@@ -280,7 +288,13 @@ export function DebatelyApp() {
             typeof res === "string"
               ? parseFactcheckJson(res)
               : (res as FactCheck);
-        } catch {
+          if (isFactcheckFallback(fcOpp)) {
+            console.error(
+              "[Debately] Judge factcheck (opponent) is parse fallback — see server logs [debately:factcheck]",
+            );
+          }
+        } catch (e) {
+          console.error("[Debately] factcheck (opponent) request failed", e);
           fcOpp = FACTCHECK_PARSE_FALLBACK;
         }
         updateRound(roundNumber, { aiFactcheckOpponent: fcOpp });
@@ -309,7 +323,8 @@ export function DebatelyApp() {
               skippedTurns: nextSkipCount,
             });
             setVerdict(vRes);
-          } catch {
+          } catch (e) {
+            console.error("[Debately] verdict API request failed", e);
             setVerdict(null);
             setError("Could not load verdict.");
           }
