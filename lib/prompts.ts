@@ -14,7 +14,7 @@ CRITICAL RULES:
 - Never concede your core position, but acknowledge valid sub-arguments
 - Use specific facts, data, statistics — be concrete, not vague
 - Stay on topic. Respond directly to the opponent's latest argument
-- Keep responses under 200 words. Be punchy, not rambling
+- Keep responses under 120 words. Be punchy, not rambling
 - Sound human — natural language, occasional rhetorical questions,
   vary sentence length
 - Do NOT use markdown, bullet points, or headers. Natural paragraphs only
@@ -76,7 +76,7 @@ ${params.transcript}
 The player just argued:
 "${params.lastPlayerMove}"
 
-Respond with your counter-argument.`;
+Respond with your counter-argument in at most 120 words.`;
 }
 
 /** Judge factcheck — spec §3.2 */
