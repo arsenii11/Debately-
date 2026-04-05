@@ -1,16 +1,16 @@
 # Один контейнер Next.js на порту 3000 (без nginx). Удобно для теста или за reverse-proxy на хосте.
+# Логи: docker compose -f docker-compose.app-only.yml logs -f app
 services:
   app:
     build: .
     image: debately:latest
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
       - "3000:3000"
     environment:
       NODE_ENV: production
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-}
-      GEMINI_API_KEY_SECRET_RESOURCE: ${GEMINI_API_KEY_SECRET_RESOURCE:-}
     healthcheck:
       test:
         [

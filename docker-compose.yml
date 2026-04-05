@@ -1,18 +1,23 @@
 # Вариант с nginx на :80 (прод). Приложение слушает :3000 только внутри сети compose.
 # Отдельно «только Next» без nginx: docker compose -f docker-compose.app-only.yml up -d
 #
+# Логи Next (не видны после `up -d`): docker compose logs -f app
+# После правки .env пересоздай контейнер: docker compose up -d --force-recreate app
+#
 # HTTPS: см. DOCKER.md. Кратко: выпусти сертификат с профилем certbot, затем в .env задай
 # NGINX_CONF=default-https.conf (и поправь домен в nginx/default-https.conf).
+#
+# Важно: GEMINI_* задаются через env_file. Не дублируй их в environment с ${...},
+# иначе пустая подстановка может затереть ключ из .env.
 services:
   app:
     build: .
     image: debately:latest
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-}
-      GEMINI_API_KEY_SECRET_RESOURCE: ${GEMINI_API_KEY_SECRET_RESOURCE:-}
     expose:
       - "3000"
     healthcheck:
