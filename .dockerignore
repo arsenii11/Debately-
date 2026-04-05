@@ -1,0 +1,26 @@
+# deps & build
+node_modules
+.next
+out
+build
+
+# env & secrets (pass at runtime)
+.env
+.env.*
+!.env.example
+
+# git & IDE
+.git
+.gitignore
+.cursor
+*.md
+!DOCKER.md
+
+# misc
+.DS_Store
+npm-debug.log*
+coverage
+*.tsbuildinfo
+
+# docker (файлы на хосте для compose; в образ не нужны)
+nginx

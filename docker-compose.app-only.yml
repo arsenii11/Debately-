@@ -1,0 +1,25 @@
+# Один контейнер Next.js на порту 3000 (без nginx). Удобно для теста или за reverse-proxy на хосте.
+services:
+  app:
+    build: .
+    image: debately:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      GEMINI_API_KEY_SECRET_RESOURCE: ${GEMINI_API_KEY_SECRET_RESOURCE:-}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
