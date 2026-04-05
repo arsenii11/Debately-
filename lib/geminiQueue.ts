@@ -16,9 +16,10 @@ let lastCallEndedAt = 0;
 
 function getMinIntervalMs(): number {
   const raw = process.env.GEMINI_MIN_INTERVAL_MS?.trim();
-  if (raw === undefined || raw === "") return 3000;
+  /** Default 1200ms: lighter than 3s; set 3000+ if you still hit 429 on free tier. */
+  if (raw === undefined || raw === "") return 1200;
   const n = Number(raw);
-  return Number.isFinite(n) && n >= 0 ? n : 3000;
+  return Number.isFinite(n) && n >= 0 ? n : 1200;
 }
 
 /** Run `fn` after previous Gemini work; optional gap before starting (free-tier RPM). */
@@ -29,10 +30,12 @@ export function runSerializedGemini<T>(fn: () => Promise<T>): Promise<T> {
       const now = Date.now();
       const wait = Math.max(0, lastCallEndedAt + minGap - now);
       if (wait > 0) {
-        debatelyLog("gemini", "info", "rate-limit pacing before request", {
-          waitMs: wait,
-          minIntervalMs: minGap,
-        });
+        if (wait >= 1500) {
+          debatelyLog("gemini", "info", "rate-limit pacing before request", {
+            waitMs: wait,
+            minIntervalMs: minGap,
+          });
+        }
         await sleep(wait);
       }
     }

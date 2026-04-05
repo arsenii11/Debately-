@@ -6,18 +6,27 @@ import { resolveGeminiApiKey } from "@/lib/geminiKey";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const REQUEST_TIMEOUT_MS = 45_000;
-const MAX_GEMINI_ATTEMPTS = 6;
+/** Fewer attempts: each retry waits (capped); failing fast beats multi-minute hangs. */
+const MAX_GEMINI_ATTEMPTS = 4;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** Parse server retry hint from error message (429 / quota). */
+/** Max ms to sleep before one retry (server may suggest ~60s; that kills UX). */
+function getRetryMaxWaitMs(): number {
+  const raw = process.env.GEMINI_RETRY_MAX_WAIT_MS?.trim();
+  if (raw === undefined || raw === "") return 12_000;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 500 ? Math.min(120_000, n) : 12_000;
+}
+
+/** Parse server retry hint from error message (429 / quota). Uncapped raw ms. */
 function parseRetryDelayMsFromError(err: unknown): number | null {
   const msg = err instanceof Error ? err.message : String(err);
   const quoted = msg.match(/retryDelay["']?\s*:\s*"?(\d+(?:\.\d+)?)s/i);
   if (quoted) {
-    return Math.min(120_000, Math.ceil(parseFloat(quoted[1]) * 1000) + 500);
+    return Math.ceil(parseFloat(quoted[1]) * 1000) + 500;
   }
   const brace = msg.indexOf("{");
   if (brace !== -1) {
@@ -29,7 +38,7 @@ function parseRetryDelayMsFromError(err: unknown): number | null {
         };
         const d = o.error?.details?.find((x) => x?.retryDelay)?.retryDelay;
         if (d?.endsWith("s")) {
-          return Math.min(120_000, Math.ceil(parseFloat(d) * 1000) + 500);
+          return Math.ceil(parseFloat(d) * 1000) + 500;
         }
       }
     } catch {
@@ -102,15 +111,23 @@ export async function generateGeminiText(params: {
           });
           throw e;
         }
-        const fromServer = parseRetryDelayMsFromError(e);
+        const maxWait = getRetryMaxWaitMs();
+        const hintedRaw = parseRetryDelayMsFromError(e);
+        const expFallback = Math.min(
+          maxWait,
+          1500 * 2 ** (attempt - 1),
+        );
         const backoff = Math.min(
-          90_000,
-          fromServer ?? 1500 * 2 ** (attempt - 1),
+          maxWait,
+          hintedRaw ?? expFallback,
         );
         debatelyLog("gemini", "warn", "quota/rate limit — retrying", {
           attempt,
           nextInMs: backoff,
-          hintFromServer: fromServer != null,
+          hintFromServer: hintedRaw != null,
+          ...(hintedRaw != null && hintedRaw > maxWait
+            ? { serverHintMs: hintedRaw, cappedToMs: maxWait }
+            : {}),
         });
         await sleep(backoff);
       }
