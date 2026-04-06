@@ -86,7 +86,8 @@ ${params.transcript}
 The player just argued:
 "${params.lastPlayerMove}"
 
-Respond with your counter-argument in at most 120 words.`;
+Return valid JSON only:
+{"text":"your counter-argument in at most 120 words"}`;
 }
 
 /** Judge factcheck — spec §3.2 */

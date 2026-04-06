@@ -30,6 +30,15 @@ export const FACTCHECK_RESPONSE_SCHEMA: ResponseSchema = {
   required: ["facts", "relevance", "flags", "flag_details"],
 };
 
+/** Structured JSON for opponent replies. */
+export const OPPONENT_RESPONSE_SCHEMA: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    text: { type: SchemaType.STRING },
+  },
+  required: ["text"],
+};
+
 /** Structured JSON for final verdict (Gemini). */
 export const VERDICT_RESPONSE_SCHEMA: ResponseSchema = {
   type: SchemaType.OBJECT,

@@ -60,7 +60,7 @@ function isRetryableQuotaError(e: unknown): boolean {
 export async function generateGeminiText(params: {
   systemInstruction: string;
   userPrompt: string;
-  maxOutputTokens: number;
+  maxOutputTokens?: number;
   responseMimeType?: "text/plain" | "application/json";
   responseSchema?: ResponseSchema;
   temperature?: number;
@@ -75,7 +75,9 @@ export async function generateGeminiText(params: {
       model: modelName,
       systemInstruction: params.systemInstruction,
       generationConfig: {
-        maxOutputTokens: params.maxOutputTokens,
+        ...(params.maxOutputTokens !== undefined
+          ? { maxOutputTokens: params.maxOutputTokens }
+          : {}),
         ...(params.temperature !== undefined
           ? { temperature: params.temperature }
           : {}),
