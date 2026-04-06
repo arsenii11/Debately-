@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { debatelyLog } from "@/lib/debatelyLog";
+import { clipForLog, debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
 import {
   formatOpponentTranscript,
@@ -70,9 +70,13 @@ export async function POST(request: Request) {
         beforeWords,
         afterWords,
         cap: OPPONENT_MAX_WORDS,
+        replyPreview: clipForLog(text),
       });
     } else {
-      debatelyLog("opponent", "info", "opponent ok", { words: afterWords });
+      debatelyLog("opponent", "info", "opponent ok", {
+        words: afterWords,
+        replyPreview: clipForLog(text),
+      });
     }
     return NextResponse.json({
       text: text || "AI opponent returned an empty response.",

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { debatelyLog } from "@/lib/debatelyLog";
+import { clipForLog, debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
 import { VERDICT_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
 import { JUDGE_VERDICT_SYSTEM, judgeVerdictUserPrompt } from "@/lib/prompts";
@@ -69,6 +69,8 @@ export async function POST(request: Request) {
       debatelyLog("verdict", "info", "verdict ok", {
         rawLen: raw.length,
         scores: [verdict.score_player, verdict.score_opponent],
+        rawPreview: clipForLog(raw),
+        parsedPreview: clipForLog(JSON.stringify(verdict)),
       });
     }
     return NextResponse.json(verdict);

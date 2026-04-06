@@ -15,3 +15,10 @@ export function debatelyLog(
   else if (level === "warn") console.warn(line);
   else console.log(line);
 }
+
+/** Prevent huge payloads from flooding container logs. */
+export function clipForLog(value: string, max = 1200): string {
+  const text = value.trim();
+  if (text.length <= max) return text;
+  return `${text.slice(0, max)}…[truncated ${text.length - max} chars]`;
+}
