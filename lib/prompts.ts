@@ -134,6 +134,8 @@ IMPORTANT:
   fast-changing statistics.
 - If evidence is conflicting or unclear after searching, mark as "disputed"
   rather than guessing.
+- Output strict JSON only. Do not add citation markers like [cite: ...], URLs,
+  source lists, or any extra blocks outside the JSON object.
 
 Language: write claim, comment, and any flag_details text in the same language
 as the argument being factchecked (match the speaker's wording).

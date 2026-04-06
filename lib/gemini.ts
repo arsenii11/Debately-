@@ -5,9 +5,11 @@ import { runSerializedGemini } from "@/lib/geminiQueue";
 import { resolveGeminiApiKey } from "@/lib/geminiKey";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
-const REQUEST_TIMEOUT_MS = 45_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 65_000;
+const DEFAULT_SEARCH_TIMEOUT_MS = 30_000;
 /** Fewer attempts: each retry waits (capped); failing fast beats multi-minute hangs. */
 const MAX_GEMINI_ATTEMPTS = 4;
+const DEFAULT_SEARCH_MAX_ATTEMPTS = 2;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -19,6 +21,31 @@ function getRetryMaxWaitMs(): number {
   if (raw === undefined || raw === "") return 12_000;
   const n = Number(raw);
   return Number.isFinite(n) && n >= 500 ? Math.min(120_000, n) : 12_000;
+}
+
+function getRequestTimeoutMs(): number {
+  const raw = process.env.GEMINI_REQUEST_TIMEOUT_MS?.trim();
+  if (raw === undefined || raw === "") return DEFAULT_REQUEST_TIMEOUT_MS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 10_000
+    ? Math.min(180_000, n)
+    : DEFAULT_REQUEST_TIMEOUT_MS;
+}
+
+function getSearchTimeoutMs(defaultMs: number): number {
+  const raw = process.env.GEMINI_SEARCH_TIMEOUT_MS?.trim();
+  if (raw === undefined || raw === "") {
+    return Math.min(defaultMs, DEFAULT_SEARCH_TIMEOUT_MS);
+  }
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 8_000 ? Math.min(120_000, n) : Math.min(defaultMs, DEFAULT_SEARCH_TIMEOUT_MS);
+}
+
+function getSearchMaxAttempts(): number {
+  const raw = process.env.GEMINI_SEARCH_MAX_ATTEMPTS?.trim();
+  if (raw === undefined || raw === "") return DEFAULT_SEARCH_MAX_ATTEMPTS;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1 ? Math.min(4, Math.floor(n)) : DEFAULT_SEARCH_MAX_ATTEMPTS;
 }
 
 /** Parse server retry hint from error message (429 / quota). Uncapped raw ms. */
@@ -57,6 +84,13 @@ function isRetryableQuotaError(e: unknown): boolean {
   return /429|Too Many Requests|RESOURCE_EXHAUSTED|quota exceeded/i.test(msg);
 }
 
+function isRetryableTransientError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  return /aborted|timeout|timed out|ECONNRESET|ENOTFOUND|EAI_AGAIN|socket hang up|network/i.test(
+    msg,
+  );
+}
+
 function buildSearchTool(): Record<string, unknown> {
   const mode = process.env.GEMINI_SEARCH_TOOL?.trim();
   if (mode === "googleSearchRetrieval") {
@@ -89,6 +123,7 @@ export async function generateGeminiText(params: {
     const apiKey = await resolveGeminiApiKey();
     const modelName =
       process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+    const requestTimeoutMs = getRequestTimeoutMs();
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const baseGenerationConfig = {
@@ -101,9 +136,15 @@ export async function generateGeminiText(params: {
     };
     const searchRequested = params.enableSearch ?? true;
     let searchEnabled = searchRequested;
+    const maxAttempts = searchRequested
+      ? Math.min(MAX_GEMINI_ATTEMPTS, getSearchMaxAttempts())
+      : MAX_GEMINI_ATTEMPTS;
+    const effectiveTimeoutMs = searchRequested
+      ? getSearchTimeoutMs(requestTimeoutMs)
+      : requestTimeoutMs;
     let loggedJsonSearchCompat = false;
 
-    for (let attempt = 1; attempt <= MAX_GEMINI_ATTEMPTS; attempt++) {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
         const jsonWithSearch =
           searchEnabled && params.responseMimeType === "application/json";
@@ -135,7 +176,7 @@ export async function generateGeminiText(params: {
         } as any);
         const result = await model.generateContent(
           params.userPrompt,
-          { timeout: REQUEST_TIMEOUT_MS },
+          { timeout: effectiveTimeoutMs },
         );
 
         const text = result.response.text();
@@ -154,18 +195,24 @@ export async function generateGeminiText(params: {
           attempt -= 1;
           continue;
         }
-        if (attempt >= MAX_GEMINI_ATTEMPTS || !isRetryableQuotaError(e)) {
+        const retryable =
+          isRetryableQuotaError(e) || isRetryableTransientError(e);
+        if (attempt >= maxAttempts || !retryable) {
           debatelyLog("gemini", "error", "generateContent failed", {
             message: msg,
             model: modelName,
             hasSchema: Boolean(params.responseSchema),
             attempt,
+            maxAttempts,
             searchRequested,
             searchEnabled,
+            requestTimeoutMs: effectiveTimeoutMs,
           });
           throw e;
         }
-        const maxWait = getRetryMaxWaitMs();
+        const maxWait = searchRequested
+          ? Math.min(getRetryMaxWaitMs(), 2500)
+          : getRetryMaxWaitMs();
         const hintedRaw = parseRetryDelayMsFromError(e);
         const expFallback = Math.min(
           maxWait,

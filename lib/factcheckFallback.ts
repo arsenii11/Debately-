@@ -70,6 +70,43 @@ function parseFactcheckObject(parsed: unknown): FactCheck | null {
   };
 }
 
+function unescapeJsonString(s: string): string {
+  try {
+    return JSON.parse(`"${s}"`) as string;
+  } catch {
+    return s;
+  }
+}
+
+function recoverFactcheckFromPartialRaw(raw: string): FactCheck | null {
+  const facts: FactCheck["facts"] = [];
+  const re =
+    /"claim"\s*:\s*"((?:\\.|[^"\\])*)"\s*,\s*"status"\s*:\s*"((?:\\.|[^"\\])*)"\s*,\s*"comment"\s*:\s*"((?:\\.|[^"\\])*)"/gms;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(raw)) !== null) {
+    facts.push({
+      claim: unescapeJsonString(m[1]).trim() || "Claim",
+      status: normalizeFactStatus(unescapeJsonString(m[2])),
+      comment: unescapeJsonString(m[3]).trim(),
+    });
+  }
+  if (facts.length === 0) return null;
+
+  const uniqueFacts = Array.from(
+    new Map(
+      facts.map((f) => [`${f.claim}::${f.status}::${f.comment}`, f]),
+    ).values(),
+  );
+  const relM = /"relevance"\s*:\s*(-?\d+(?:\.\d+)?)/.exec(raw);
+
+  return {
+    facts: uniqueFacts,
+    relevance: normalizeRelevance(relM?.[1]),
+    flags: [],
+    flag_details: [],
+  };
+}
+
 export function parseFactcheckJson(raw: string): FactCheck {
   const stripped = raw
     .replace(/^```(?:json)?\s*/i, "")
@@ -87,9 +124,13 @@ export function parseFactcheckJson(raw: string): FactCheck {
       const ok = parseFactcheckObject(parsed);
       if (ok) return ok;
     } catch {
-      /* try next */
+      const partial = recoverFactcheckFromPartialRaw(text);
+      if (partial) return partial;
     }
   }
+
+  const recovered = recoverFactcheckFromPartialRaw(stripped);
+  if (recovered) return recovered;
 
   return FACTCHECK_PARSE_FALLBACK;
 }
