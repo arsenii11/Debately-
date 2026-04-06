@@ -68,7 +68,7 @@ export function DebatelyApp() {
   const [turnTimerSeconds, setTurnTimerSeconds] =
     useState<TurnTimerSeconds>(DEFAULT_TURN_TIMER);
   const [timerPaused, setTimerPaused] = useState(false);
-  const [timer, setTimer] = useState(DEFAULT_TURN_TIMER);
+  const [timer, setTimer] = useState<number>(DEFAULT_TURN_TIMER);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState("");
   const [thinkingStage, setThinkingStage] = useState<ThinkingStage>(null);
