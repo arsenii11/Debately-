@@ -187,9 +187,11 @@ export function judgeFactcheckUserPrompt(params: {
   round: number;
   previousMoveText: string;
   moveText: string;
+  outputLanguage?: "Russian" | "English";
 }): string {
   const today = new Date().toISOString().slice(0, 10);
-  const targetLanguage = detectLanguageFromText(params.moveText);
+  const targetLanguage =
+    params.outputLanguage ?? detectLanguageFromText(params.moveText);
   const prev =
     params.previousMoveText.trim() || "No previous argument";
   return `Topic: "${params.topic}"

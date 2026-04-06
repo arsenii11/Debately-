@@ -152,7 +152,11 @@ export function ChatArea({
           })}
 
           {isAIThinking && thinkingStage === "verdict" ? (
-            <ThinkingBanner label={thinkingLabel} />
+            <ThinkingBanner
+              label="Determining final results..."
+              subtitle="Comparing arguments, checking evidence, and deciding who did best."
+              showProgress
+            />
           ) : null}
 
           {history.length === 0 && (

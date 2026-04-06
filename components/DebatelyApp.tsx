@@ -44,6 +44,16 @@ function opponentSideFor(player: Side): Side {
   return player === "FOR" ? "AGAINST" : "FOR";
 }
 
+function detectPlayerLanguage(
+  history: RoundData[],
+  latestPlayerMove: string,
+): "Russian" | "English" {
+  const corpus = [latestPlayerMove, ...history.map((r) => r.playerMove)].join(" ");
+  const cyr = (corpus.match(/[А-Яа-яЁё]/g) ?? []).length;
+  const lat = (corpus.match(/[A-Za-z]/g) ?? []).length;
+  return cyr >= lat ? "Russian" : "English";
+}
+
 async function postJson<T>(url: string, body: unknown): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
@@ -293,6 +303,7 @@ export function DebatelyApp() {
         ? "[Turn skipped — time expired]"
         : move;
       const roundNumber = currentRound;
+      const debateLanguage = detectPlayerLanguage(history, displayMove);
 
       setError(null);
       setTimer(0);
@@ -323,6 +334,7 @@ export function DebatelyApp() {
             speaker: "player",
             previousMoveText: prevOpp,
             round: roundNumber,
+            outputLanguage: debateLanguage,
           });
           fcPlayer =
             typeof res === "string"
@@ -371,43 +383,50 @@ export function DebatelyApp() {
         }
         updateRound(roundNumber, { opponentMove: opponentText });
 
-        setThinkingStage("fc_opponent");
-        setThinkingLabel("Judge is factchecking Debately…");
-        let fcOpp: FactCheck;
-        try {
-          const res = await postJson<string | FactCheck>("/api/ai/factcheck", {
-            topic,
-            playerSide,
-            opponentSide,
-            moveText: opponentText,
-            speaker: "opponent",
-            previousMoveText: displayMove,
-            round: roundNumber,
-          });
-          fcOpp =
-            typeof res === "string"
-              ? parseFactcheckJson(res)
-              : (res as FactCheck);
-          if (isFactcheckFallback(fcOpp)) {
-            console.error(
-              "[Debately] Judge factcheck (opponent) is parse fallback — see server logs [debately:factcheck]",
-            );
+        const requestOpponentFactcheck = async (
+          showThinking: boolean,
+        ): Promise<FactCheck> => {
+          if (showThinking) {
+            setThinkingStage("fc_opponent");
+            setThinkingLabel("Judge is factchecking Debately…");
           }
-        } catch (e) {
-          console.error("[Debately] factcheck (opponent) request failed", e);
-          fcOpp = FACTCHECK_PARSE_FALLBACK;
-        }
-        updateRound(roundNumber, { aiFactcheckOpponent: fcOpp });
-
-        const completedRound: RoundData = {
-          round: roundNumber,
-          playerMove: displayMove,
-          aiFactcheckPlayer: fcPlayer,
-          opponentMove: opponentText,
-          aiFactcheckOpponent: fcOpp,
+          try {
+            const res = await postJson<string | FactCheck>("/api/ai/factcheck", {
+              topic,
+              playerSide,
+              opponentSide,
+              moveText: opponentText,
+              speaker: "opponent",
+              previousMoveText: displayMove,
+              round: roundNumber,
+              outputLanguage: debateLanguage,
+            });
+            const fcOpp =
+              typeof res === "string"
+                ? parseFactcheckJson(res)
+                : (res as FactCheck);
+            if (isFactcheckFallback(fcOpp)) {
+              console.error(
+                "[Debately] Judge factcheck (opponent) is parse fallback — see server logs [debately:factcheck]",
+              );
+            }
+            return fcOpp;
+          } catch (e) {
+            console.error("[Debately] factcheck (opponent) request failed", e);
+            return FACTCHECK_PARSE_FALLBACK;
+          }
         };
 
         if (roundNumber >= turnRounds) {
+          const fcOpp = await requestOpponentFactcheck(true);
+          updateRound(roundNumber, { aiFactcheckOpponent: fcOpp });
+          const completedRound: RoundData = {
+            round: roundNumber,
+            playerMove: displayMove,
+            aiFactcheckPlayer: fcPlayer,
+            opponentMove: opponentText,
+            aiFactcheckOpponent: fcOpp,
+          };
           setThinkingStage("verdict");
           setThinkingLabel("Judge is deliberating final verdict…");
           const histForVerdict: RoundData[] = [
@@ -430,6 +449,10 @@ export function DebatelyApp() {
           }
           setPhase("finished");
         } else {
+          void (async () => {
+            const fcOpp = await requestOpponentFactcheck(false);
+            updateRound(roundNumber, { aiFactcheckOpponent: fcOpp });
+          })();
           setCurrentRound((r) => r + 1);
           setTimer(turnTimerSeconds);
           setTimerPaused(false);

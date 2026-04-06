@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
-import { FACTCHECK_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
 import { clampFactcheckArgumentScore } from "@/lib/factcheckScoreAdjust";
 import {
   isFactcheckFallback,
@@ -22,6 +21,7 @@ type Body = {
   speaker?: "player" | "opponent";
   previousMoveText?: string;
   round?: number;
+  outputLanguage?: "Russian" | "English";
 };
 
 function countWords(text: string): number {
@@ -74,6 +74,10 @@ export async function POST(request: Request) {
   const round = typeof body.round === "number" ? body.round : 1;
   const previousMoveText = body.previousMoveText ?? "";
   const speaker = body.speaker === "opponent" ? "opponent" : "player";
+  const outputLanguage =
+    body.outputLanguage === "Russian" || body.outputLanguage === "English"
+      ? body.outputLanguage
+      : undefined;
   const playerSide = body.playerSide === "AGAINST" ? "AGAINST" : "FOR";
   const opponentSide = body.opponentSide === "FOR" ? "FOR" : "AGAINST";
   const side: Side = speaker === "player" ? playerSide : opponentSide;
@@ -86,25 +90,16 @@ export async function POST(request: Request) {
       round,
       previousMoveText,
       moveText,
+      outputLanguage,
     }),
-    maxOutputTokens: 2048,
+    maxOutputTokens: 1400,
     responseMimeType: "application/json" as const,
     temperature: 0.35,
+    enableSearch: true,
   };
 
   try {
-    let raw: string;
-    try {
-      raw = await generateGeminiText({
-        ...factcheckParams,
-        responseSchema: FACTCHECK_RESPONSE_SCHEMA,
-      });
-    } catch (schemaErr) {
-      debatelyLog("factcheck", "error", "structured output failed; retry without responseSchema", {
-        err: String(schemaErr),
-      });
-      raw = await generateGeminiText(factcheckParams);
-    }
+    const raw = await generateGeminiText(factcheckParams);
     const parsed = parseFactcheckJson(raw);
     const normalized = finalizeFactcheck(moveText, parsed);
     if (isFactcheckFallback(parsed)) {
