@@ -81,7 +81,7 @@ function unescapeJsonString(s: string): string {
 function recoverFactcheckFromPartialRaw(raw: string): FactCheck | null {
   const facts: FactCheck["facts"] = [];
   const re =
-    /"claim"\s*:\s*"((?:\\.|[^"\\])*)"\s*,\s*"status"\s*:\s*"((?:\\.|[^"\\])*)"\s*,\s*"comment"\s*:\s*"((?:\\.|[^"\\])*)"/gms;
+    /"claim"\s*:\s*"((?:\\.|[^"\\])*)"\s*,[\s\S]*?"status"\s*:\s*"((?:\\.|[^"\\])*)"\s*,[\s\S]*?"comment"\s*:\s*"((?:\\.|[^"\\])*)"/gm;
   let m: RegExpExecArray | null;
   while ((m = re.exec(raw)) !== null) {
     facts.push({
