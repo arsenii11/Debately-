@@ -91,31 +91,46 @@ export async function generateGeminiText(params: {
       process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const modelConfig = {
-      model: modelName,
-      systemInstruction: params.systemInstruction,
-      generationConfig: {
-        ...(params.maxOutputTokens !== undefined
-          ? { maxOutputTokens: params.maxOutputTokens }
-          : {}),
-        ...(params.temperature !== undefined
-          ? { temperature: params.temperature }
-          : {}),
-        ...(params.responseMimeType
-          ? { responseMimeType: params.responseMimeType }
-          : {}),
-        ...(params.responseSchema && params.responseMimeType === "application/json"
-          ? { responseSchema: params.responseSchema }
-          : {}),
-      },
+    const baseGenerationConfig = {
+      ...(params.maxOutputTokens !== undefined
+        ? { maxOutputTokens: params.maxOutputTokens }
+        : {}),
+      ...(params.temperature !== undefined
+        ? { temperature: params.temperature }
+        : {}),
     };
     const searchRequested = params.enableSearch ?? true;
     let searchEnabled = searchRequested;
+    let loggedJsonSearchCompat = false;
 
     for (let attempt = 1; attempt <= MAX_GEMINI_ATTEMPTS; attempt++) {
       try {
+        const jsonWithSearch =
+          searchEnabled && params.responseMimeType === "application/json";
+        if (jsonWithSearch && !loggedJsonSearchCompat) {
+          debatelyLog(
+            "gemini",
+            "warn",
+            "search+json mime unsupported; using plain-text JSON mode",
+            { model: modelName },
+          );
+          loggedJsonSearchCompat = true;
+        }
+        const generationConfig = {
+          ...baseGenerationConfig,
+          ...(!jsonWithSearch && params.responseMimeType
+            ? { responseMimeType: params.responseMimeType }
+            : {}),
+          ...(!jsonWithSearch &&
+          params.responseSchema &&
+          params.responseMimeType === "application/json"
+            ? { responseSchema: params.responseSchema }
+            : {}),
+        };
         const model = genAI.getGenerativeModel({
-          ...modelConfig,
+          model: modelName,
+          systemInstruction: params.systemInstruction,
+          generationConfig,
           ...(searchEnabled ? { tools: [buildSearchTool()] } : {}),
         } as any);
         const result = await model.generateContent(
