@@ -2,6 +2,7 @@ import type {
   Phase,
   RoundData,
   Side,
+  TurnRounds,
   TurnTimerSeconds,
   Verdict,
 } from "@/lib/types";
@@ -16,6 +17,7 @@ export type DebatelyPersisted = {
   playerSide: Side;
   history: RoundData[];
   currentRound: number;
+  turnRounds: TurnRounds;
   inputText: string;
   timer: number;
   turnTimerSeconds: TurnTimerSeconds;
@@ -35,6 +37,10 @@ function isPhase(x: unknown): x is Phase {
 
 function turnTimerSecondsFromUnknown(x: unknown): TurnTimerSeconds {
   return x === 300 ? 300 : 180;
+}
+
+function turnRoundsFromUnknown(x: unknown): TurnRounds {
+  return x === 5 ? 5 : 3;
 }
 
 function isRoundData(x: unknown): x is RoundData {
@@ -62,6 +68,7 @@ export function loadDebatelySession(): DebatelyPersisted | null {
     if (!isSide(p.playerSide)) return null;
     if (!Array.isArray(p.history) || !p.history.every(isRoundData)) return null;
     if (typeof p.currentRound !== "number") return null;
+    const turnRounds = turnRoundsFromUnknown(p.turnRounds);
     if (typeof p.inputText !== "string") return null;
     if (typeof p.timer !== "number") return null;
     const turnTimerSeconds = turnTimerSecondsFromUnknown(p.turnTimerSeconds);
@@ -78,7 +85,8 @@ export function loadDebatelySession(): DebatelyPersisted | null {
       topic: p.topic,
       playerSide: p.playerSide,
       history: p.history as RoundData[],
-      currentRound: p.currentRound,
+      currentRound: Math.max(1, Math.min(turnRounds, Math.floor(p.currentRound))),
+      turnRounds,
       inputText: p.inputText,
       timer: Math.max(0, Math.min(turnTimerSeconds, Math.floor(p.timer))),
       turnTimerSeconds,

@@ -41,7 +41,7 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
     winner === "player"
       ? playerName
       : winner === "opponent"
-        ? "Opponent"
+        ? "Debately"
         : null;
 
   return (
@@ -120,7 +120,7 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
               {verdict.score_opponent}
             </p>
             <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Opponent
+              Debately
             </p>
             {winner === "opponent" && (
               <span className="mt-2 inline-block rounded-full border border-pink-400/50 bg-pink-500/25 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-pink-200">
@@ -180,7 +180,7 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
           </div>
           <div className="rounded-xl border border-pink-500/20 bg-pink-950/20 p-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-pink-400">
-              ★ Best arg — Opponent
+              ★ Best arg — Debately
             </p>
             <p className="mt-1 text-xs text-zinc-400">
               {verdict.best_arg_opponent}

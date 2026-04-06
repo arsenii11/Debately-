@@ -10,6 +10,10 @@ CRITICAL RULES:
 - Before writing your answer, you MUST use web search to check up-to-date facts
   for this specific topic and round. Ground claims in fresh public information.
 - You MUST argue the ${opponentSide} position, but you are NOT a blind contrarian
+- Pick one clear strategic line for this debate by round 1 (your core thesis
+  and 1-2 supporting pillars) and keep that line consistent across rounds.
+- Build your replies as progression of that same line: reinforce, refine, and
+  adapt it to the player's attacks instead of changing your core frame every turn.
 - Be forceful and combative in tone: defend your position like a real person
   trying to win the exchange, not a calm neutral expert
 - Push back bluntly but stay within decency: attack the argument, not the person.
@@ -68,8 +72,8 @@ function formatCompletedRound(
   return `Round ${r.round}:
 Player (${playerSide}): ${r.playerMove}
 Judge factcheck (player): ${formatFactcheckLine(r.aiFactcheckPlayer)}
-Opponent (${opponentSide}): ${r.opponentMove ?? "(pending)"}
-Judge factcheck (opponent): ${formatFactcheckLine(r.aiFactcheckOpponent)}`;
+Debately (${opponentSide}): ${r.opponentMove ?? "(pending)"}
+Judge factcheck (Debately): ${formatFactcheckLine(r.aiFactcheckOpponent)}`;
 }
 
 /** Prior rounds only; last entry in history is the current (incomplete) round. */
@@ -122,7 +126,7 @@ Your job:
    - "false" — contradicted by well-established facts
 3. Set field "relevance" to an overall ARGUMENT STRENGTH SCORE from 0-100 (you will
    output it as "relevance" in JSON for compatibility). It must combine:
-   - topical fit and whether the move responds to the opponent's previous point
+- topical fit and whether the move responds to the previous point
    - factual strength implied by YOUR OWN fact rows: if most claims are "false" or
      you explain in comments that the speaker's point is wrong or badly framed,
      the score MUST be low even when the topic is related.
@@ -174,7 +178,7 @@ export function judgeFactcheckUserPrompt(params: {
 Current date (UTC): ${today}
 Speaker side: ${params.side}
 Round: ${params.round}
-Previous opponent argument: "${prev}"
+Previous Debately/player argument: "${prev}"
 
 Argument to factcheck:
 "${params.moveText}"
@@ -191,13 +195,13 @@ time-sensitive or recent-event claims.
 Score each side 0-100 based on:
 - Factual accuracy (40%): were claims true?
 - Logical consistency (25%): coherent argument chain?
-- Relevance (20%): stayed on topic, addressed opponent?
+- Relevance (20%): stayed on topic, addressed the other side?
 - Rhetoric quality (15%): clarity, persuasiveness?
 
 Penalize: -5 points per skipped turn (apply to the side that skipped: player skipped turns reduce player score).
 
 Short answers (mandatory): penalize each side for low-effort turns. Count words in
-each player move and each opponent move. Very short replies without real
+each player move and each Debately move. Very short replies without real
 argumentation must lower that side's scores and their rhetoric/relevance
 subscores. Rough guide:
 - ~1-5 words or empty: heavy penalty
@@ -230,6 +234,8 @@ language of the full transcript (same language as most of the debate turns).
 Output shape: valid JSON only. Keep it compact so the response is not cut off:
 - summary: at most 3 short sentences (roughly under 500 characters)
 - best_arg_player and best_arg_opponent: one sentence each (under 200 characters)
+- best_arg_player and best_arg_opponent are mandatory and must be informative.
+  Never output placeholders like "-", "—", "N/A", or empty strings.
 - Inside JSON strings, escape any " as \\" or rephrase without quotation marks.
 
 Respond ONLY in valid JSON. No markdown, no preamble.`;
@@ -242,7 +248,7 @@ function formatRoundForVerdict(
   return `Round ${r.round}:
   Player (${playerSide}): ${JSON.stringify(r.playerMove)}
   Judge factcheck: ${formatFactcheckLine(r.aiFactcheckPlayer)}
-  Opponent (${opponentSide}): ${JSON.stringify(r.opponentMove ?? "")}
+  Debately (${opponentSide}): ${JSON.stringify(r.opponentMove ?? "")}
   Judge factcheck: ${formatFactcheckLine(r.aiFactcheckOpponent)}`;
 }
 
@@ -261,7 +267,7 @@ export function judgeVerdictUserPrompt(params: {
   return `Topic: "${params.topic}"
 Current date (UTC): ${today}
 Player side: ${params.playerSide}
-Opponent (AI) side: ${params.opponentSide}
+Debately side: ${params.opponentSide}
 Skipped turns (player timed out): ${params.skippedTurns} (−5 points per skip to player score)
 
 Full transcript:

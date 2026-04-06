@@ -112,7 +112,7 @@ export async function POST(request: Request) {
     const text = truncateToMaxWords(trimmed, OPPONENT_MAX_WORDS);
     const afterWords = countWords(text);
     if (beforeWords > OPPONENT_MAX_WORDS) {
-      debatelyLog("opponent", "warn", "truncated opponent reply to word cap", {
+      debatelyLog("opponent", "warn", "truncated Debately reply to word cap", {
         beforeWords,
         afterWords,
         cap: OPPONENT_MAX_WORDS,
@@ -120,23 +120,21 @@ export async function POST(request: Request) {
         replyPreview: clipForLog(text),
       });
     } else {
-      debatelyLog("opponent", "info", "opponent ok", {
+      debatelyLog("opponent", "info", "Debately response ok", {
         words: afterWords,
         rawResponse: raw,
         replyPreview: clipForLog(text),
       });
     }
     return NextResponse.json({
-      text: text || "AI opponent returned an empty response.",
+      text: text || "Debately returned an empty response.",
     });
   } catch (e) {
-    debatelyLog("opponent", "error", "Gemini failed for opponent", {
+    debatelyLog("opponent", "error", "Gemini failed for Debately", {
       err: e instanceof Error ? e.message : String(e),
     });
     return NextResponse.json(
-      {
-        text: "AI opponent failed to respond.",
-      },
+      { text: "Debately failed to respond." },
       { status: 200 },
     );
   }

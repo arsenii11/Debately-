@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  TURN_ROUNDS,
   TURN_TIMER_SECONDS,
   type Side,
+  type TurnRounds,
   type TurnTimerSeconds,
 } from "@/lib/types";
 
@@ -23,10 +25,12 @@ type Props = {
   nickname: string;
   topic: string;
   side: Side;
+  turnRounds: TurnRounds;
   turnTimerSeconds: TurnTimerSeconds;
   onNickname: (v: string) => void;
   onTopic: (v: string) => void;
   onSide: (s: Side) => void;
+  onTurnRounds: (v: TurnRounds) => void;
   onTurnTimerSeconds: (s: TurnTimerSeconds) => void;
   onStart: () => void;
 };
@@ -35,10 +39,12 @@ export function SetupScreen({
   nickname,
   topic,
   side,
+  turnRounds,
   turnTimerSeconds,
   onNickname,
   onTopic,
   onSide,
+  onTurnRounds,
   onTurnTimerSeconds,
   onStart,
 }: Props) {
@@ -54,7 +60,7 @@ export function SetupScreen({
           Solo — MVP
         </p>
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          Pick a topic, choose a side, and debate an AI opponent. A neutral
+          Pick a topic, choose a side, and debate Debately. A neutral
           Judge factchecks each move and scores the match.
         </p>
       </header>
@@ -91,6 +97,28 @@ export function SetupScreen({
         <span className="text-right text-xs text-zinc-600">
           {topic.length}/200
         </span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Debate rounds
+        </span>
+        <div className="grid grid-cols-2 gap-3">
+          {TURN_ROUNDS.map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => onTurnRounds(r)}
+              className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                turnRounds === r
+                  ? "border-indigo-500 bg-indigo-500/20 text-indigo-200 shadow-md shadow-indigo-900/20"
+                  : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-indigo-500/50 hover:bg-zinc-800/70 hover:text-zinc-200"
+              }`}
+            >
+              {r} rounds
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -164,7 +192,7 @@ export function SetupScreen({
         onClick={onStart}
         className="cursor-pointer rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100"
       >
-        Start Debate — 3 rounds
+        Start Debate — {turnRounds} rounds
       </button>
     </div>
   );

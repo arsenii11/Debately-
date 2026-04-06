@@ -31,7 +31,7 @@ export function AIBubble({
           >
             {opponentSide}
           </span>
-          <span className="text-sm font-semibold text-zinc-200">Opponent</span>
+          <span className="text-sm font-semibold text-zinc-200">Debately</span>
         </div>
         <div className="rounded-[14px_3px_14px_14px] border border-pink-500/30 bg-pink-950/35 px-4 py-3 text-left text-sm leading-relaxed text-zinc-100">
           {thinking ? (

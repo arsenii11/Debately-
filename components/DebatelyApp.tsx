@@ -32,11 +32,12 @@ import type {
   RoundData,
   Side,
   ThinkingStage,
+  TurnRounds,
   TurnTimerSeconds,
   Verdict,
 } from "@/lib/types";
 
-const TOTAL_ROUNDS = 3;
+const DEFAULT_TURN_ROUNDS: TurnRounds = 3;
 const DEFAULT_TURN_TIMER: TurnTimerSeconds = 180;
 
 function opponentSideFor(player: Side): Side {
@@ -63,6 +64,7 @@ export function DebatelyApp() {
   const [topic, setTopic] = useState("");
   const [playerSide, setPlayerSide] = useState<Side>("FOR");
   const [history, setHistory] = useState<RoundData[]>([]);
+  const [turnRounds, setTurnRounds] = useState<TurnRounds>(DEFAULT_TURN_ROUNDS);
   const [currentRound, setCurrentRound] = useState(1);
   const [inputText, setInputText] = useState("");
   const [turnTimerSeconds, setTurnTimerSeconds] =
@@ -127,8 +129,9 @@ export function DebatelyApp() {
       setTopic(s.topic);
       setPlayerSide(s.playerSide);
       setHistory(s.history);
+      setTurnRounds(s.turnRounds);
       setCurrentRound(
-        Math.min(TOTAL_ROUNDS, Math.max(1, Math.floor(s.currentRound))),
+        Math.min(s.turnRounds, Math.max(1, Math.floor(s.currentRound))),
       );
       setInputText(s.inputText);
       setTurnTimerSeconds(s.turnTimerSeconds);
@@ -194,6 +197,7 @@ export function DebatelyApp() {
       topic,
       playerSide,
       history,
+      turnRounds,
       currentRound,
       inputText,
       timer,
@@ -210,6 +214,7 @@ export function DebatelyApp() {
     topic,
     playerSide,
     history,
+    turnRounds,
     currentRound,
     inputText,
     timer,
@@ -335,7 +340,7 @@ export function DebatelyApp() {
         updateRound(roundNumber, { aiFactcheckPlayer: fcPlayer });
 
         setThinkingStage("opponent");
-        setThinkingLabel("Opponent is thinking…");
+        setThinkingLabel("Debately is thinking…");
         let opponentText: string;
         try {
           const prior = history.slice(0, roundNumber - 1);
@@ -356,18 +361,18 @@ export function DebatelyApp() {
             opponentSide,
             history: histForOpp,
             currentRound: roundNumber,
-            totalRounds: TOTAL_ROUNDS,
+            totalRounds: turnRounds,
           });
           opponentText =
-            oppRes.text?.trim() || "AI opponent failed to respond.";
+            oppRes.text?.trim() || "Debately failed to respond.";
         } catch (e) {
           console.error("[Debately] opponent API request failed", e);
-          opponentText = "AI opponent failed to respond.";
+          opponentText = "Debately failed to respond.";
         }
         updateRound(roundNumber, { opponentMove: opponentText });
 
         setThinkingStage("fc_opponent");
-        setThinkingLabel("Judge is factchecking opponent…");
+        setThinkingLabel("Judge is factchecking Debately…");
         let fcOpp: FactCheck;
         try {
           const res = await postJson<string | FactCheck>("/api/ai/factcheck", {
@@ -402,7 +407,7 @@ export function DebatelyApp() {
           aiFactcheckOpponent: fcOpp,
         };
 
-        if (roundNumber >= TOTAL_ROUNDS) {
+        if (roundNumber >= turnRounds) {
           setThinkingStage("verdict");
           setThinkingLabel("Judge is deliberating final verdict…");
           const histForVerdict: RoundData[] = [
@@ -446,6 +451,7 @@ export function DebatelyApp() {
       history,
       updateRound,
       turnTimerSeconds,
+      turnRounds,
     ],
   );
 
@@ -507,10 +513,12 @@ export function DebatelyApp() {
           nickname={nickname}
           topic={topic}
           side={playerSide}
+          turnRounds={turnRounds}
           turnTimerSeconds={turnTimerSeconds}
           onNickname={setNickname}
           onTopic={setTopic}
           onSide={setPlayerSide}
+          onTurnRounds={setTurnRounds}
           onTurnTimerSeconds={setTurnTimerSeconds}
           onStart={handleStart}
         />
@@ -541,7 +549,7 @@ export function DebatelyApp() {
             <span className="text-sm text-zinc-400">
               Round{" "}
               <span className="font-mono text-zinc-200">
-                {currentRound}/{TOTAL_ROUNDS}
+                {currentRound}/{turnRounds}
               </span>
             </span>
           )}

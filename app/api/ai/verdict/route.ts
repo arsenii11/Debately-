@@ -26,6 +26,32 @@ type Body = {
   skippedTurns?: number;
 };
 
+function fallbackBestArgFromHistory(
+  history: RoundData[],
+  who: "player" | "debately",
+): string {
+  const moves = history
+    .map((r) => (who === "player" ? r.playerMove : (r.opponentMove ?? "")))
+    .map((t) => t.trim())
+    .filter(Boolean);
+  if (moves.length === 0) return "No clear argument available.";
+  const best = moves.reduce((a, b) => (b.length > a.length ? b : a));
+  return best.length > 180 ? `${best.slice(0, 177)}...` : best;
+}
+
+function verdictNeedsRetry(v: ReturnType<typeof parseVerdictJson>): boolean {
+  const badPlayerArg =
+    !v.best_arg_player?.trim() ||
+    v.best_arg_player.trim() === "—" ||
+    v.best_arg_player.trim() === "-";
+  const badDebatelyArg =
+    !v.best_arg_opponent?.trim() ||
+    v.best_arg_opponent.trim() === "—" ||
+    v.best_arg_opponent.trim() === "-";
+  const suspiciouslyTruncatedSummary = v.summary.trim().endsWith("…");
+  return badPlayerArg || badDebatelyArg || suspiciouslyTruncatedSummary;
+}
+
 export async function POST(request: Request) {
   let body: Body;
   try {
@@ -94,6 +120,19 @@ export async function POST(request: Request) {
       parsedVerdict = parseVerdictJson(raw);
     }
 
+    if (!isVerdictFallback(parsedVerdict) && verdictNeedsRetry(parsedVerdict)) {
+      debatelyLog("verdict", "warn", "verdict missing best-args/complete summary; retrying compact", {
+        rawLen: raw.length,
+        rawPreview: clipForLog(raw),
+      });
+      raw = await callVerdict(
+        `${baseUserPrompt}${JUDGE_VERDICT_COMPACT_RETRY_SUFFIX}
+CRITICAL: best_arg_player and best_arg_opponent must be non-empty specific one-sentence arguments.`,
+        VERDICT_TOKENS_RETRY,
+      );
+      parsedVerdict = parseVerdictJson(raw);
+    }
+
     if (isVerdictFallback(parsedVerdict)) {
       debatelyLog("verdict", "error", "verdict still fallback after retry", {
         rawLen: raw.length,
@@ -102,12 +141,26 @@ export async function POST(request: Request) {
     }
     const pen = shortAnswerScorePenalties(history);
     const ceil = shortAnswerScoreCeilings(history);
+    const bestArgPlayer =
+      parsedVerdict.best_arg_player?.trim() &&
+      parsedVerdict.best_arg_player.trim() !== "—" &&
+      parsedVerdict.best_arg_player.trim() !== "-"
+        ? parsedVerdict.best_arg_player
+        : fallbackBestArgFromHistory(history, "player");
+    const bestArgDebately =
+      parsedVerdict.best_arg_opponent?.trim() &&
+      parsedVerdict.best_arg_opponent.trim() !== "—" &&
+      parsedVerdict.best_arg_opponent.trim() !== "-"
+        ? parsedVerdict.best_arg_opponent
+        : fallbackBestArgFromHistory(history, "debately");
     const afterPen = {
       score_player: Math.max(0, parsedVerdict.score_player - pen.player),
       score_opponent: Math.max(0, parsedVerdict.score_opponent - pen.opponent),
     };
     const verdict = {
       ...parsedVerdict,
+      best_arg_player: bestArgPlayer,
+      best_arg_opponent: bestArgDebately,
       score_player: Math.min(ceil.playerMax, afterPen.score_player),
       score_opponent: Math.min(ceil.opponentMax, afterPen.score_opponent),
     };

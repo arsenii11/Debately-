@@ -15,7 +15,7 @@ type Props = {
 
 export function FactCheckCard({ variant, data }: Props) {
   const title =
-    variant === "player" ? "JUDGE — your argument" : "JUDGE — opponent";
+    variant === "player" ? "JUDGE — your argument" : "JUDGE — Debately";
 
   return (
     <div className="mx-auto w-full max-w-md">
