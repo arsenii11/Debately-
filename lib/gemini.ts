@@ -86,7 +86,7 @@ function isRetryableQuotaError(e: unknown): boolean {
 
 function isRetryableTransientError(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : String(e);
-  return /aborted|timeout|timed out|ECONNRESET|ENOTFOUND|EAI_AGAIN|socket hang up|network/i.test(
+  return /aborted|timeout|timed out|ECONNRESET|ENOTFOUND|EAI_AGAIN|socket hang up|network|empty response from gemini/i.test(
     msg,
   );
 }

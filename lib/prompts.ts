@@ -95,7 +95,9 @@ export function opponentUserPrompt(params: {
   transcript: string;
   lastPlayerMove: string;
 }): string {
+  const today = new Date().toISOString().slice(0, 10);
   return `Topic: "${params.topic}"
+Current date (UTC): ${today}
 Your side: ${params.opponentSide}
 Round: ${params.currentRound} of ${params.totalRounds}
 
@@ -165,9 +167,11 @@ export function judgeFactcheckUserPrompt(params: {
   previousMoveText: string;
   moveText: string;
 }): string {
+  const today = new Date().toISOString().slice(0, 10);
   const prev =
     params.previousMoveText.trim() || "No previous argument";
   return `Topic: "${params.topic}"
+Current date (UTC): ${today}
 Speaker side: ${params.side}
 Round: ${params.round}
 Previous opponent argument: "${prev}"
@@ -249,11 +253,13 @@ export function judgeVerdictUserPrompt(params: {
   history: RoundData[];
   skippedTurns: number;
 }): string {
+  const today = new Date().toISOString().slice(0, 10);
   const full = params.history
     .map((r) => formatRoundForVerdict(r, params.playerSide, params.opponentSide))
     .join("\n\n");
 
   return `Topic: "${params.topic}"
+Current date (UTC): ${today}
 Player side: ${params.playerSide}
 Opponent (AI) side: ${params.opponentSide}
 Skipped turns (player timed out): ${params.skippedTurns} (−5 points per skip to player score)
