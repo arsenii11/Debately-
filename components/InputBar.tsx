@@ -27,7 +27,10 @@ export function InputBar({ value, onChange, onSubmit, disabled, onFocus }: Props
   );
 
   return (
-    <div className="border-t border-zinc-800 bg-zinc-950/95 px-3 py-3 backdrop-blur sm:px-4">
+    <div
+      className="border-t border-zinc-800 bg-zinc-950/95 px-3 py-3 backdrop-blur sm:px-4"
+      style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+    >
       <div className="mx-auto flex max-w-3xl flex-col gap-2">
         <textarea
           rows={3}
