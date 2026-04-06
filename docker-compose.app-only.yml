@@ -11,6 +11,8 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
+      GEMINI_MODEL: gemini-2.5-flash
+      GEMINI_SEARCH_TOOL: googleSearch
     healthcheck:
       test:
         [

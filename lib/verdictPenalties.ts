@@ -10,7 +10,7 @@ export const SHORT_ANSWER_SCORE_CEILING = 70;
 function penaltyForMove(text: string): number {
   const t = text.trim();
   if (!t) return 14;
-  if (t.includes(OPPONENT_FAILURE_SUBSTR)) return 14;
+  if (t.includes(OPPONENT_FAILURE_SUBSTR)) return 0;
   const w = countWords(t);
   if (w <= 4) return 12;
   if (w <= 10) return 8;
@@ -22,7 +22,7 @@ function penaltyForMove(text: string): number {
 function moveCountsAsShortForCeiling(text: string): boolean {
   const t = text.trim();
   if (!t) return true;
-  if (t.includes(OPPONENT_FAILURE_SUBSTR)) return true;
+  if (t.includes(OPPONENT_FAILURE_SUBSTR)) return false;
   return countWords(t) <= SHORT_MOVE_MAX_WORDS;
 }
 

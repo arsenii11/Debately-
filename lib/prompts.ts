@@ -7,6 +7,8 @@ You are intelligent, well-informed, and argue like a real human would.
 
 CRITICAL RULES:
 - Keep responses at 120 words maximum. This is mandatory.
+- Before writing your answer, you MUST use web search to check up-to-date facts
+  for this specific topic and round. Ground claims in fresh public information.
 - You MUST argue the ${opponentSide} position, but you are NOT a blind contrarian
 - Be forceful and combative in tone: defend your position like a real person
   trying to win the exchange, not a calm neutral expert
@@ -126,8 +128,12 @@ Your job:
    ad_hominem, strawman, whataboutism, tu_quoque,
    appeal_to_emotion, red_herring
 
-IMPORTANT: Base factchecking on your training knowledge. If unsure,
-mark as "disputed" rather than guessing.
+IMPORTANT:
+- You MUST use web search before finalizing this factcheck, especially for
+  recent events, current politics, wars, elections, sanctions, markets, and
+  fast-changing statistics.
+- If evidence is conflicting or unclear after searching, mark as "disputed"
+  rather than guessing.
 
 Language: write claim, comment, and any flag_details text in the same language
 as the argument being factchecked (match the speaker's wording).
@@ -174,6 +180,8 @@ Return JSON (relevance = argument strength 0-100, aligned with claim statuses):
 
 /** Final verdict — spec §3.3 */
 export const JUDGE_VERDICT_SYSTEM = `You are an impartial debate judge. Evaluate the completed debate.
+Before scoring, you MUST use web search to verify key factual claims, especially
+time-sensitive or recent-event claims.
 Score each side 0-100 based on:
 - Factual accuracy (40%): were claims true?
 - Logical consistency (25%): coherent argument chain?

@@ -7,8 +7,8 @@
 # HTTPS: см. DOCKER.md. Кратко: выпусти сертификат с профилем certbot, затем в .env задай
 # NGINX_CONF=default-https.conf (и поправь домен в nginx/default-https.conf).
 #
-# Важно: GEMINI_* задаются через env_file. Не дублируй их в environment с ${...},
-# иначе пустая подстановка может затереть ключ из .env.
+# Важно: GEMINI_* можно переопределять через .env, но безопаснее задавать тут литералами,
+# а не через ${...}, чтобы избежать пустых подстановок.
 services:
   app:
     build: .
@@ -18,6 +18,8 @@ services:
       - .env
     environment:
       NODE_ENV: production
+      GEMINI_MODEL: gemini-2.5-flash
+      GEMINI_SEARCH_TOOL: googleSearch
     expose:
       - "3000"
     healthcheck:

@@ -59,10 +59,10 @@ function isRetryableQuotaError(e: unknown): boolean {
 
 function buildSearchTool(): Record<string, unknown> {
   const mode = process.env.GEMINI_SEARCH_TOOL?.trim();
-  if (mode === "googleSearch") {
-    return { googleSearch: {} };
+  if (mode === "googleSearchRetrieval") {
+    return { googleSearchRetrieval: {} };
   }
-  return { googleSearchRetrieval: {} };
+  return { googleSearch: {} };
 }
 
 function isSearchToolConfigError(e: unknown): boolean {
