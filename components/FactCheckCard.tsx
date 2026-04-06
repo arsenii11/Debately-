@@ -24,16 +24,22 @@ export function FactCheckCard({ variant, data }: Props) {
           {title}
         </p>
         <ul className="mt-3 space-y-3">
-          {data.facts.map((f, i) => (
-            <li key={i} className="text-sm">
-              <p className={`font-medium ${statusStyles[f.status]}`}>
-                ● {f.claim}
-              </p>
-              <p className="mt-1 text-xs leading-relaxed text-zinc-500">
-                {f.comment}
-              </p>
+          {data.facts.length > 0 ? (
+            data.facts.map((f, i) => (
+              <li key={i} className="text-sm">
+                <p className={`font-medium ${statusStyles[f.status]}`}>
+                  ● {f.claim}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                  {f.comment}
+                </p>
+              </li>
+            ))
+          ) : (
+            <li className="text-sm text-zinc-400">
+              No concrete factual claims detected.
             </li>
-          ))}
+          )}
         </ul>
         <div className="mt-4 border-t border-zinc-800 pt-3">
           <div className="flex items-center justify-between text-xs text-zinc-400">

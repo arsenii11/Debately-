@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clipForLog, debatelyLog } from "@/lib/debatelyLog";
+import { debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
 import { FACTCHECK_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
 import { parseFactcheckJson, FACTCHECK_PARSE_FALLBACK } from "@/lib/factcheckFallback";
@@ -67,15 +67,15 @@ export async function POST(request: Request) {
     if (parsed === FACTCHECK_PARSE_FALLBACK) {
       debatelyLog("factcheck", "error", "JSON parse produced fallback", {
         rawLen: raw.length,
-        rawPreview: raw.slice(0, 500),
+        rawResponse: raw,
       });
     } else {
       debatelyLog("factcheck", "info", "factcheck ok", {
         rawLen: raw.length,
         facts: parsed.facts.length,
         relevance: parsed.relevance,
-        rawPreview: clipForLog(raw),
-        parsedPreview: clipForLog(JSON.stringify(parsed)),
+        rawResponse: raw,
+        parsedResponse: JSON.stringify(parsed),
       });
     }
     return NextResponse.json(parsed);

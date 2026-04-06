@@ -46,7 +46,7 @@ function parseFactcheckObject(parsed: unknown): FactCheck | null {
   if (!parsed || typeof parsed !== "object") return null;
   const o = parsed as Record<string, unknown>;
   const factsRaw = o.facts;
-  if (!Array.isArray(factsRaw) || factsRaw.length === 0) return null;
+  if (!Array.isArray(factsRaw)) return null;
 
   const facts = factsRaw.map((item) => {
     const f = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
