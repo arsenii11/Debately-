@@ -57,6 +57,25 @@ function isRetryableQuotaError(e: unknown): boolean {
   return /429|Too Many Requests|RESOURCE_EXHAUSTED|quota exceeded/i.test(msg);
 }
 
+function buildSearchTool(): Record<string, unknown> {
+  const mode = process.env.GEMINI_SEARCH_TOOL?.trim();
+  if (mode === "googleSearch") {
+    return { googleSearch: {} };
+  }
+  return { googleSearchRetrieval: {} };
+}
+
+function isSearchToolConfigError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : String(e);
+  const mentionsSearch =
+    /googleSearch|google_search|googleSearchRetrieval|tool/i.test(msg);
+  const mentionsInvalid =
+    /400|INVALID_ARGUMENT|unknown field|invalid|not supported|unrecognized/i.test(
+      msg,
+    );
+  return mentionsSearch && mentionsInvalid;
+}
+
 export async function generateGeminiText(params: {
   systemInstruction: string;
   userPrompt: string;
@@ -64,6 +83,7 @@ export async function generateGeminiText(params: {
   responseMimeType?: "text/plain" | "application/json";
   responseSchema?: ResponseSchema;
   temperature?: number;
+  enableSearch?: boolean;
 }): Promise<string> {
   return runSerializedGemini(async () => {
     const apiKey = await resolveGeminiApiKey();
@@ -71,7 +91,7 @@ export async function generateGeminiText(params: {
       process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
+    const modelConfig = {
       model: modelName,
       systemInstruction: params.systemInstruction,
       generationConfig: {
@@ -88,10 +108,16 @@ export async function generateGeminiText(params: {
           ? { responseSchema: params.responseSchema }
           : {}),
       },
-    });
+    };
+    const searchRequested = params.enableSearch ?? true;
+    let searchEnabled = searchRequested;
 
     for (let attempt = 1; attempt <= MAX_GEMINI_ATTEMPTS; attempt++) {
       try {
+        const model = genAI.getGenerativeModel({
+          ...modelConfig,
+          ...(searchEnabled ? { tools: [buildSearchTool()] } : {}),
+        } as any);
         const result = await model.generateContent(
           params.userPrompt,
           { timeout: REQUEST_TIMEOUT_MS },
@@ -104,12 +130,23 @@ export async function generateGeminiText(params: {
         return text;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
+        if (searchEnabled && isSearchToolConfigError(e)) {
+          searchEnabled = false;
+          debatelyLog("gemini", "warn", "search tool unavailable; fallback", {
+            message: msg,
+            model: modelName,
+          });
+          attempt -= 1;
+          continue;
+        }
         if (attempt >= MAX_GEMINI_ATTEMPTS || !isRetryableQuotaError(e)) {
           debatelyLog("gemini", "error", "generateContent failed", {
             message: msg,
             model: modelName,
             hasSchema: Boolean(params.responseSchema),
             attempt,
+            searchRequested,
+            searchEnabled,
           });
           throw e;
         }

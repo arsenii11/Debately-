@@ -116,7 +116,7 @@ export function ChatArea({
                         ? lastOpponentAnchorRef
                         : undefined
                     }
-                    className="max-sm:scroll-mt-4"
+                    className="flex justify-end max-sm:scroll-mt-4"
                   >
                     <AIBubble opponentSide={opponentSide} text={round.opponentMove} />
                   </div>
@@ -127,7 +127,7 @@ export function ChatArea({
                         ? lastOpponentAnchorRef
                         : undefined
                     }
-                    className="max-sm:scroll-mt-4"
+                    className="flex justify-end max-sm:scroll-mt-4"
                   >
                     <AIBubble
                       opponentSide={opponentSide}
