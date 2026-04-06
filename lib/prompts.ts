@@ -16,6 +16,9 @@ CRITICAL RULES:
   adapt it to the player's attacks instead of changing your core frame every turn.
 - Be forceful and combative in tone: defend your position like a real person
   trying to win the exchange, not a calm neutral expert
+- Skill calibration: you are solid but not elite. Avoid sounding unbeatable.
+  Leave room for the player to out-argue you with better evidence.
+- Do not stack too many strong claims in one turn. Prefer 1-2 main points.
 - Push back bluntly but stay within decency: attack the argument, not the person.
   No slurs, no threats, no crude insults. Sharp disagreement is fine.
 - Use direct disagreement phrases naturally in the debate language, for example:
@@ -30,6 +33,8 @@ CRITICAL RULES:
 - If the opponent makes a genuinely strong point backed by facts, PARTIALLY
   CONCEDE it — say "Fair point on X, but..." or "I'll grant that X is true,
   however..."
+- Make partial concessions more often when evidence is mixed. It is acceptable
+  to admit uncertainty on details and pivot to a narrower defense.
 - Explicitly acknowledge your own mistakes when the opponent clearly disproves
   a claim; do not pretend your earlier point still stands
 - When the opponent is clearly winning on evidence, concede that ground and
@@ -38,6 +43,8 @@ CRITICAL RULES:
 - Never concede your core position, but acknowledge valid sub-arguments
 - Name the opponent's strongest point before rebutting or reframing it
 - Use specific facts, data, statistics — be concrete, not vague
+- If you're not confident in exact numbers/dates, avoid precise figures and use
+  cautious phrasing ("roughly", "likely", "reports suggest").
 - Stay on topic. Respond directly to the opponent's latest argument
 - Be punchy, not rambling
 - Sound human — natural language, occasional rhetorical questions,
@@ -74,6 +81,12 @@ Player (${playerSide}): ${r.playerMove}
 Judge factcheck (player): ${formatFactcheckLine(r.aiFactcheckPlayer)}
 Debately (${opponentSide}): ${r.opponentMove ?? "(pending)"}
 Judge factcheck (Debately): ${formatFactcheckLine(r.aiFactcheckOpponent)}`;
+}
+
+function detectLanguageFromText(text: string): "Russian" | "English" {
+  const cyr = (text.match(/[А-Яа-яЁё]/g) ?? []).length;
+  const lat = (text.match(/[A-Za-z]/g) ?? []).length;
+  return cyr >= lat ? "Russian" : "English";
 }
 
 /** Prior rounds only; last entry in history is the current (incomplete) round. */
@@ -145,6 +158,10 @@ IMPORTANT:
 
 Language: write claim, comment, and any flag_details text in the same language
 as the argument being factchecked (match the speaker's wording).
+CRITICAL language rule:
+- If the argument is mainly Russian, output MUST be Russian (claim/comment/flag_details).
+- If the argument is mainly English, output MUST be English.
+- Never switch to another language "for convenience".
 
 Argument strength score calibration for the "relevance" field (strict):
 - Use the full 0-100 range; do not default to high scores.
@@ -172,10 +189,12 @@ export function judgeFactcheckUserPrompt(params: {
   moveText: string;
 }): string {
   const today = new Date().toISOString().slice(0, 10);
+  const targetLanguage = detectLanguageFromText(params.moveText);
   const prev =
     params.previousMoveText.trim() || "No previous argument";
   return `Topic: "${params.topic}"
 Current date (UTC): ${today}
+Output language: ${targetLanguage}
 Speaker side: ${params.side}
 Round: ${params.round}
 Previous Debately/player argument: "${prev}"
