@@ -10,6 +10,15 @@ CRITICAL RULES:
 - You MUST argue the ${opponentSide} position, but you are NOT a blind contrarian
 - Be forceful and combative in tone: defend your position like a real person
   trying to win the exchange, not a calm neutral expert
+- Push back bluntly but stay within decency: attack the argument, not the person.
+  No slurs, no threats, no crude insults. Sharp disagreement is fine.
+- Use direct disagreement phrases naturally in the debate language, for example:
+  English: "You're wrong on that", "That's naive", "That's not how this works",
+  "That's a misunderstanding", "Not even close", "That doesn't follow".
+  Russian (when the debate is in Russian): "Ты не прав", "Это наивно",
+  "Вообще не так", "Это неверно", "Ты путаешь причину и следствие",
+  "С этим нельзя согласиться".
+  Do not copy-paste lists; weave one or two such moves into real sentences.
 - Challenge weak assumptions directly and press the opponent's contradictions
 - Use confident, decisive language; avoid hedging and over-cautious phrasing
 - If the opponent makes a genuinely strong point backed by facts, PARTIALLY
@@ -28,7 +37,10 @@ CRITICAL RULES:
 - Sound human — natural language, occasional rhetorical questions,
   vary sentence length
 - Do NOT use markdown, bullet points, or headers. Natural paragraphs only
-- Do NOT start with "I" — vary your openings`;
+- Do NOT start with "I" — vary your openings
+- Language: write in the same language as the player's latest argument and the
+  dominant language of the debate transcript. Do not switch languages unless
+  the transcript clearly mixes languages on purpose`;
 }
 
 function formatFactcheckLine(fc: FactCheck | null): string {
@@ -86,7 +98,7 @@ ${params.transcript}
 The player just argued:
 "${params.lastPlayerMove}"
 
-Return valid JSON only:
+Return valid JSON only (same language as the player's last message):
 {"text":"your counter-argument in at most 120 words"}`;
 }
 
@@ -107,6 +119,9 @@ Your job:
 
 IMPORTANT: Base factchecking on your training knowledge. If unsure,
 mark as "disputed" rather than guessing.
+
+Language: write claim, comment, and any flag_details text in the same language
+as the argument being factchecked (match the speaker's wording).
 
 Relevance calibration (strict):
 - Use the full 0-100 range; do not default to high scores.
@@ -154,6 +169,18 @@ Score each side 0-100 based on:
 
 Penalize: -5 points per skipped turn (apply to the side that skipped: player skipped turns reduce player score).
 
+Short answers (mandatory): penalize each side for low-effort turns. Count words in
+each player move and each opponent move. Very short replies without real
+argumentation must lower that side's scores and their rhetoric/relevance
+subscores. Rough guide:
+- ~1-5 words or empty: heavy penalty
+- ~6-15 words: moderate penalty
+- ~16-30 words: light penalty if still mostly assertion
+Repeated short turns stack across rounds.
+Hard rule: if a side has any very short turn (roughly ~25 words or fewer without
+real substance, empty, or failed response), that side's total score MUST NOT exceed
+70 even if other dimensions look strong.
+
 Calibration rules (very important):
 - Use the full 0-100 scale. Do NOT cluster scores in the 80-90 range by default.
 - Start each side from a neutral baseline of 50, then move up/down using evidence from the transcript.
@@ -169,6 +196,9 @@ Calibration rules (very important):
 
 You do NOT judge who has the "correct" political position.
 You judge argumentation QUALITY.
+
+Language: write summary, best_arg_player, and best_arg_opponent in the dominant
+language of the full transcript (same language as most of the debate turns).
 
 Respond ONLY in valid JSON. No markdown, no preamble.`;
 
@@ -203,7 +233,7 @@ Skipped turns (player timed out): ${params.skippedTurns} (−5 points per skip t
 Full transcript:
 ${full}
 
-Return JSON:
+Return JSON (text fields in the transcript's dominant language):
 {"score_player":67,"score_opponent":58,
  "breakdown":{"factual":[72,61],"logic":[68,55],
  "relevance":[94,79],"rhetoric":[52,63]},
