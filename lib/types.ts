@@ -1,3 +1,6 @@
+export const TURN_TIMER_SECONDS = [180, 300] as const;
+export type TurnTimerSeconds = (typeof TURN_TIMER_SECONDS)[number];
+
 export type Phase = "setup" | "debating" | "finished";
 
 export type Side = "FOR" | "AGAINST";

@@ -16,6 +16,19 @@ const rows: { key: keyof Verdict["breakdown"]; label: string; weight: string }[]
     { key: "rhetoric", label: "Rhetoric", weight: "15%" },
   ];
 
+function CrownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2.1-1.5h9.8l.7-3.5-2.8 1.9L12 9.5 8.2 13.9 5.4 12l.7 3.5z" />
+    </svg>
+  );
+}
+
 export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
   const winner =
     verdict.score_player === verdict.score_opponent
@@ -24,6 +37,13 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
         ? "player"
         : "opponent";
 
+  const winnerLabel =
+    winner === "player"
+      ? playerName
+      : winner === "opponent"
+        ? "Opponent"
+        : null;
+
   return (
     <div className="mx-auto w-full max-w-[460px] px-2">
       <div className="rounded-2xl border-2 border-amber-400/40 bg-zinc-950/80 p-6 shadow-xl shadow-amber-900/10">
@@ -31,37 +51,79 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
           ⚖ Final verdict
         </p>
 
-        <div className="mt-6 flex items-start justify-center gap-10">
-          <div className="text-center">
+        {winnerLabel ? (
+          <p className="mt-3 text-center text-sm font-bold text-amber-200/95">
+            <span className="text-amber-400/80">Winner — </span>
+            {winnerLabel}
+          </p>
+        ) : (
+          <p className="mt-3 text-center text-sm font-semibold text-zinc-400">
+            Draw — tied score
+          </p>
+        )}
+
+        <div className="mt-6 flex items-stretch justify-center gap-4 sm:gap-8">
+          <div
+            className={`flex min-w-0 flex-1 max-w-[200px] flex-col items-center rounded-2xl px-3 py-4 text-center transition-all duration-300 sm:px-5 sm:py-5 ${
+              winner === "player"
+                ? "scale-[1.06] ring-2 ring-indigo-400/90 ring-offset-2 ring-offset-zinc-950 bg-indigo-500/10 shadow-[0_0_32px_rgba(129,140,248,0.22)]"
+                : winner === "opponent"
+                  ? "opacity-80"
+                  : "ring-1 ring-zinc-700/60 bg-zinc-900/40"
+            }`}
+          >
+            {winner === "player" ? (
+              <CrownIcon className="mb-1 h-9 w-9 text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.5)] sm:h-10 sm:w-10" />
+            ) : (
+              <span className="mb-1 h-9 sm:h-10" aria-hidden />
+            )}
             <p
-              className={`text-4xl font-bold tabular-nums text-zinc-100 ${
-                winner === "player" ? "scale-110 text-indigo-300" : ""
+              className={`font-black tabular-nums leading-none tracking-tight ${
+                winner === "player"
+                  ? "text-5xl text-indigo-200 sm:text-6xl md:text-7xl"
+                  : "text-3xl text-zinc-500 sm:text-4xl"
               }`}
             >
               {verdict.score_player}
             </p>
-            <p className="mt-1 text-xs font-medium text-zinc-500">
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               {playerName}
             </p>
             {winner === "player" && (
-              <span className="mt-2 inline-block rounded-full bg-indigo-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-300">
+              <span className="mt-2 inline-block rounded-full border border-indigo-400/50 bg-indigo-500/25 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-indigo-200">
                 Winner
               </span>
             )}
           </div>
-          <div className="text-center">
+
+          <div
+            className={`flex min-w-0 flex-1 max-w-[200px] flex-col items-center rounded-2xl px-3 py-4 text-center transition-all duration-300 sm:px-5 sm:py-5 ${
+              winner === "opponent"
+                ? "scale-[1.06] ring-2 ring-pink-400/90 ring-offset-2 ring-offset-zinc-950 bg-pink-500/10 shadow-[0_0_32px_rgba(244,114,182,0.22)]"
+                : winner === "player"
+                  ? "opacity-80"
+                  : "ring-1 ring-zinc-700/60 bg-zinc-900/40"
+            }`}
+          >
+            {winner === "opponent" ? (
+              <CrownIcon className="mb-1 h-9 w-9 text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.5)] sm:h-10 sm:w-10" />
+            ) : (
+              <span className="mb-1 h-9 sm:h-10" aria-hidden />
+            )}
             <p
-              className={`text-4xl font-bold tabular-nums text-zinc-100 ${
-                winner === "opponent" ? "scale-110 text-pink-300" : ""
+              className={`font-black tabular-nums leading-none tracking-tight ${
+                winner === "opponent"
+                  ? "text-5xl text-pink-200 sm:text-6xl md:text-7xl"
+                  : "text-3xl text-zinc-500 sm:text-4xl"
               }`}
             >
               {verdict.score_opponent}
             </p>
-            <p className="mt-1 text-xs font-medium text-zinc-500">
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
               Opponent
             </p>
             {winner === "opponent" && (
-              <span className="mt-2 inline-block rounded-full bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pink-300">
+              <span className="mt-2 inline-block rounded-full border border-pink-400/50 bg-pink-500/25 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-pink-200">
                 Winner
               </span>
             )}

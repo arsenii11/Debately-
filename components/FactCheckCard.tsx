@@ -43,8 +43,10 @@ export function FactCheckCard({ variant, data }: Props) {
         </ul>
         <div className="mt-4 border-t border-zinc-800 pt-3">
           <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>Relevance</span>
-            <span className="font-mono text-zinc-200">{data.relevance}%</span>
+            <span>Score</span>
+            <span className="font-mono text-zinc-200">
+              {Math.min(100, Math.max(0, Math.round(data.relevance)))}/100
+            </span>
           </div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-800">
             <div

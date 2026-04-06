@@ -2,8 +2,16 @@ import { NextResponse } from "next/server";
 import { clipForLog, debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
 import { VERDICT_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
-import { JUDGE_VERDICT_SYSTEM, judgeVerdictUserPrompt } from "@/lib/prompts";
-import { parseVerdictJson, VERDICT_PARSE_FALLBACK } from "@/lib/verdictParse";
+import {
+  JUDGE_VERDICT_COMPACT_RETRY_SUFFIX,
+  JUDGE_VERDICT_SYSTEM,
+  judgeVerdictUserPrompt,
+} from "@/lib/prompts";
+import {
+  isVerdictFallback,
+  parseVerdictJson,
+  VERDICT_PARSE_FALLBACK,
+} from "@/lib/verdictParse";
 import {
   shortAnswerScoreCeilings,
   shortAnswerScorePenalties,
@@ -35,35 +43,63 @@ export async function POST(request: Request) {
       ? Math.floor(body.skippedTurns)
       : 0;
 
-  const verdictParams = {
-    systemInstruction: JUDGE_VERDICT_SYSTEM,
-    userPrompt: judgeVerdictUserPrompt({
-      topic,
-      playerSide,
-      opponentSide,
-      history,
-      skippedTurns,
-    }),
-    maxOutputTokens: 2048,
-    responseMimeType: "application/json" as const,
-    temperature: 0.35,
-  };
+  const baseUserPrompt = judgeVerdictUserPrompt({
+    topic,
+    playerSide,
+    opponentSide,
+    history,
+    skippedTurns,
+  });
+
+  const VERDICT_TOKENS_FIRST = 4096;
+  const VERDICT_TOKENS_RETRY = 8192;
 
   try {
-    let raw: string;
-    try {
-      raw = await generateGeminiText({
-        ...verdictParams,
-        responseSchema: VERDICT_RESPONSE_SCHEMA,
-      });
-    } catch (schemaErr) {
-      debatelyLog("verdict", "error", "structured output failed; retry without responseSchema", {
-        err: String(schemaErr),
-      });
-      raw = await generateGeminiText(verdictParams);
+    async function callVerdict(
+      userPrompt: string,
+      maxOutputTokens: number,
+    ): Promise<string> {
+      const params = {
+        systemInstruction: JUDGE_VERDICT_SYSTEM,
+        userPrompt,
+        maxOutputTokens,
+        responseMimeType: "application/json" as const,
+        temperature: 0.35,
+      };
+      try {
+        return await generateGeminiText({
+          ...params,
+          responseSchema: VERDICT_RESPONSE_SCHEMA,
+        });
+      } catch (schemaErr) {
+        debatelyLog("verdict", "error", "structured output failed; retry without responseSchema", {
+          err: String(schemaErr),
+        });
+        return generateGeminiText(params);
+      }
     }
 
-    const parsedVerdict = parseVerdictJson(raw);
+    let raw = await callVerdict(baseUserPrompt, VERDICT_TOKENS_FIRST);
+    let parsedVerdict = parseVerdictJson(raw);
+
+    if (isVerdictFallback(parsedVerdict)) {
+      debatelyLog("verdict", "warn", "verdict parse failed; retrying compact", {
+        rawLen: raw.length,
+        rawResponse: raw,
+      });
+      raw = await callVerdict(
+        baseUserPrompt + JUDGE_VERDICT_COMPACT_RETRY_SUFFIX,
+        VERDICT_TOKENS_RETRY,
+      );
+      parsedVerdict = parseVerdictJson(raw);
+    }
+
+    if (isVerdictFallback(parsedVerdict)) {
+      debatelyLog("verdict", "error", "verdict still fallback after retry", {
+        rawLen: raw.length,
+        rawResponse: raw,
+      });
+    }
     const pen = shortAnswerScorePenalties(history);
     const ceil = shortAnswerScoreCeilings(history);
     const afterPen = {
@@ -76,7 +112,7 @@ export async function POST(request: Request) {
       score_opponent: Math.min(ceil.opponentMax, afterPen.score_opponent),
     };
 
-    if (parsedVerdict === VERDICT_PARSE_FALLBACK) {
+    if (isVerdictFallback(parsedVerdict)) {
       debatelyLog("verdict", "error", "JSON parse produced fallback", {
         rawLen: raw.length,
         rawPreview: raw.slice(0, 500),

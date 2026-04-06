@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
 import { FACTCHECK_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
-import { parseFactcheckJson, FACTCHECK_PARSE_FALLBACK } from "@/lib/factcheckFallback";
+import { clampFactcheckArgumentScore } from "@/lib/factcheckScoreAdjust";
+import {
+  isFactcheckFallback,
+  parseFactcheckJson,
+  FACTCHECK_PARSE_FALLBACK,
+} from "@/lib/factcheckFallback";
 import {
   JUDGE_FACTCHECK_SYSTEM,
   judgeFactcheckUserPrompt,
@@ -41,12 +46,19 @@ function normalizeFactcheckRelevance(
   moveText: string,
   parsed: FactCheck,
 ): FactCheck {
-  if (parsed === FACTCHECK_PARSE_FALLBACK) return parsed;
+  if (isFactcheckFallback(parsed)) return parsed;
   if (!isBareLowSubstanceClaim(moveText)) return parsed;
   return {
     ...parsed,
     relevance: Math.min(parsed.relevance, 10),
   };
+}
+
+function finalizeFactcheck(moveText: string, parsed: FactCheck): FactCheck {
+  if (isFactcheckFallback(parsed)) return parsed;
+  let out = normalizeFactcheckRelevance(moveText, parsed);
+  out = clampFactcheckArgumentScore(out);
+  return out;
 }
 
 export async function POST(request: Request) {
@@ -94,18 +106,18 @@ export async function POST(request: Request) {
       raw = await generateGeminiText(factcheckParams);
     }
     const parsed = parseFactcheckJson(raw);
-    const normalized = normalizeFactcheckRelevance(moveText, parsed);
-    if (parsed === FACTCHECK_PARSE_FALLBACK) {
+    const normalized = finalizeFactcheck(moveText, parsed);
+    if (isFactcheckFallback(parsed)) {
       debatelyLog("factcheck", "error", "JSON parse produced fallback", {
         rawLen: raw.length,
         rawResponse: raw,
       });
     } else {
       if (normalized.relevance !== parsed.relevance) {
-        debatelyLog("factcheck", "warn", "relevance clamped for low-substance claim", {
+        debatelyLog("factcheck", "warn", "argument score adjusted after model output", {
           moveText,
-          before: parsed.relevance,
-          after: normalized.relevance,
+          modelRelevance: parsed.relevance,
+          finalRelevance: normalized.relevance,
         });
       }
       debatelyLog("factcheck", "info", "factcheck ok", {

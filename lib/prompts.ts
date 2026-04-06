@@ -40,7 +40,12 @@ CRITICAL RULES:
 - Do NOT start with "I" — vary your openings
 - Language: write in the same language as the player's latest argument and the
   dominant language of the debate transcript. Do not switch languages unless
-  the transcript clearly mixes languages on purpose`;
+  the transcript clearly mixes languages on purpose
+- Register matching: if the player is casual, provocative, or trash-talking
+  (e.g. insults, "loser", "лох", taunts), match that bold, cocky energy in the
+  same language — dismiss weak shots, needle them on substance, talk down bad
+  logic — but never use slurs, threats, sexual content, hate, or direct personal
+  abuse. Stay in-bounds like a sharp street debater who still argues the topic.`;
 }
 
 function formatFactcheckLine(fc: FactCheck | null): string {
@@ -111,8 +116,12 @@ Your job:
    - "verified" — well-supported by reliable evidence
    - "disputed" — partially true or sources disagree
    - "false" — contradicted by well-established facts
-3. Rate relevance 0-100: does this argument address the debate topic
-   and respond to the opponent's previous points?
+3. Set field "relevance" to an overall ARGUMENT STRENGTH SCORE from 0-100 (you will
+   output it as "relevance" in JSON for compatibility). It must combine:
+   - topical fit and whether the move responds to the opponent's previous point
+   - factual strength implied by YOUR OWN fact rows: if most claims are "false" or
+     you explain in comments that the speaker's point is wrong or badly framed,
+     the score MUST be low even when the topic is related.
 4. Flag logical fallacies if present:
    ad_hominem, strawman, whataboutism, tu_quoque,
    appeal_to_emotion, red_herring
@@ -123,13 +132,17 @@ mark as "disputed" rather than guessing.
 Language: write claim, comment, and any flag_details text in the same language
 as the argument being factchecked (match the speaker's wording).
 
-Relevance calibration (strict):
+Argument strength score calibration for the "relevance" field (strict):
 - Use the full 0-100 range; do not default to high scores.
+- If all extracted claims are "disputed" or "false" with you undermining the speaker,
+  the score MUST be <= 40.
+- If every claim is "false", the score MUST be <= 25.
 - 0-10: bare thesis or slogan with no supporting reason, evidence, or engagement.
 - 0-25: off-topic, pure insult/slogan, or unsupported opinion with no real argument.
 - 26-50: weakly related to topic, mostly assertion, little engagement with prior point.
 - 51-75: on-topic and partially responsive, but shallow support or gaps.
-- 76-100: clearly on-topic, directly engages prior point, and provides concrete support.
+- 76-100: clearly on-topic, directly engages prior point, and provides concrete support;
+  use this band only when at least one claim is "verified" or the argument is well grounded.
 - If the text is mainly abuse/profanity or a one-line opinion without substance,
   relevance MUST be <= 25.
 - If the text is only a short unsupported thesis such as "X is bad" with no
@@ -154,9 +167,9 @@ Previous opponent argument: "${prev}"
 Argument to factcheck:
 "${params.moveText}"
 
-Return JSON:
+Return JSON (relevance = argument strength 0-100, aligned with claim statuses):
 {"facts":[{"claim":"...","status":"verified|disputed|false","comment":"..."}],
- "relevance":85,"flags":[],"flag_details":[]}`;
+ "relevance":42,"flags":[],"flag_details":[]}`;
 }
 
 /** Final verdict — spec §3.3 */
@@ -200,6 +213,11 @@ You judge argumentation QUALITY.
 Language: write summary, best_arg_player, and best_arg_opponent in the dominant
 language of the full transcript (same language as most of the debate turns).
 
+Output shape: valid JSON only. Keep it compact so the response is not cut off:
+- summary: at most 3 short sentences (roughly under 500 characters)
+- best_arg_player and best_arg_opponent: one sentence each (under 200 characters)
+- Inside JSON strings, escape any " as \\" or rephrase without quotation marks.
+
 Respond ONLY in valid JSON. No markdown, no preamble.`;
 
 function formatRoundForVerdict(
@@ -241,3 +259,10 @@ Return JSON (text fields in the transcript's dominant language):
  "best_arg_player":"one sentence",
  "best_arg_opponent":"one sentence"}`;
 }
+
+/** Appended on verdict retry when the first JSON response could not be parsed. */
+export const JUDGE_VERDICT_COMPACT_RETRY_SUFFIX = `
+
+CRITICAL RETRY: Previous output was invalid or truncated. Reply with ONE compact JSON object only.
+summary under 400 characters. best_arg_player and best_arg_opponent under 150 characters each.
+No " double quotes inside any string value.`;

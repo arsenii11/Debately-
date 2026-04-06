@@ -1,4 +1,10 @@
-import type { Phase, RoundData, Side, Verdict } from "@/lib/types";
+import type {
+  Phase,
+  RoundData,
+  Side,
+  TurnTimerSeconds,
+  Verdict,
+} from "@/lib/types";
 
 const STORAGE_KEY = "debately:v1";
 
@@ -12,6 +18,8 @@ export type DebatelyPersisted = {
   currentRound: number;
   inputText: string;
   timer: number;
+  turnTimerSeconds: TurnTimerSeconds;
+  timerPaused: boolean;
   verdict: Verdict | null;
   error: string | null;
   skippedTurns: number;
@@ -23,6 +31,10 @@ function isSide(x: unknown): x is Side {
 
 function isPhase(x: unknown): x is Phase {
   return x === "setup" || x === "debating" || x === "finished";
+}
+
+function turnTimerSecondsFromUnknown(x: unknown): TurnTimerSeconds {
+  return x === 300 ? 300 : 180;
 }
 
 function isRoundData(x: unknown): x is RoundData {
@@ -52,6 +64,9 @@ export function loadDebatelySession(): DebatelyPersisted | null {
     if (typeof p.currentRound !== "number") return null;
     if (typeof p.inputText !== "string") return null;
     if (typeof p.timer !== "number") return null;
+    const turnTimerSeconds = turnTimerSecondsFromUnknown(p.turnTimerSeconds);
+    const timerPaused =
+      typeof p.timerPaused === "boolean" ? p.timerPaused : false;
     if (p.verdict !== null && typeof p.verdict !== "object") return null;
     if (p.error !== null && typeof p.error !== "string") return null;
     if (typeof p.skippedTurns !== "number") return null;
@@ -65,7 +80,9 @@ export function loadDebatelySession(): DebatelyPersisted | null {
       history: p.history as RoundData[],
       currentRound: p.currentRound,
       inputText: p.inputText,
-      timer: p.timer,
+      timer: Math.max(0, Math.min(turnTimerSeconds, Math.floor(p.timer))),
+      turnTimerSeconds,
+      timerPaused,
       verdict: p.verdict as Verdict | null,
       error: p.error,
       skippedTurns: p.skippedTurns,

@@ -9,9 +9,10 @@ type Props = {
   onChange: (v: string) => void;
   onSubmit: () => void;
   disabled?: boolean;
+  onFocus?: () => void;
 };
 
-export function InputBar({ value, onChange, onSubmit, disabled }: Props) {
+export function InputBar({ value, onChange, onSubmit, disabled, onFocus }: Props) {
   const pct = (value.length / MAX) * 100;
   const nearLimit = pct > 90;
 
@@ -33,6 +34,7 @@ export function InputBar({ value, onChange, onSubmit, disabled }: Props) {
           value={value}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value.slice(0, MAX))}
+          onFocus={onFocus}
           onKeyDown={onKeyDown}
           placeholder="Make your argument… (Enter to send, Shift+Enter for newline)"
           className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"

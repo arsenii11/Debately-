@@ -1,25 +1,33 @@
 "use client";
 
-import type { Side } from "@/lib/types";
+import {
+  TURN_TIMER_SECONDS,
+  type Side,
+  type TurnTimerSeconds,
+} from "@/lib/types";
 
 const TOPIC_SUGGESTIONS = [
-  "EU sanctions against Russia are effective",
-  "Universal basic income would reduce poverty",
-  "AI will replace most white-collar jobs by 2035",
-  "Nuclear energy is essential for climate goals",
-  "Social media does more harm than good to democracy",
-  "Cryptocurrency should be regulated like traditional banking",
-  "Remote work permanently hurts team innovation",
-  "Public universities should be tuition-free",
+  "US military strikes on Iranian targets are justified as deterrence",
+  "Further US military escalation with Iran is not in the national interest",
+  "Trump-era tariffs on imports benefit the US economy overall",
+  "Trump-era tariffs on imports hurt consumers and growth more than they help",
+  "US alliances in Europe and Asia remain essential to American security",
+  "The US should rely less on military bases abroad and more on burden-sharing partners",
+  "Congress should have stronger oversight of US strikes and deployments abroad",
+  "US federal deficits require major cuts to spending, not only tax changes",
+  "Large US tech platforms should face stricter federal rules on algorithms and data",
+  "US immigration policy should prioritize skills and labor-market needs",
 ];
 
 type Props = {
   nickname: string;
   topic: string;
   side: Side;
+  turnTimerSeconds: TurnTimerSeconds;
   onNickname: (v: string) => void;
   onTopic: (v: string) => void;
   onSide: (s: Side) => void;
+  onTurnTimerSeconds: (s: TurnTimerSeconds) => void;
   onStart: () => void;
 };
 
@@ -27,9 +35,11 @@ export function SetupScreen({
   nickname,
   topic,
   side,
+  turnTimerSeconds,
   onNickname,
   onTopic,
   onSide,
+  onTurnTimerSeconds,
   onStart,
 }: Props) {
   const canStart = nickname.trim().length > 0 && topic.trim().length > 0;
@@ -81,6 +91,31 @@ export function SetupScreen({
         <span className="text-right text-xs text-zinc-600">
           {topic.length}/200
         </span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Time per answer
+        </span>
+        <div className="grid grid-cols-2 gap-3">
+          {TURN_TIMER_SECONDS.map((sec) => {
+            const label = sec === 180 ? "3 min" : "5 min";
+            return (
+              <button
+                key={sec}
+                type="button"
+                onClick={() => onTurnTimerSeconds(sec)}
+                className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                  turnTimerSeconds === sec
+                    ? "border-indigo-500 bg-indigo-500/20 text-indigo-200 shadow-md shadow-indigo-900/20"
+                    : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-indigo-500/50 hover:bg-zinc-800/70 hover:text-zinc-200"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">

@@ -41,6 +41,77 @@ export const VERDICT_PARSE_FALLBACK: Verdict = {
   best_arg_opponent: "—",
 };
 
+export function isVerdictFallback(v: Verdict): boolean {
+  return v.summary === VERDICT_PARSE_FALLBACK.summary;
+}
+
+function extractJsonStringValue(raw: string, key: string): string | null {
+  const re = new RegExp(`"${key}"\\s*:\\s*"`, "m");
+  const m = re.exec(raw);
+  if (!m || m.index === undefined) return null;
+  let i = m.index + m[0].length;
+  let out = "";
+  while (i < raw.length) {
+    const c = raw[i];
+    if (c === "\\") {
+      if (i + 1 >= raw.length) break;
+      const n = raw[i + 1];
+      if (n === "n") out += "\n";
+      else if (n === "t") out += "\t";
+      else if (n === "r") out += "\r";
+      else out += n;
+      i += 2;
+      continue;
+    }
+    if (c === '"') return out;
+    out += c;
+    i++;
+  }
+  return out.length > 0 ? `${out}…` : null;
+}
+
+function extractPairField(raw: string, key: string): [number, number] | null {
+  const re = new RegExp(
+    `"${key}"\\s*:\\s*\\[\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*\\]`,
+  );
+  const m = re.exec(raw);
+  if (!m) return null;
+  return [clampScore(Number(m[1])), clampScore(Number(m[2]))];
+}
+
+/**
+ * When JSON.parse fails (truncated output, bad escapes), pull numeric fields and
+ * optional string fields from the raw text.
+ */
+export function recoverVerdictFromPartialRaw(raw: string): Verdict | null {
+  const spM = /"score_player"\s*:\s*(-?\d+(?:\.\d+)?)/.exec(raw);
+  const soM = /"score_opponent"\s*:\s*(-?\d+(?:\.\d+)?)/.exec(raw);
+  if (!spM || !soM) return null;
+
+  const factual = extractPairField(raw, "factual");
+  const logic = extractPairField(raw, "logic");
+  const relevance = extractPairField(raw, "relevance");
+  const rhetoric = extractPairField(raw, "rhetoric");
+  if (!factual || !logic || !relevance || !rhetoric) return null;
+
+  const summary =
+    extractJsonStringValue(raw, "summary") ??
+    "Verdict text was truncated; scores below were recovered from the partial response.";
+  const bestArgP =
+    extractJsonStringValue(raw, "best_arg_player") ?? "—";
+  const bestArgO =
+    extractJsonStringValue(raw, "best_arg_opponent") ?? "—";
+
+  return {
+    score_player: clampScore(Number(spM[1])),
+    score_opponent: clampScore(Number(soM[1])),
+    breakdown: { factual, logic, relevance, rhetoric },
+    summary,
+    best_arg_player: bestArgP,
+    best_arg_opponent: bestArgO,
+  };
+}
+
 export function parseVerdictJson(raw: string): Verdict {
   const trimmed = raw
     .replace(/^```(?:json)?\s*/i, "")
@@ -57,10 +128,16 @@ export function parseVerdictJson(raw: string): Verdict {
       const sp = Number(parsed.score_player);
       const so = Number(parsed.score_opponent);
       if (!Number.isFinite(sp) || !Number.isFinite(so) || typeof parsed.summary !== "string") {
+        const partial = recoverVerdictFromPartialRaw(text);
+        if (partial) return partial;
         continue;
       }
       const breakdown = normalizeBreakdown(parsed.breakdown);
-      if (!breakdown) continue;
+      if (!breakdown) {
+        const partial = recoverVerdictFromPartialRaw(text);
+        if (partial) return partial;
+        continue;
+      }
       return {
         score_player: clampScore(sp),
         score_opponent: clampScore(so),
@@ -76,9 +153,13 @@ export function parseVerdictJson(raw: string): Verdict {
             : "—",
       };
     } catch {
-      /* try next candidate */
+      const partial = recoverVerdictFromPartialRaw(text);
+      if (partial) return partial;
     }
   }
+
+  const recovered = recoverVerdictFromPartialRaw(trimmed);
+  if (recovered) return recovered;
 
   return VERDICT_PARSE_FALLBACK;
 }

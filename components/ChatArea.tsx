@@ -1,10 +1,29 @@
 "use client";
 
+import type { RefObject } from "react";
 import type { RoundData, Side, ThinkingStage } from "@/lib/types";
 import { AIBubble } from "./AIBubble";
 import { FactCheckCard } from "./FactCheckCard";
 import { PlayerBubble } from "./PlayerBubble";
 import { ThinkingBanner } from "./ThinkingBanner";
+
+function lastOpponentAnchorIndex(
+  history: RoundData[],
+  isAIThinking: boolean,
+  thinkingStage: ThinkingStage,
+): number {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const r = history[i];
+    const isLast = i === history.length - 1;
+    const oppThinking =
+      isLast &&
+      isAIThinking &&
+      thinkingStage === "opponent" &&
+      !r.opponentMove;
+    if (r.opponentMove || oppThinking) return i;
+  }
+  return -1;
+}
 
 type Props = {
   topic: string;
@@ -16,6 +35,7 @@ type Props = {
   thinkingStage: ThinkingStage;
   isAIThinking: boolean;
   thinkingLabel: string;
+  lastOpponentAnchorRef?: RefObject<HTMLDivElement | null>;
 };
 
 export function ChatArea({
@@ -28,7 +48,12 @@ export function ChatArea({
   thinkingStage,
   isAIThinking,
   thinkingLabel,
+  lastOpponentAnchorRef,
 }: Props) {
+  const anchorIdx = lastOpponentAnchorRef
+    ? lastOpponentAnchorIndex(history, isAIThinking, thinkingStage)
+    : -1;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="border-b border-zinc-800 bg-zinc-900/40 px-4 py-3 text-center">
@@ -40,7 +65,7 @@ export function ChatArea({
         </p>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-6 sm:px-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-6 max-sm:[scroll-padding-bottom:min(42vh,320px)] sm:px-6">
         <div className="mx-auto flex max-w-3xl flex-col gap-6">
           {history.map((round, idx) => {
             const isLast = idx === history.length - 1;
@@ -85,14 +110,32 @@ export function ChatArea({
                 ) : null}
 
                 {round.opponentMove ? (
-                  <AIBubble opponentSide={opponentSide} text={round.opponentMove} />
+                  <div
+                    ref={
+                      lastOpponentAnchorRef && idx === anchorIdx
+                        ? lastOpponentAnchorRef
+                        : undefined
+                    }
+                    className="max-sm:scroll-mt-4"
+                  >
+                    <AIBubble opponentSide={opponentSide} text={round.opponentMove} />
+                  </div>
                 ) : showOppThinking ? (
-                  <AIBubble
-                    opponentSide={opponentSide}
-                    text={null}
-                    thinking
-                    label={thinkingLabel}
-                  />
+                  <div
+                    ref={
+                      lastOpponentAnchorRef && idx === anchorIdx
+                        ? lastOpponentAnchorRef
+                        : undefined
+                    }
+                    className="max-sm:scroll-mt-4"
+                  >
+                    <AIBubble
+                      opponentSide={opponentSide}
+                      text={null}
+                      thinking
+                      label={thinkingLabel}
+                    />
+                  </div>
                 ) : null}
 
                 {showFcOppThinking ? (

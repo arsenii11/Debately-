@@ -8,6 +8,10 @@ import {
   useState,
 } from "react";
 import { ChatArea } from "./ChatArea";
+import {
+  DebateLaunchOverlay,
+  type DebateCountdownStep,
+} from "./DebateLaunchOverlay";
 import { InputBar } from "./InputBar";
 import { SetupScreen } from "./SetupScreen";
 import { Timer } from "./Timer";
@@ -28,11 +32,12 @@ import type {
   RoundData,
   Side,
   ThinkingStage,
+  TurnTimerSeconds,
   Verdict,
 } from "@/lib/types";
 
 const TOTAL_ROUNDS = 3;
-const TIMER_MAX = 120;
+const DEFAULT_TURN_TIMER: TurnTimerSeconds = 180;
 
 function opponentSideFor(player: Side): Side {
   return player === "FOR" ? "AGAINST" : "FOR";
@@ -60,21 +65,59 @@ export function DebatelyApp() {
   const [history, setHistory] = useState<RoundData[]>([]);
   const [currentRound, setCurrentRound] = useState(1);
   const [inputText, setInputText] = useState("");
-  const [timer, setTimer] = useState(TIMER_MAX);
+  const [turnTimerSeconds, setTurnTimerSeconds] =
+    useState<TurnTimerSeconds>(DEFAULT_TURN_TIMER);
+  const [timerPaused, setTimerPaused] = useState(false);
+  const [timer, setTimer] = useState(DEFAULT_TURN_TIMER);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState("");
   const [thinkingStage, setThinkingStage] = useState<ThinkingStage>(null);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [skippedTurns, setSkippedTurns] = useState(0);
+  const [launchCountdown, setLaunchCountdown] =
+    useState<DebateCountdownStep | null>(null);
+  const [debateEntered, setDebateEntered] = useState(false);
 
   const skipScheduled = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastOpponentAnchorRef = useRef<HTMLDivElement>(null);
   const runTurnRef = useRef<
     (move: string, isTimedOut: boolean) => Promise<void>
   >(() => Promise.resolve());
 
   const opponentSide = opponentSideFor(playerSide);
+
+  const scrollLastOpponentIntoViewMobile = useCallback(() => {
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 640px)").matches) return;
+    const el = lastOpponentAnchorRef.current;
+    if (!el) return;
+    const go = () =>
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    go();
+    requestAnimationFrame(go);
+    window.setTimeout(go, 120);
+    window.setTimeout(go, 380);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    let lastH = vv.height;
+    const onResize = () => {
+      if (!window.matchMedia("(max-width: 640px)").matches) {
+        lastH = vv.height;
+        return;
+      }
+      if (lastH - vv.height > 72) {
+        scrollLastOpponentIntoViewMobile();
+      }
+      lastH = vv.height;
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, [scrollLastOpponentIntoViewMobile]);
 
   useLayoutEffect(() => {
     const s = loadDebatelySession();
@@ -88,10 +131,20 @@ export function DebatelyApp() {
         Math.min(TOTAL_ROUNDS, Math.max(1, Math.floor(s.currentRound))),
       );
       setInputText(s.inputText);
-      setTimer(Math.max(0, Math.min(TIMER_MAX, Math.floor(s.timer))));
+      setTurnTimerSeconds(s.turnTimerSeconds);
+      setTimerPaused(s.timerPaused);
+      setTimer(
+        Math.max(
+          0,
+          Math.min(s.turnTimerSeconds, Math.floor(s.timer)),
+        ),
+      );
       setVerdict(s.verdict);
       setError(s.error);
       setSkippedTurns(Math.max(0, s.skippedTurns));
+      if (s.phase === "debating" || s.phase === "finished") {
+        setDebateEntered(true);
+      }
     }
     setIsAIThinking(false);
     setThinkingStage(null);
@@ -99,6 +152,38 @@ export function DebatelyApp() {
     skipScheduled.current = false;
     setSessionReady(true);
   }, []);
+
+  useEffect(() => {
+    if (phase === "setup") {
+      setDebateEntered(false);
+      return;
+    }
+    if (phase !== "debating") return;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setDebateEntered(true));
+    });
+    return () => cancelAnimationFrame(id);
+  }, [phase]);
+
+  useEffect(() => {
+    if (launchCountdown === null) return;
+    if (launchCountdown === "go") {
+      const t = window.setTimeout(() => {
+        setTimer(turnTimerSeconds);
+        setLaunchCountdown(null);
+      }, 450);
+      return () => window.clearTimeout(t);
+    }
+    const t = window.setTimeout(() => {
+      setLaunchCountdown((p: DebateCountdownStep | null) => {
+        if (p === 3) return 2;
+        if (p === 2) return 1;
+        if (p === 1) return "go";
+        return p;
+      });
+    }, 850);
+    return () => window.clearTimeout(t);
+  }, [launchCountdown, turnTimerSeconds]);
 
   useEffect(() => {
     if (!sessionReady) return;
@@ -112,6 +197,8 @@ export function DebatelyApp() {
       currentRound,
       inputText,
       timer,
+      turnTimerSeconds,
+      timerPaused,
       verdict,
       error,
       skippedTurns,
@@ -126,6 +213,8 @@ export function DebatelyApp() {
     currentRound,
     inputText,
     timer,
+    turnTimerSeconds,
+    timerPaused,
     verdict,
     error,
     skippedTurns,
@@ -136,7 +225,13 @@ export function DebatelyApp() {
   }, [history, isAIThinking, thinkingStage, phase, verdict]);
 
   useEffect(() => {
-    if (phase !== "debating" || isAIThinking) return undefined;
+    if (
+      phase !== "debating" ||
+      isAIThinking ||
+      launchCountdown !== null ||
+      timerPaused
+    )
+      return undefined;
 
     const id = window.setInterval(() => {
       setTimer((t) => {
@@ -158,7 +253,7 @@ export function DebatelyApp() {
     }, 1000);
 
     return () => window.clearInterval(id);
-  }, [phase, isAIThinking, currentRound]);
+  }, [phase, isAIThinking, currentRound, launchCountdown, timerPaused]);
 
   const updateRound = useCallback(
     (roundNumber: number, patch: Partial<RoundData>) => {
@@ -331,7 +426,8 @@ export function DebatelyApp() {
           setPhase("finished");
         } else {
           setCurrentRound((r) => r + 1);
-          setTimer(TIMER_MAX);
+          setTimer(turnTimerSeconds);
+          setTimerPaused(false);
         }
       } finally {
         setIsAIThinking(false);
@@ -349,6 +445,7 @@ export function DebatelyApp() {
       opponentSide,
       history,
       updateRound,
+      turnTimerSeconds,
     ],
   );
 
@@ -364,7 +461,8 @@ export function DebatelyApp() {
     setPhase("debating");
     setHistory([]);
     setCurrentRound(1);
-    setTimer(TIMER_MAX);
+    setTimer(0);
+    setTimerPaused(false);
     setInputText("");
     setVerdict(null);
     setError(null);
@@ -372,6 +470,7 @@ export function DebatelyApp() {
     setIsAIThinking(false);
     setThinkingStage(null);
     skipScheduled.current = false;
+    setLaunchCountdown(3);
   }, []);
 
   const handleNew = useCallback(() => {
@@ -379,7 +478,8 @@ export function DebatelyApp() {
     setPhase("setup");
     setHistory([]);
     setCurrentRound(1);
-    setTimer(TIMER_MAX);
+    setTimer(turnTimerSeconds);
+    setTimerPaused(false);
     setInputText("");
     setVerdict(null);
     setError(null);
@@ -387,7 +487,8 @@ export function DebatelyApp() {
     setIsAIThinking(false);
     setThinkingStage(null);
     skipScheduled.current = false;
-  }, []);
+    setLaunchCountdown(null);
+  }, [turnTimerSeconds]);
 
   if (!sessionReady) {
     return (
@@ -406,9 +507,11 @@ export function DebatelyApp() {
           nickname={nickname}
           topic={topic}
           side={playerSide}
+          turnTimerSeconds={turnTimerSeconds}
           onNickname={setNickname}
           onTopic={setTopic}
           onSide={setPlayerSide}
+          onTurnTimerSeconds={setTurnTimerSeconds}
           onStart={handleStart}
         />
       </div>
@@ -416,7 +519,16 @@ export function DebatelyApp() {
   }
 
   return (
-    <div className="flex min-h-0 min-h-dvh flex-1 flex-col bg-zinc-950 text-zinc-100">
+    <div
+      className={`flex min-h-0 min-h-dvh flex-1 flex-col bg-zinc-950 text-zinc-100 transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        debateEntered
+          ? "translate-y-0 opacity-100"
+          : "translate-y-8 opacity-0"
+      }`}
+    >
+      {launchCountdown !== null ? (
+        <DebateLaunchOverlay step={launchCountdown} />
+      ) : null}
       <header className="sticky top-0 z-40 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/90 px-3 py-3 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/75 sm:px-5">
         <div className="flex items-center gap-2">
           <span className="text-lg font-semibold tracking-tight">Debately</span>
@@ -433,15 +545,38 @@ export function DebatelyApp() {
               </span>
             </span>
           )}
-          {phase === "debating" && !isAIThinking && timer > 0 ? (
-            <Timer seconds={timer} maxSeconds={TIMER_MAX} />
-          ) : phase === "debating" && !isAIThinking && timer === 0 ? (
+          {phase === "debating" &&
+          launchCountdown === null &&
+          !isAIThinking &&
+          timer > 0 ? (
+            <div className="flex flex-wrap items-end gap-2 sm:gap-3">
+              <Timer
+                seconds={timer}
+                maxSeconds={turnTimerSeconds}
+                paused={timerPaused}
+              />
+              <button
+                type="button"
+                onClick={() => setTimerPaused((p) => !p)}
+                className="cursor-pointer rounded-lg border border-zinc-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-100 active:scale-[0.98]"
+              >
+                {timerPaused ? "Resume" : "Pause"}
+              </button>
+            </div>
+          ) : phase === "debating" &&
+            launchCountdown === null &&
+            !isAIThinking &&
+            timer === 0 ? (
             <span className="text-xs text-red-400">Time&apos;s up</span>
+          ) : phase === "debating" && launchCountdown !== null ? (
+            <span className="text-xs font-medium uppercase tracking-wide text-fuchsia-400/90">
+              Starting…
+            </span>
           ) : null}
           <button
             type="button"
             onClick={handleNew}
-            className="cursor-pointer rounded-lg border border-zinc-600 px-3 py-1.5 text-xs font-semibold text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-700/50 hover:text-zinc-100 active:bg-zinc-800"
+            className="cursor-pointer rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-fuchsia-900/40 transition-all hover:from-fuchsia-500 hover:to-pink-500 hover:shadow-fuchsia-500/25 active:scale-[0.98]"
           >
             New
           </button>
@@ -465,6 +600,7 @@ export function DebatelyApp() {
           thinkingStage={thinkingStage}
           isAIThinking={isAIThinking}
           thinkingLabel={thinkingLabel}
+          lastOpponentAnchorRef={lastOpponentAnchorRef}
         />
 
         <div ref={bottomRef} className="h-px w-full shrink-0" aria-hidden />
@@ -496,7 +632,8 @@ export function DebatelyApp() {
           value={inputText}
           onChange={setInputText}
           onSubmit={handleSubmit}
-          disabled={isAIThinking}
+          disabled={isAIThinking || launchCountdown !== null}
+          onFocus={scrollLastOpponentIntoViewMobile}
         />
       ) : null}
     </div>
