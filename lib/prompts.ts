@@ -110,12 +110,15 @@ mark as "disputed" rather than guessing.
 
 Relevance calibration (strict):
 - Use the full 0-100 range; do not default to high scores.
+- 0-10: bare thesis or slogan with no supporting reason, evidence, or engagement.
 - 0-25: off-topic, pure insult/slogan, or unsupported opinion with no real argument.
 - 26-50: weakly related to topic, mostly assertion, little engagement with prior point.
 - 51-75: on-topic and partially responsive, but shallow support or gaps.
 - 76-100: clearly on-topic, directly engages prior point, and provides concrete support.
 - If the text is mainly abuse/profanity or a one-line opinion without substance,
   relevance MUST be <= 25.
+- If the text is only a short unsupported thesis such as "X is bad" with no
+  reason or evidence, relevance MUST be <= 10.
 
 Respond ONLY in valid JSON. No markdown fences, no preamble.`;
 

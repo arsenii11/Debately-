@@ -7,7 +7,7 @@ import {
   JUDGE_FACTCHECK_SYSTEM,
   judgeFactcheckUserPrompt,
 } from "@/lib/prompts";
-import type { Side } from "@/lib/types";
+import type { FactCheck, Side } from "@/lib/types";
 
 type Body = {
   topic?: string;
@@ -18,6 +18,36 @@ type Body = {
   previousMoveText?: string;
   round?: number;
 };
+
+function countWords(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
+function hasSupportSignals(text: string): boolean {
+  return /%|\d|because|since|for example|for instance|according to|study|studies|data|evidence|statistics|research|report|because|потому|так как|например|например,|данн|исслед|статист|цифр/i.test(
+    text,
+  );
+}
+
+function isBareLowSubstanceClaim(text: string): boolean {
+  const words = countWords(text);
+  if (words === 0) return false;
+  return words <= 4 && !hasSupportSignals(text);
+}
+
+function normalizeFactcheckRelevance(
+  moveText: string,
+  parsed: FactCheck,
+): FactCheck {
+  if (parsed === FACTCHECK_PARSE_FALLBACK) return parsed;
+  if (!isBareLowSubstanceClaim(moveText)) return parsed;
+  return {
+    ...parsed,
+    relevance: Math.min(parsed.relevance, 10),
+  };
+}
 
 export async function POST(request: Request) {
   let body: Body;
@@ -64,21 +94,29 @@ export async function POST(request: Request) {
       raw = await generateGeminiText(factcheckParams);
     }
     const parsed = parseFactcheckJson(raw);
+    const normalized = normalizeFactcheckRelevance(moveText, parsed);
     if (parsed === FACTCHECK_PARSE_FALLBACK) {
       debatelyLog("factcheck", "error", "JSON parse produced fallback", {
         rawLen: raw.length,
         rawResponse: raw,
       });
     } else {
+      if (normalized.relevance !== parsed.relevance) {
+        debatelyLog("factcheck", "warn", "relevance clamped for low-substance claim", {
+          moveText,
+          before: parsed.relevance,
+          after: normalized.relevance,
+        });
+      }
       debatelyLog("factcheck", "info", "factcheck ok", {
         rawLen: raw.length,
-        facts: parsed.facts.length,
-        relevance: parsed.relevance,
+        facts: normalized.facts.length,
+        relevance: normalized.relevance,
         rawResponse: raw,
-        parsedResponse: JSON.stringify(parsed),
+        parsedResponse: JSON.stringify(normalized),
       });
     }
-    return NextResponse.json(parsed);
+    return NextResponse.json(normalized);
   } catch (e) {
     debatelyLog("factcheck", "error", "Gemini failed; returning fallback factcheck", {
       err: e instanceof Error ? e.message : String(e),
