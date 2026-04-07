@@ -157,9 +157,13 @@ export function SetupScreen({
               type="button"
               onClick={() => onSide(s)}
               className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
-                side === s
-                  ? "border-indigo-500 bg-indigo-500/20 text-indigo-200 shadow-md shadow-indigo-900/20"
-                  : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-indigo-500/50 hover:bg-zinc-800/70 hover:text-zinc-200"
+                s === "FOR"
+                  ? side === s
+                    ? "border-emerald-500 bg-emerald-500/20 text-emerald-100 shadow-md shadow-emerald-900/30"
+                    : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-emerald-500/45 hover:bg-emerald-950/25 hover:text-emerald-100/95"
+                  : side === s
+                    ? "border-rose-500 bg-rose-500/20 text-rose-100 shadow-md shadow-rose-900/30"
+                    : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
               }`}
             >
               {s}

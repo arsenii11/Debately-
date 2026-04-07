@@ -24,22 +24,40 @@ export function AIBubble({
         <div className="mb-1 flex items-center justify-end gap-2">
           <span
             className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-              opponentSide === "AGAINST"
-                ? "bg-pink-500/25 text-pink-300"
-                : "bg-fuchsia-500/25 text-fuchsia-300"
+              opponentSide === "FOR"
+                ? "bg-emerald-500/25 text-emerald-300"
+                : "bg-rose-500/25 text-rose-300"
             }`}
           >
             {opponentSide}
           </span>
           <span className="text-sm font-semibold text-zinc-200">Debately</span>
         </div>
-        <div className="rounded-[14px_3px_14px_14px] border border-pink-500/30 bg-pink-950/35 px-4 py-3 text-left text-sm leading-relaxed text-zinc-100">
+        <div
+          className={`rounded-[14px_3px_14px_14px] border px-4 py-3 text-left text-sm leading-relaxed text-zinc-100 ${
+            opponentSide === "FOR"
+              ? "border-emerald-500/35 bg-emerald-950/40"
+              : "border-rose-500/35 bg-rose-950/35"
+          }`}
+        >
           {thinking ? (
             <span className="flex items-center gap-2 text-zinc-400">
               <span className="flex gap-1">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink-400 [animation-delay:-0.2s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink-400 [animation-delay:-0.1s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink-400" />
+                <span
+                  className={`h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.2s] ${
+                    opponentSide === "FOR" ? "bg-emerald-400" : "bg-rose-400"
+                  }`}
+                />
+                <span
+                  className={`h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.1s] ${
+                    opponentSide === "FOR" ? "bg-emerald-400" : "bg-rose-400"
+                  }`}
+                />
+                <span
+                  className={`h-1.5 w-1.5 animate-bounce rounded-full ${
+                    opponentSide === "FOR" ? "bg-emerald-400" : "bg-rose-400"
+                  }`}
+                />
               </span>
               {label ?? "Thinking…"}
             </span>

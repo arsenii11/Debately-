@@ -15,7 +15,7 @@ export function PlayerBubble({ name, side, text }: Props) {
     <div className="flex w-full max-w-[min(100%,28rem)] flex-row items-end gap-2 self-start">
       <div
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
-          side === "FOR" ? "bg-indigo-600" : "bg-violet-600"
+          side === "FOR" ? "bg-emerald-600" : "bg-rose-600"
         }`}
       >
         {initial}
@@ -26,8 +26,8 @@ export function PlayerBubble({ name, side, text }: Props) {
           <span
             className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
               side === "FOR"
-                ? "bg-indigo-500/25 text-indigo-300"
-                : "bg-violet-500/25 text-violet-300"
+                ? "bg-emerald-500/25 text-emerald-300"
+                : "bg-rose-500/25 text-rose-300"
             }`}
           >
             {side}
@@ -36,8 +36,8 @@ export function PlayerBubble({ name, side, text }: Props) {
         <div
           className={`rounded-[3px_14px_14px_14px] border px-4 py-3 text-sm leading-relaxed text-zinc-100 ${
             side === "FOR"
-              ? "border-indigo-500/30 bg-indigo-950/50"
-              : "border-violet-500/30 bg-violet-950/40"
+              ? "border-emerald-500/35 bg-emerald-950/45"
+              : "border-rose-500/35 bg-rose-950/40"
           }`}
         >
           {text}
