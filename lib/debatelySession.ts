@@ -8,9 +8,11 @@ import type {
 } from "@/lib/types";
 
 const STORAGE_KEY = "debately:v1";
+const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 
 export type DebatelyPersisted = {
   v: 1;
+  savedAt: number;
   phase: Phase;
   nickname: string;
   topic: string;
@@ -62,6 +64,14 @@ export function loadDebatelySession(): DebatelyPersisted | null {
     if (!parsed || typeof parsed !== "object") return null;
     const p = parsed as Record<string, unknown>;
     if (p.v !== 1) return null;
+    if (typeof p.savedAt !== "number" || !Number.isFinite(p.savedAt)) {
+      clearDebatelySession();
+      return null;
+    }
+    if (Date.now() - p.savedAt > SESSION_TTL_MS) {
+      clearDebatelySession();
+      return null;
+    }
     if (!isPhase(p.phase)) return null;
     if (typeof p.nickname !== "string") return null;
     if (typeof p.topic !== "string") return null;
@@ -80,6 +90,7 @@ export function loadDebatelySession(): DebatelyPersisted | null {
 
     return {
       v: 1,
+      savedAt: p.savedAt,
       phase: p.phase,
       nickname: p.nickname,
       topic: p.topic,
@@ -103,7 +114,10 @@ export function loadDebatelySession(): DebatelyPersisted | null {
 export function saveDebatelySession(data: DebatelyPersisted): void {
   if (typeof window === "undefined") return;
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ ...data, savedAt: Date.now() }),
+    );
   } catch {
     // quota or private mode
   }

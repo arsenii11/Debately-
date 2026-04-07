@@ -202,6 +202,7 @@ export function DebatelyApp() {
     if (!sessionReady) return;
     saveDebatelySession({
       v: 1,
+      savedAt: Date.now(),
       phase,
       nickname,
       topic,
