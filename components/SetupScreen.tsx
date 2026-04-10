@@ -1,6 +1,34 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
+type Particle = {
+  emoji: string;
+  top: string;
+  left: string;
+  size: string;
+  dur: string;
+  delay: string;
+  drift: boolean;
+};
+
+const PARTICLES: Particle[] = [
+  { emoji: "💬", top: "8%",  left: "7%",  size: "1.7rem", dur: "9s",  delay: "0s",    drift: false },
+  { emoji: "🚀", top: "14%", left: "88%", size: "2rem",   dur: "11s", delay: "1.2s",  drift: true  },
+  { emoji: "⚡", top: "30%", left: "4%",  size: "1.4rem", dur: "7s",  delay: "2.5s",  drift: false },
+  { emoji: "⚖️", top: "22%", left: "80%", size: "1.6rem", dur: "10s", delay: "0.8s",  drift: true  },
+  { emoji: "🔥", top: "50%", left: "92%", size: "1.5rem", dur: "8s",  delay: "3.1s",  drift: false },
+  { emoji: "🎤", top: "60%", left: "3%",  size: "1.5rem", dur: "12s", delay: "1.7s",  drift: true  },
+  { emoji: "🎯", top: "72%", left: "85%", size: "1.6rem", dur: "9s",  delay: "0.4s",  drift: false },
+  { emoji: "💡", top: "80%", left: "10%", size: "1.4rem", dur: "11s", delay: "2s",    drift: true  },
+  { emoji: "📣", top: "88%", left: "78%", size: "1.5rem", dur: "8s",  delay: "4s",    drift: false },
+  { emoji: "🏆", top: "6%",  left: "50%", size: "1.6rem", dur: "13s", delay: "1.5s",  drift: true  },
+  { emoji: "✨", top: "42%", left: "96%", size: "1.2rem", dur: "6s",  delay: "0.2s",  drift: false },
+  { emoji: "✨", top: "38%", left: "1%",  size: "1rem",   dur: "7s",  delay: "3.8s",  drift: false },
+  { emoji: "💬", top: "65%", left: "60%", size: "1.3rem", dur: "14s", delay: "2.8s",  drift: true  },
+  { emoji: "🚀", top: "92%", left: "40%", size: "1.5rem", dur: "10s", delay: "5s",    drift: false },
+  { emoji: "⚡", top: "5%",  left: "25%", size: "1.2rem", dur: "8s",  delay: "3.5s",  drift: true  },
+];
 import {
   MIN_TURN_ROUNDS,
   MAX_TURN_ROUNDS,
@@ -79,7 +107,23 @@ export function SetupScreen({
   }, []);
 
   return (
-    <div className="mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12">
+    <div className="relative mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12">
+      {PARTICLES.map((p, i) => (
+        <span
+          key={i}
+          className={p.drift ? "setup-particle-drift" : "setup-particle"}
+          style={{
+            top: p.top,
+            left: p.left,
+            fontSize: p.size,
+            "--p-dur": p.dur,
+            "--p-delay": p.delay,
+          } as React.CSSProperties}
+          aria-hidden
+        >
+          {p.emoji}
+        </span>
+      ))}
       <header className="text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">
           Debately
