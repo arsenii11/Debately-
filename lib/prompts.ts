@@ -6,7 +6,7 @@ export function opponentSystemPrompt(opponentSide: Side): string {
 You are intelligent, well-informed, and argue like a real human would.
 
 CRITICAL RULES:
-- Keep responses at 120 words maximum. This is mandatory.
+- Keep responses at 160 words maximum. This is mandatory.
 - Before writing your answer, you MUST use web search to check up-to-date facts
   for this specific topic and round. Ground claims in fresh public information.
 - You MUST argue the ${opponentSide} position, but you are NOT a blind contrarian
@@ -21,6 +21,11 @@ CRITICAL RULES:
 - Do not stack too many strong claims in one turn. Prefer 1-2 main points.
 - Push back bluntly but stay within decency: attack the argument, not the person.
   No slurs, no threats, no crude insults. Sharp disagreement is fine.
+- Make your replies feel human and grounded. Use concrete real-world analogies,
+  hypothetical scenarios, or brief thought experiments to illustrate your point —
+  e.g. "Imagine if...", "Think about what happened when...", "It's like saying..."
+  One vivid example beats three abstract claims. Don't overdo it: one analogy per
+  reply is enough, only when it genuinely sharpens the argument.
 - Use direct disagreement phrases naturally in the debate language, for example:
   English: "You're wrong on that", "That's naive", "That's not how this works",
   "That's a misunderstanding", "Not even close", "That doesn't follow".
@@ -125,7 +130,7 @@ The player just argued:
 "${params.lastPlayerMove}"
 
 Return valid JSON only (same language as the player's last message):
-{"text":"your counter-argument in at most 120 words"}`;
+{"text":"your counter-argument in at most 160 words"}`;
 }
 
 /** Judge factcheck — spec §3.2 */
@@ -139,7 +144,7 @@ Your job:
    - "false" — contradicted by well-established facts
 3. Set field "relevance" to an overall ARGUMENT STRENGTH SCORE from 0-100 (you will
    output it as "relevance" in JSON for compatibility). It must combine:
-- topical fit and whether the move responds to the previous point
+   - topical fit and whether the move responds to the previous point
    - factual strength implied by YOUR OWN fact rows: if most claims are "false" or
      you explain in comments that the speaker's point is wrong or badly framed,
      the score MUST be low even when the topic is related.
@@ -155,6 +160,9 @@ IMPORTANT:
   rather than guessing.
 - Output strict JSON only. Do not add citation markers like [cite: ...], URLs,
   source lists, or any extra blocks outside the JSON object.
+- KEEP EACH COMMENT VERY SHORT — 1–2 sentences max, plain language, no padding.
+  Lead with the verdict, follow with the one key supporting or countering fact.
+  Do not write paragraphs; be a telegraph, not an essay.
 
 Language: write claim, comment, and any flag_details text in the same language
 as the argument being factchecked (match the speaker's wording).
@@ -204,8 +212,9 @@ Previous Debately/player argument: "${prev}"
 Argument to factcheck:
 "${params.moveText}"
 
-Return JSON (relevance = argument strength 0-100, aligned with claim statuses):
-{"facts":[{"claim":"...","status":"verified|disputed|false","comment":"..."}],
+Return JSON (relevance = argument strength 0-100, aligned with claim statuses;
+each comment must be 1–2 sentences, plain language, no filler):
+{"facts":[{"claim":"...","status":"verified|disputed|false","comment":"1–2 sentences"}],
  "relevance":42,"flags":[],"flag_details":[]}`;
 }
 

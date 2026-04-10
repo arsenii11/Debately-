@@ -9,7 +9,7 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 65_000;
 const DEFAULT_SEARCH_TIMEOUT_MS = 30_000;
 /** Fewer attempts: each retry waits (capped); failing fast beats multi-minute hangs. */
 const MAX_GEMINI_ATTEMPTS = 4;
-const DEFAULT_SEARCH_MAX_ATTEMPTS = 2;
+const DEFAULT_SEARCH_MAX_ATTEMPTS = 3;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));

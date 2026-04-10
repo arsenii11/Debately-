@@ -107,30 +107,43 @@ function recoverFactcheckFromPartialRaw(raw: string): FactCheck | null {
   };
 }
 
-export function parseFactcheckJson(raw: string): FactCheck {
-  const stripped = raw
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-
-  const extracted = extractBalancedJsonObject(stripped);
+function tryParseBlock(text: string): FactCheck | null {
+  const extracted = extractBalancedJsonObject(text);
   const candidates = extracted
-    ? Array.from(new Set([extracted, stripped]))
-    : [stripped];
+    ? Array.from(new Set([extracted, text]))
+    : [text];
 
-  for (const text of candidates) {
+  for (const candidate of candidates) {
     try {
-      const parsed = JSON.parse(text) as unknown;
+      const parsed = JSON.parse(candidate) as unknown;
       const ok = parseFactcheckObject(parsed);
       if (ok) return ok;
     } catch {
-      const partial = recoverFactcheckFromPartialRaw(text);
-      if (partial) return partial;
+      /* try next candidate */
     }
+    const partial = recoverFactcheckFromPartialRaw(candidate);
+    if (partial) return partial;
+  }
+  return null;
+}
+
+export function parseFactcheckJson(raw: string): FactCheck {
+  // Remove [cite: N, N] markers that pollute string values and break deduplication
+  const cleaned = raw.replace(/\[cite:\s*[\d,\s]+\]/gi, "");
+
+  // Try every fenced ```json``` block in order (model sometimes emits two blocks)
+  const fenceRe = /```(?:json)?\s*([\s\S]*?)```/g;
+  let m: RegExpExecArray | null;
+  while ((m = fenceRe.exec(cleaned)) !== null) {
+    const block = m[1].trim();
+    if (!block) continue;
+    const ok = tryParseBlock(block);
+    if (ok) return ok;
   }
 
-  const recovered = recoverFactcheckFromPartialRaw(stripped);
-  if (recovered) return recovered;
+  // No fenced blocks, or all failed — try the cleaned string directly
+  const ok = tryParseBlock(cleaned);
+  if (ok) return ok;
 
   return FACTCHECK_PARSE_FALLBACK;
 }

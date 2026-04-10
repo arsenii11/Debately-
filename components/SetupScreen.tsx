@@ -1,25 +1,21 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
-  TURN_ROUNDS,
-  TURN_TIMER_SECONDS,
+  MIN_TURN_ROUNDS,
+  MAX_TURN_ROUNDS,
+  MIN_TURN_TIMER_SECONDS,
+  MAX_TURN_TIMER_SECONDS,
   type Side,
   type TurnRounds,
   type TurnTimerSeconds,
 } from "@/lib/types";
 
-const TOPIC_SUGGESTIONS = [
-  "US military strikes on Iranian targets are justified as deterrence",
-  "Further US military escalation with Iran is not in the national interest",
-  "Trump-era tariffs on imports benefit the US economy overall",
-  "Trump-era tariffs on imports hurt consumers and growth more than they help",
-  "US alliances in Europe and Asia remain essential to American security",
-  "The US should rely less on military bases abroad and more on burden-sharing partners",
-  "Congress should have stronger oversight of US strikes and deployments abroad",
-  "US federal deficits require major cuts to spending, not only tax changes",
-  "Large US tech platforms should face stricter federal rules on algorithms and data",
-  "US immigration policy should prioritize skills and labor-market needs",
-];
+function formatTimer(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return s === 0 ? `${m} min` : `${m}:${String(s).padStart(2, "0")}`;
+}
 
 type Props = {
   nickname: string;
@@ -49,6 +45,38 @@ export function SetupScreen({
   onStart,
 }: Props) {
   const canStart = nickname.trim().length > 0 && topic.trim().length > 0;
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loadingTopics, setLoadingTopics] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingTopics(true);
+    fetch("/api/ai/topics")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: unknown) => {
+        if (cancelled) return;
+        if (
+          data &&
+          typeof data === "object" &&
+          "topics" in data &&
+          Array.isArray((data as { topics: unknown }).topics)
+        ) {
+          const topics = (data as { topics: string[] }).topics.filter(
+            (t): t is string => typeof t === "string" && t.trim().length > 0,
+          );
+          if (topics.length > 0) setSuggestions(topics);
+        }
+      })
+      .catch(() => {
+        /* silently skip */
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTopics(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12">
@@ -60,8 +88,8 @@ export function SetupScreen({
           Solo — MVP
         </p>
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          Pick a topic, choose a side, and debate Debately. A neutral
-          Judge factchecks each move and scores the match.
+          Pick a topic, choose a side, and debate Debately. A neutral Judge
+          factchecks each move and scores the match.
         </p>
       </header>
 
@@ -99,50 +127,51 @@ export function SetupScreen({
         </span>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Debate rounds
-        </span>
-        <div className="grid grid-cols-2 gap-3">
-          {TURN_ROUNDS.map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => onTurnRounds(r)}
-              className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
-                turnRounds === r
-                  ? "border-indigo-500 bg-indigo-500/20 text-indigo-200 shadow-md shadow-indigo-900/20"
-                  : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-indigo-500/50 hover:bg-zinc-800/70 hover:text-zinc-200"
-              }`}
-            >
-              {r} rounds
-            </button>
-          ))}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Debate rounds
+          </span>
+          <span className="text-sm font-semibold text-indigo-300">
+            {turnRounds} rounds
+          </span>
+        </div>
+        <input
+          type="range"
+          min={MIN_TURN_ROUNDS}
+          max={MAX_TURN_ROUNDS}
+          step={1}
+          value={turnRounds}
+          onChange={(e) => onTurnRounds(Number(e.target.value))}
+          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
+        />
+        <div className="flex justify-between text-xs text-zinc-600">
+          <span>{MIN_TURN_ROUNDS}</span>
+          <span>{MAX_TURN_ROUNDS}</span>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Time per answer
-        </span>
-        <div className="grid grid-cols-2 gap-3">
-          {TURN_TIMER_SECONDS.map((sec) => {
-            const label = sec === 180 ? "3 min" : "5 min";
-            return (
-              <button
-                key={sec}
-                type="button"
-                onClick={() => onTurnTimerSeconds(sec)}
-                className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
-                  turnTimerSeconds === sec
-                    ? "border-indigo-500 bg-indigo-500/20 text-indigo-200 shadow-md shadow-indigo-900/20"
-                    : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-indigo-500/50 hover:bg-zinc-800/70 hover:text-zinc-200"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Time per answer
+          </span>
+          <span className="text-sm font-semibold text-indigo-300">
+            {formatTimer(turnTimerSeconds)}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={MIN_TURN_TIMER_SECONDS}
+          max={MAX_TURN_TIMER_SECONDS}
+          step={30}
+          value={turnTimerSeconds}
+          onChange={(e) => onTurnTimerSeconds(Number(e.target.value))}
+          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
+        />
+        <div className="flex justify-between text-xs text-zinc-600">
+          <span>{formatTimer(MIN_TURN_TIMER_SECONDS)}</span>
+          <span>{formatTimer(MAX_TURN_TIMER_SECONDS)}</span>
         </div>
       </div>
 
@@ -173,11 +202,14 @@ export function SetupScreen({
       </div>
 
       <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+        <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
           Suggested topics
+          {loadingTopics && (
+            <span className="inline-block h-3 w-3 animate-spin rounded-full border border-zinc-600 border-t-indigo-400" />
+          )}
         </p>
         <div className="flex flex-wrap gap-2">
-          {TOPIC_SUGGESTIONS.map((t) => (
+          {suggestions.map((t) => (
             <button
               key={t}
               type="button"

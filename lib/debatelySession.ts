@@ -1,3 +1,11 @@
+import {
+  MIN_TURN_ROUNDS,
+  MAX_TURN_ROUNDS,
+  DEFAULT_TURN_ROUNDS,
+  MIN_TURN_TIMER_SECONDS,
+  MAX_TURN_TIMER_SECONDS,
+  DEFAULT_TURN_TIMER_SECONDS,
+} from "@/lib/types";
 import type {
   Phase,
   RoundData,
@@ -38,11 +46,17 @@ function isPhase(x: unknown): x is Phase {
 }
 
 function turnTimerSecondsFromUnknown(x: unknown): TurnTimerSeconds {
-  return x === 300 ? 300 : 180;
+  if (typeof x === "number" && Number.isFinite(x)) {
+    return Math.min(MAX_TURN_TIMER_SECONDS, Math.max(MIN_TURN_TIMER_SECONDS, Math.floor(x)));
+  }
+  return DEFAULT_TURN_TIMER_SECONDS;
 }
 
 function turnRoundsFromUnknown(x: unknown): TurnRounds {
-  return x === 5 ? 5 : 3;
+  if (typeof x === "number" && Number.isFinite(x)) {
+    return Math.min(MAX_TURN_ROUNDS, Math.max(MIN_TURN_ROUNDS, Math.floor(x)));
+  }
+  return DEFAULT_TURN_ROUNDS;
 }
 
 function isRoundData(x: unknown): x is RoundData {

@@ -26,6 +26,10 @@ import {
   loadDebatelySession,
   saveDebatelySession,
 } from "@/lib/debatelySession";
+import {
+  DEFAULT_TURN_ROUNDS,
+  DEFAULT_TURN_TIMER_SECONDS,
+} from "@/lib/types";
 import type {
   FactCheck,
   Phase,
@@ -36,9 +40,6 @@ import type {
   TurnTimerSeconds,
   Verdict,
 } from "@/lib/types";
-
-const DEFAULT_TURN_ROUNDS: TurnRounds = 3;
-const DEFAULT_TURN_TIMER: TurnTimerSeconds = 180;
 
 function opponentSideFor(player: Side): Side {
   return player === "FOR" ? "AGAINST" : "FOR";
@@ -78,9 +79,9 @@ export function DebatelyApp() {
   const [currentRound, setCurrentRound] = useState(1);
   const [inputText, setInputText] = useState("");
   const [turnTimerSeconds, setTurnTimerSeconds] =
-    useState<TurnTimerSeconds>(DEFAULT_TURN_TIMER);
+    useState<TurnTimerSeconds>(DEFAULT_TURN_TIMER_SECONDS);
   const [timerPaused, setTimerPaused] = useState(false);
-  const [timer, setTimer] = useState<number>(DEFAULT_TURN_TIMER);
+  const [timer, setTimer] = useState<number>(DEFAULT_TURN_TIMER_SECONDS);
   const [isAIThinking, setIsAIThinking] = useState(false);
   const [thinkingLabel, setThinkingLabel] = useState("");
   const [thinkingStage, setThinkingStage] = useState<ThinkingStage>(null);
