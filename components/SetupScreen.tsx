@@ -150,6 +150,8 @@ type ParticleVariance = {
   moonOrbitRem: number;
 };
 
+const NON_ROCKET_MIN_Y_GAP_PCT = 9;
+
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -162,6 +164,71 @@ function randomVariant(): ParticleVariance {
     earthVariant: randomInt(1, 3) as 1 | 2 | 3,
     moonOrbitRem: randomInt(210, 290) / 100,
   };
+}
+
+function isFlyingRocketAnim(anim: ParticleAnim): boolean {
+  return anim === "rocketBack" || anim === "rocketEarth" || anim === "rocketMoon";
+}
+
+function particleSide(p: Particle): "left" | "right" | "other" {
+  if (p.left !== undefined) return "left";
+  if (p.right !== undefined) return "right";
+  return "other";
+}
+
+function parseTopPercent(top?: string): number | null {
+  if (!top) return null;
+  const m = top.match(/(-?\d+(?:\.\d+)?)%/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function particleYPercent(p: Particle, v: ParticleVariance): number {
+  const baseTop = parseTopPercent(p.top) ?? 50;
+  return baseTop + v.yPx / 10;
+}
+
+function enforceNonRocketSpacing(vars: ParticleVariance[]): ParticleVariance[] {
+  const out = vars.map((v) => ({ ...v }));
+  for (let pass = 0; pass < 4; pass++) {
+    for (let i = 0; i < PARTICLES.length; i++) {
+      const pi = PARTICLES[i];
+      if (!pi || isFlyingRocketAnim(pi.anim)) continue;
+      for (let j = i + 1; j < PARTICLES.length; j++) {
+        const pj = PARTICLES[j];
+        if (!pj || isFlyingRocketAnim(pj.anim)) continue;
+        if (particleSide(pi) !== particleSide(pj)) continue;
+
+        const yi = particleYPercent(pi, out[i]!);
+        const yj = particleYPercent(pj, out[j]!);
+        const gap = Math.abs(yi - yj);
+        if (gap >= NON_ROCKET_MIN_Y_GAP_PCT) continue;
+
+        const need = (NON_ROCKET_MIN_Y_GAP_PCT - gap) / 2;
+        // ~10px vertical offset ≈ 1% viewport in setup layout.
+        const shiftPx = Math.ceil(need * 10);
+        if (yi <= yj) {
+          out[i]!.yPx -= shiftPx;
+          out[j]!.yPx += shiftPx;
+        } else {
+          out[i]!.yPx += shiftPx;
+          out[j]!.yPx -= shiftPx;
+        }
+      }
+    }
+  }
+
+  // Keep non-rocket offsets within a sane range.
+  return out.map((v, i) =>
+    isFlyingRocketAnim(PARTICLES[i]!.anim)
+      ? v
+      : {
+          ...v,
+          yPx: Math.max(-70, Math.min(70, v.yPx)),
+          xPx: Math.max(-62, Math.min(62, v.xPx)),
+        },
+  );
 }
 
 function nextVariantIndex(curr: 1 | 2 | 3): 1 | 2 | 3 {
@@ -275,6 +342,7 @@ function initialParticleEmoji(p: Particle): string {
 type TapFx =
   | { k: "flee"; tx: number; ty: number }
   | { k: "rocket"; tx: number; ty: number }
+  | { k: "hop"; tx: number; ty: number }
   | { k: "nudge" };
 
 function formatTimer(seconds: number): string {
@@ -320,13 +388,29 @@ export function SetupScreen({
     PARTICLES.map(() => null),
   );
   const [particleVariance, setParticleVariance] = useState<ParticleVariance[]>(() =>
-    PARTICLES.map(() => randomVariant()),
+    enforceNonRocketSpacing(PARTICLES.map(() => randomVariant())),
   );
   const nextEmojiSwapAtRef = useRef<number[]>(
     PARTICLES.map(() => Date.now() + randomInt(900, 6500)),
   );
   const tapFxRef = useRef(tapFx);
   tapFxRef.current = tapFx;
+
+  const rerollSpawnAtIndex = useCallback((i: number) => {
+    setParticleVariance((prev) =>
+      prev.map((v, idx) => {
+        if (idx !== i) return v;
+        let nx = randomInt(-58, 58);
+        let ny = randomInt(-64, 64);
+        for (let t = 0; t < 8; t++) {
+          if (Math.abs(nx - v.xPx) + Math.abs(ny - v.yPx) > 28) break;
+          nx = randomInt(-58, 58);
+          ny = randomInt(-64, 64);
+        }
+        return { ...v, xPx: nx, yPx: ny };
+      }),
+    );
+  }, []);
 
   const handleParticleClick = useCallback(
     (i: number, e: React.MouseEvent<HTMLDivElement>) => {
@@ -346,39 +430,51 @@ export function SetupScreen({
       const uy = dy / len;
       const dist = Math.max(window.innerWidth, window.innerHeight) * 1.15;
 
+      let fxKind: TapFx["k"] = "nudge";
       setTapFx((prev) => {
         const next = [...prev];
         if (p.anim === "rocketMoon") {
           next[i] = { k: "rocket", tx: dist * 0.88, ty: -dist * 0.82 };
+          fxKind = "rocket";
         } else if (p.anim === "rocketEarth") {
           next[i] = { k: "rocket", tx: dist * 0.42, ty: -dist * 0.9 };
+          fxKind = "rocket";
         } else if (p.anim === "rocketBack") {
           next[i] = { k: "rocket", tx: -dist * 0.92, ty: dist * 0.8 };
+          fxKind = "rocket";
+        } else if (glyph === "🤡") {
+          next[i] = { k: "hop", tx: ux * 64, ty: uy * 64 };
+          fxKind = "hop";
         } else if (FLEE_ON_CLICK.has(glyph)) {
           next[i] = { k: "flee", tx: ux * dist, ty: uy * dist };
+          fxKind = "flee";
         } else {
           next[i] = { k: "nudge" };
+          fxKind = "nudge";
         }
         return next;
       });
 
       const ms =
-        p.anim === "rocketBack" ||
-        p.anim === "rocketMoon" ||
-        p.anim === "rocketEarth"
-          ? 380
-          : FLEE_ON_CLICK.has(glyph)
-            ? 560
-            : 320;
+        fxKind === "rocket"
+          ? 520
+          : fxKind === "flee"
+            ? 1180
+            : fxKind === "hop"
+              ? 330
+              : 320;
       window.setTimeout(() => {
         setTapFx((prev) => {
           const next = [...prev];
           next[i] = null;
           return next;
         });
+        if (fxKind === "rocket" || fxKind === "flee") {
+          rerollSpawnAtIndex(i);
+        }
       }, ms);
     },
-    [particleEmojis],
+    [particleEmojis, rerollSpawnAtIndex],
   );
 
   useEffect(() => {
@@ -407,7 +503,7 @@ export function SetupScreen({
   useEffect(() => {
     const id = window.setInterval(() => {
       setParticleVariance((prev) =>
-        prev.map((v, i) => {
+        enforceNonRocketSpacing(prev.map((v, i) => {
           const p = PARTICLES[i];
           if (!p) return v;
 
@@ -441,10 +537,10 @@ export function SetupScreen({
           // Gutters: gentle drift so spawn locations keep changing in-session.
           return {
             ...v,
-            xPx: Math.max(-58, Math.min(58, v.xPx + randomInt(-16, 16))),
-            yPx: Math.max(-64, Math.min(64, v.yPx + randomInt(-18, 18))),
+            xPx: Math.max(-58, Math.min(58, v.xPx + randomInt(-12, 12))),
+            yPx: Math.max(-64, Math.min(64, v.yPx + randomInt(-14, 14))),
           };
-        }),
+        })),
       );
     }, 9300);
     return () => clearInterval(id);
@@ -500,6 +596,7 @@ export function SetupScreen({
         const glyph = particleEmojis[i] ?? p.emoji ?? "✨";
         const fx = tapFx[i];
         const fleeing = fx?.k === "flee" || fx?.k === "rocket";
+        const hopping = fx?.k === "hop";
         const nudge = fx?.k === "nudge";
         const cardVars = {
           "--pd": p.dur,
@@ -525,17 +622,31 @@ export function SetupScreen({
           pointerEvents: "auto",
           cursor: "pointer",
           userSelect: "none",
+          // Bigger invisible hitbox for easier taps/clicks on moving emojis.
+          padding: "10px",
+          margin: "-10px",
           zIndex: isRocket ? 22 : 5,
-          transform:
-            fleeing && fx
-              ? `translate(${fx.tx}px, ${fx.ty}px)`
-              : undefined,
-          transition:
-            fleeing && fx
-              ? fx.k === "rocket"
-                ? "transform 0.34s cubic-bezier(0.2, 0.95, 0.3, 1)"
-                : "transform 0.5s cubic-bezier(0.2, 0.85, 0.25, 1)"
-              : "top 1.8s ease, right 1.8s ease, bottom 1.8s ease, left 1.8s ease",
+          ...(fx?.k === "flee"
+            ? ({
+                "--flee-tx": `${fx.tx}px`,
+                "--flee-ty": `${fx.ty}px`,
+                animation:
+                  "setup-flee-wobble 0.95s cubic-bezier(0.2, 0.85, 0.25, 1) 0.12s both",
+              } as React.CSSProperties)
+            : {
+                transform:
+                  (fleeing || hopping) && fx
+                    ? `translate(${fx.tx}px, ${fx.ty}px)`
+                    : undefined,
+                transition:
+                  (fleeing || hopping) && fx
+                    ? fx.k === "rocket"
+                      ? "transform 0.46s cubic-bezier(0.2, 0.95, 0.3, 1)"
+                      : fx.k === "hop"
+                        ? "transform 0.28s cubic-bezier(0.18, 0.9, 0.25, 1)"
+                        : "transform 0.5s cubic-bezier(0.2, 0.85, 0.25, 1)"
+                    : "top 1.8s ease, right 1.8s ease, bottom 1.8s ease, left 1.8s ease",
+              }),
         };
 
         if (p.anim === "rocketMoon") {
