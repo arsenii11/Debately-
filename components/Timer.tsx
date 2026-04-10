@@ -1,5 +1,7 @@
 "use client";
 
+import { DEFAULT_TURN_TIMER_SECONDS } from "@/lib/types";
+
 type Props = {
   seconds: number;
   maxSeconds?: number;
@@ -8,7 +10,7 @@ type Props = {
 
 export function Timer({
   seconds,
-  maxSeconds = 180,
+  maxSeconds = DEFAULT_TURN_TIMER_SECONDS,
   paused = false,
 }: Props) {
   const pct = Math.max(0, Math.min(100, (seconds / maxSeconds) * 100));

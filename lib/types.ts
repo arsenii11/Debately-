@@ -4,8 +4,8 @@ export const DEFAULT_TURN_ROUNDS = 3;
 export type TurnRounds = number;
 
 export const MIN_TURN_TIMER_SECONDS = 60;
-export const MAX_TURN_TIMER_SECONDS = 600;
-export const DEFAULT_TURN_TIMER_SECONDS = 180;
+export const MAX_TURN_TIMER_SECONDS = 300;
+export const DEFAULT_TURN_TIMER_SECONDS = 120;
 export type TurnTimerSeconds = number;
 
 export type Phase = "setup" | "debating" | "finished";
