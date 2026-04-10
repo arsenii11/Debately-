@@ -294,7 +294,7 @@ const PARTICLES: Particle[] = [
     bottom: "5%",
     left: EDGE_WIDE,
     size: "1.12rem",
-    dur: "15s",
+    dur: "6.8s",
     delay: "0.7s",
     bright: true,
     desktopOnly: false,
