@@ -94,6 +94,31 @@ body {
   100% { transform: translate(0, 0) rotate(176deg) scale(0.9); opacity: 0; }
 }
 
+/* Alternative return trajectories so rocket does not repeat one path */
+@keyframes setup-rocket-back-v2 {
+  0%   { transform: translate(0, 0) rotate(168deg) scale(0.88); opacity: 0; }
+  4%   { opacity: 1; }
+  12%  { transform: translate(-10vw, 10vh) rotate(171deg) scale(1.02); opacity: 1; }
+  24%  { transform: translate(-26vw, 26vh) rotate(178deg) scale(1.08); opacity: 1; }
+  38%  { transform: translate(-46vw, 46vh) rotate(186deg) scale(1.12); opacity: 1; }
+  52%  { transform: translate(-66vw, 60vh) rotate(193deg) scale(1.08); opacity: 0.96; }
+  68%  { transform: translate(-88vw, 76vh) rotate(198deg) scale(1); opacity: 0.72; }
+  84%  { transform: translate(-112vw, 90vh) rotate(202deg) scale(0.84); opacity: 0.18; }
+  100% { transform: translate(-126vw, 100vh) rotate(205deg) scale(0.72); opacity: 0; }
+}
+
+@keyframes setup-rocket-back-v3 {
+  0%   { transform: translate(0, 0) rotate(184deg) scale(0.9); opacity: 0; }
+  5%   { opacity: 1; }
+  11%  { transform: translate(-16vw, 8vh) rotate(183deg) scale(1.02); opacity: 1; }
+  22%  { transform: translate(-34vw, 20vh) rotate(189deg) scale(1.08); opacity: 1; }
+  34%  { transform: translate(-52vw, 35vh) rotate(197deg) scale(1.12); opacity: 1; }
+  48%  { transform: translate(-74vw, 52vh) rotate(201deg) scale(1.1); opacity: 0.92; }
+  64%  { transform: translate(-98vw, 72vh) rotate(206deg) scale(1.02); opacity: 0.68; }
+  80%  { transform: translate(-118vw, 94vh) rotate(211deg) scale(0.86); opacity: 0.22; }
+  100% { transform: translate(-132vw, 110vh) rotate(216deg) scale(0.74); opacity: 0; }
+}
+
 /* Wide sweeping zigzag diagonally upward */
 @keyframes setup-zigzag {
   0%   { transform: translate(  0px,    0px) rotate(  0deg) scale(1   ); opacity: 0;    }
@@ -174,7 +199,7 @@ body {
     drop-shadow(0 0 20px rgba(99, 102, 241, 0.4));
 }
 
-/* 🌙 + 🚀 circular orbit (arm spin + counter-spin keeps rocket upright) */
+/* 🌕 + 🚀 circular orbit (rocket nose follows orbit tangent) */
 .setup-moon-stack {
   position: relative;
   width: 5rem;
@@ -216,17 +241,8 @@ body {
   top: 0;
   font-size: 1.05rem;
   line-height: 1;
-  transform: translateX(2.45rem);
-  animation: setup-moon-rocket-unspin var(--pd, 16s) linear infinite var(--pdd, 0s);
-}
-
-@keyframes setup-moon-rocket-unspin {
-  from {
-    transform: translateX(2.45rem) rotate(0deg);
-  }
-  to {
-    transform: translateX(2.45rem) rotate(-360deg);
-  }
+  /* emoji baseline nose is ~ -45deg; +135deg aligns nose with tangent at orbit start */
+  transform: translateX(var(--orbit-r, 2.45rem)) rotate(135deg);
 }
 
 /* 🌍 pad + vertical launch arc */
@@ -287,12 +303,86 @@ body {
   }
 }
 
+@keyframes setup-earth-launch-v2 {
+  0% {
+    transform: translate(-50%, 0) rotate(-46deg) scale(0.78);
+    opacity: 0;
+  }
+  5% { opacity: 1; }
+  20% {
+    transform: translate(-54%, calc(-10vh)) rotate(-34deg) scale(0.94);
+    opacity: 1;
+  }
+  44% {
+    transform: translate(-62%, calc(-31vh)) rotate(-19deg) scale(1.05);
+    opacity: 1;
+  }
+  72% {
+    transform: translate(-68%, calc(-55vh)) rotate(-4deg) scale(1.08);
+    opacity: 0.78;
+  }
+  92% {
+    transform: translate(-70%, calc(-69vh)) rotate(7deg) scale(1);
+    opacity: 0.14;
+  }
+  100% {
+    transform: translate(-50%, 0) rotate(-46deg) scale(0.78);
+    opacity: 0;
+  }
+}
+
+@keyframes setup-earth-launch-v3 {
+  0% {
+    transform: translate(-50%, 0) rotate(-34deg) scale(0.82);
+    opacity: 0;
+  }
+  5% { opacity: 1; }
+  18% {
+    transform: translate(-44%, calc(-9vh)) rotate(-22deg) scale(0.93);
+    opacity: 1;
+  }
+  38% {
+    transform: translate(-30%, calc(-25vh)) rotate(-9deg) scale(1.04);
+    opacity: 1;
+  }
+  62% {
+    transform: translate(-12%, calc(-47vh)) rotate(8deg) scale(1.08);
+    opacity: 0.84;
+  }
+  86% {
+    transform: translate(8%, calc(-67vh)) rotate(16deg) scale(1.01);
+    opacity: 0.18;
+  }
+  100% {
+    transform: translate(-50%, 0) rotate(-34deg) scale(0.82);
+    opacity: 0;
+  }
+}
+
 .setup-p-rocket {
   animation: setup-rocket var(--pd, 14s) linear infinite var(--pdd, 0s);
 }
 
 .setup-p-rocket-back {
   animation: setup-rocket-back var(--pd, 14s) linear infinite var(--pdd, 0s);
+}
+
+.setup-p-rocket-back-v2 {
+  animation: setup-rocket-back-v2 var(--pd, 14s) linear infinite var(--pdd, 0s);
+}
+
+.setup-p-rocket-back-v3 {
+  animation: setup-rocket-back-v3 var(--pd, 14s) linear infinite var(--pdd, 0s);
+}
+
+.setup-earth-rocket-v2 {
+  animation: setup-earth-launch-v2 var(--pd, 14s) cubic-bezier(0.33, 0.82, 0.22, 1)
+    infinite var(--pdd, 0s);
+}
+
+.setup-earth-rocket-v3 {
+  animation: setup-earth-launch-v3 var(--pd, 14s) cubic-bezier(0.33, 0.82, 0.22, 1)
+    infinite var(--pdd, 0s);
 }
 
 /* Orange exhaust behind emoji flame (bottom-left of glyph); rotates with rocket */

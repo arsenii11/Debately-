@@ -104,6 +104,8 @@ const POOL_MIX_A = [...POOL_GEO, ...POOL_PEOPLE];
 const POOL_MIX_B = [...POOL_PEOPLE, ...POOL_DEBATE];
 const POOL_MIX_C = [...POOL_GEO, ...POOL_DEBATE];
 const POOL_CHAOS = [...POOL_GEO, ...POOL_PEOPLE, ...POOL_DEBATE];
+const QUESTION_GLYPHS = ["?", "❓", "❔"] as const;
+const GEO_GLYPH_SET = new Set(POOL_GEO);
 
 function pickRandom<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
@@ -135,15 +137,85 @@ type Particle = {
   pool?: readonly string[];
 };
 
-/** Outside centered max-w-lg (32rem); symmetric left/right gutters */
-const GUTTER_EDGE =
-  "clamp(4px, 2.5vw, calc((100vw - min(32rem, 100vw - 1rem)) / 2 - 2.75rem))";
+/** Distance presets from screen edges for a more spread-out layout */
+const EDGE_NEAR = "clamp(8px, 1.8vw, 24px)";
+const EDGE_MID = "clamp(1rem, 7vw, 6.2rem)";
+const EDGE_WIDE = "clamp(1.75rem, 13vw, 13.5rem)";
+
+type ParticleVariance = {
+  xPx: number;
+  yPx: number;
+  rocketBackVariant: 1 | 2 | 3;
+  earthVariant: 1 | 2 | 3;
+  moonOrbitRem: number;
+};
+
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomVariant(): ParticleVariance {
+  return {
+    xPx: randomInt(-44, 44),
+    yPx: randomInt(-52, 52),
+    rocketBackVariant: randomInt(1, 3) as 1 | 2 | 3,
+    earthVariant: randomInt(1, 3) as 1 | 2 | 3,
+    moonOrbitRem: randomInt(210, 290) / 100,
+  };
+}
+
+function nextVariantIndex(curr: 1 | 2 | 3): 1 | 2 | 3 {
+  const options: Array<1 | 2 | 3> = [1, 2, 3].filter(
+    (v): v is 1 | 2 | 3 => v !== curr,
+  );
+  return pickRandom(options);
+}
+
+function isGeoCapableParticle(p: Particle): boolean {
+  return Boolean(p.pool?.some((g) => GEO_GLYPH_SET.has(g)));
+}
+
+function pickSceneEmoji(p: Particle, current: string): string {
+  if (p.emoji) return p.emoji;
+  if (!p.pool) return "🚀";
+
+  if (!isGeoCapableParticle(p)) {
+    return pickDifferent(p.pool, current);
+  }
+
+  const isQuestionNow = QUESTION_GLYPHS.includes(current as (typeof QUESTION_GLYPHS)[number]);
+  if (isQuestionNow) {
+    // Question marks should morph back into a country symbol.
+    return pickDifferent(POOL_GEO, "");
+  }
+
+  const isCountryNow = GEO_GLYPH_SET.has(current);
+  const qChance = isCountryNow ? 0.34 : 0.16;
+  if (Math.random() < qChance) {
+    return pickRandom(QUESTION_GLYPHS);
+  }
+
+  return pickDifferent(p.pool, current);
+}
+
+function holdMsForEmoji(p: Particle, emoji: string): number {
+  if (p.anim === "rocketMoon" || p.anim === "rocketEarth" || p.anim === "rocketBack") {
+    return 60_000;
+  }
+  if (QUESTION_GLYPHS.includes(emoji as (typeof QUESTION_GLYPHS)[number])) {
+    return randomInt(1200, 3600);
+  }
+  if (GEO_GLYPH_SET.has(emoji)) {
+    return randomInt(3300, 9800);
+  }
+  return randomInt(2200, 7600);
+}
 
 const PARTICLES: Particle[] = [
   {
     anim: "rocketMoon",
     top: "9%",
-    right: GUTTER_EDGE,
+    right: EDGE_WIDE,
     size: "2rem",
     dur: "16s",
     delay: "0s",
@@ -153,25 +225,25 @@ const PARTICLES: Particle[] = [
   {
     anim: "rocketEarth",
     bottom: "5%",
-    left: GUTTER_EDGE,
+    left: EDGE_WIDE,
     size: "1.12rem",
     dur: "15s",
     delay: "0.7s",
     bright: true,
     desktopOnly: false,
   },
-  { pool: POOL_MIX_C, top: "6%", left: GUTTER_EDGE, size: "1.9rem", dur: "10s", delay: "0.8s", anim: "gutter", bright: true, desktopOnly: false },
-  { pool: POOL_MIX_B, top: "22%", right: GUTTER_EDGE, size: "1.75rem", dur: "11s", delay: "2.4s", anim: "gutter", bright: true, desktopOnly: false },
-  { pool: POOL_GEO, top: "38%", left: GUTTER_EDGE, size: "1.65rem", dur: "9s", delay: "1.1s", anim: "gutter", bright: false, desktopOnly: false },
-  { pool: POOL_PEOPLE, top: "52%", right: GUTTER_EDGE, size: "1.7rem", dur: "12s", delay: "3s", anim: "gutter", bright: true, desktopOnly: false },
-  { pool: POOL_DEBATE, top: "68%", left: GUTTER_EDGE, size: "1.5rem", dur: "8s", delay: "4.3s", anim: "gutter", bright: false, desktopOnly: false },
-  { pool: POOL_MIX_A, top: "82%", right: GUTTER_EDGE, size: "1.55rem", dur: "10s", delay: "0.3s", anim: "gutter", bright: false, desktopOnly: false },
-  { pool: POOL_CHAOS, top: "94%", left: GUTTER_EDGE, size: "1.45rem", dur: "9s", delay: "2.9s", anim: "gutter", bright: true, desktopOnly: false },
+  { pool: POOL_MIX_C, top: "6%", left: EDGE_MID, size: "1.9rem", dur: "10s", delay: "0.8s", anim: "gutter", bright: true, desktopOnly: false },
+  { pool: POOL_MIX_B, top: "22%", right: EDGE_WIDE, size: "1.75rem", dur: "11s", delay: "2.4s", anim: "gutter", bright: true, desktopOnly: false },
+  { pool: POOL_GEO, top: "38%", left: EDGE_NEAR, size: "1.65rem", dur: "9s", delay: "1.1s", anim: "gutter", bright: false, desktopOnly: false },
+  { pool: POOL_PEOPLE, top: "52%", right: EDGE_MID, size: "1.7rem", dur: "12s", delay: "3s", anim: "gutter", bright: true, desktopOnly: false },
+  { pool: POOL_DEBATE, top: "68%", left: EDGE_WIDE, size: "1.5rem", dur: "8s", delay: "4.3s", anim: "gutter", bright: false, desktopOnly: false },
+  { pool: POOL_MIX_A, top: "82%", right: EDGE_NEAR, size: "1.55rem", dur: "10s", delay: "0.3s", anim: "gutter", bright: false, desktopOnly: false },
+  { pool: POOL_CHAOS, top: "94%", left: EDGE_MID, size: "1.45rem", dur: "9s", delay: "2.9s", anim: "gutter", bright: true, desktopOnly: false },
 
-  { pool: POOL_GEO, top: "12%", right: GUTTER_EDGE, size: "1.5rem", dur: "9s", delay: "1.2s", anim: "gutter", bright: false, desktopOnly: true },
-  { pool: POOL_PEOPLE, top: "26%", left: GUTTER_EDGE, size: "1.35rem", dur: "10s", delay: "4.5s", anim: "gutter", bright: false, desktopOnly: true },
-  { pool: POOL_DEBATE, top: "40%", right: GUTTER_EDGE, size: "1.5rem", dur: "11s", delay: "0.6s", anim: "gutter", bright: false, desktopOnly: true },
-  { pool: POOL_MIX_A, top: "54%", left: GUTTER_EDGE, size: "1.4rem", dur: "8s", delay: "3.3s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_GEO, top: "12%", right: EDGE_NEAR, size: "1.5rem", dur: "9s", delay: "1.2s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_PEOPLE, top: "26%", left: EDGE_WIDE, size: "1.35rem", dur: "10s", delay: "4.5s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_DEBATE, top: "40%", right: EDGE_MID, size: "1.5rem", dur: "11s", delay: "0.6s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_MIX_A, top: "54%", left: EDGE_NEAR, size: "1.4rem", dur: "8s", delay: "3.3s", anim: "gutter", bright: false, desktopOnly: true },
   {
     emoji: "🚀",
     top: "8%",
@@ -183,15 +255,15 @@ const PARTICLES: Particle[] = [
     bright: true,
     desktopOnly: true,
   },
-  { pool: POOL_MIX_C, top: "18%", left: GUTTER_EDGE, size: "1.65rem", dur: "10s", delay: "2.1s", anim: "gutter", bright: true, desktopOnly: true },
-  { pool: POOL_CHAOS, top: "32%", right: GUTTER_EDGE, size: "1.4rem", dur: "9s", delay: "5s", anim: "gutter", bright: false, desktopOnly: true },
-  { pool: POOL_MIX_B, top: "46%", left: GUTTER_EDGE, size: "1.5rem", dur: "12s", delay: "1.7s", anim: "gutter", bright: false, desktopOnly: true },
-  { pool: POOL_GEO, top: "60%", right: GUTTER_EDGE, size: "1.45rem", dur: "7s", delay: "0.2s", anim: "gutter", bright: true, desktopOnly: true },
-  { pool: POOL_PEOPLE, top: "72%", left: GUTTER_EDGE, size: "1.3rem", dur: "9s", delay: "4.1s", anim: "gutter", bright: false, desktopOnly: true },
-  { pool: POOL_DEBATE, top: "84%", right: GUTTER_EDGE, size: "1.5rem", dur: "8s", delay: "2.8s", anim: "gutter", bright: true, desktopOnly: true },
-  { pool: POOL_MIX_A, top: "92%", left: GUTTER_EDGE, size: "1.55rem", dur: "11s", delay: "3.6s", anim: "gutter", bright: true, desktopOnly: true },
-  { pool: POOL_CHAOS, top: "8%", left: GUTTER_EDGE, size: "1.25rem", dur: "7s", delay: "5.5s", anim: "gutter", bright: false, desktopOnly: true },
-  { pool: POOL_GEO, top: "96%", right: GUTTER_EDGE, size: "1.4rem", dur: "10s", delay: "1.4s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_MIX_C, top: "18%", left: EDGE_MID, size: "1.65rem", dur: "10s", delay: "2.1s", anim: "gutter", bright: true, desktopOnly: true },
+  { pool: POOL_CHAOS, top: "32%", right: EDGE_NEAR, size: "1.4rem", dur: "9s", delay: "5s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_MIX_B, top: "46%", left: EDGE_WIDE, size: "1.5rem", dur: "12s", delay: "1.7s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_GEO, top: "60%", right: EDGE_WIDE, size: "1.45rem", dur: "7s", delay: "0.2s", anim: "gutter", bright: true, desktopOnly: true },
+  { pool: POOL_PEOPLE, top: "72%", left: EDGE_MID, size: "1.3rem", dur: "9s", delay: "4.1s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_DEBATE, top: "84%", right: EDGE_MID, size: "1.5rem", dur: "8s", delay: "2.8s", anim: "gutter", bright: true, desktopOnly: true },
+  { pool: POOL_MIX_A, top: "92%", left: EDGE_NEAR, size: "1.55rem", dur: "11s", delay: "3.6s", anim: "gutter", bright: true, desktopOnly: true },
+  { pool: POOL_CHAOS, top: "8%", left: EDGE_WIDE, size: "1.25rem", dur: "7s", delay: "5.5s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_GEO, top: "96%", right: EDGE_NEAR, size: "1.4rem", dur: "10s", delay: "1.4s", anim: "gutter", bright: false, desktopOnly: true },
 ];
 
 function initialParticleEmoji(p: Particle): string {
@@ -246,6 +318,12 @@ export function SetupScreen({
   );
   const [tapFx, setTapFx] = useState<(TapFx | null)[]>(() =>
     PARTICLES.map(() => null),
+  );
+  const [particleVariance, setParticleVariance] = useState<ParticleVariance[]>(() =>
+    PARTICLES.map(() => randomVariant()),
+  );
+  const nextEmojiSwapAtRef = useRef<number[]>(
+    PARTICLES.map(() => Date.now() + randomInt(900, 6500)),
   );
   const tapFxRef = useRef(tapFx);
   tapFxRef.current = tapFx;
@@ -305,14 +383,70 @@ export function SetupScreen({
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setParticleEmojis((prev) =>
-        PARTICLES.map((p, i) => {
-          if (p.emoji) return p.emoji;
-          if (!p.pool) return prev[i] ?? "🚀";
-          return pickDifferent(p.pool, prev[i] ?? "");
+      const now = Date.now();
+      setParticleEmojis((prev) => {
+        let changed = false;
+        const next = [...prev];
+        for (let i = 0; i < PARTICLES.length; i++) {
+          const p = PARTICLES[i]!;
+          if (p.emoji) continue;
+          if (now < (nextEmojiSwapAtRef.current[i] ?? 0)) continue;
+
+          const current = prev[i] ?? "✨";
+          const glyph = pickSceneEmoji(p, current);
+          next[i] = glyph;
+          nextEmojiSwapAtRef.current[i] = now + holdMsForEmoji(p, glyph);
+          changed = true;
+        }
+        return changed ? next : prev;
+      });
+    }, 750);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setParticleVariance((prev) =>
+        prev.map((v, i) => {
+          const p = PARTICLES[i];
+          if (!p) return v;
+
+          if (p.anim === "rocketBack") {
+            return {
+              ...v,
+              rocketBackVariant: nextVariantIndex(v.rocketBackVariant),
+              xPx: randomInt(-52, 52),
+              yPx: randomInt(-56, 56),
+            };
+          }
+
+          if (p.anim === "rocketEarth") {
+            return {
+              ...v,
+              earthVariant: nextVariantIndex(v.earthVariant),
+              xPx: randomInt(-42, 42),
+              yPx: randomInt(-42, 42),
+            };
+          }
+
+          if (p.anim === "rocketMoon") {
+            return {
+              ...v,
+              moonOrbitRem: randomInt(195, 320) / 100,
+              xPx: randomInt(-36, 36),
+              yPx: randomInt(-36, 36),
+            };
+          }
+
+          // Gutters: gentle drift so spawn locations keep changing in-session.
+          return {
+            ...v,
+            xPx: Math.max(-58, Math.min(58, v.xPx + randomInt(-16, 16))),
+            yPx: Math.max(-64, Math.min(64, v.yPx + randomInt(-18, 18))),
+          };
         }),
       );
-    }, 5200);
+    }, 9300);
     return () => clearInterval(id);
   }, []);
 
@@ -349,12 +483,19 @@ export function SetupScreen({
   return (
     <div className="relative z-20 mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12">
       {PARTICLES.map((p, i) => {
+        const variance = particleVariance[i] ?? randomVariant();
         const isRocket =
           p.anim === "rocketBack" ||
           p.anim === "rocketMoon" ||
           p.anim === "rocketEarth";
         const animClass =
-          p.anim === "rocketBack" ? "setup-p-rocket-back" : "setup-p-gutter";
+          p.anim === "rocketBack"
+            ? variance.rocketBackVariant === 1
+              ? "setup-p-rocket-back"
+              : variance.rocketBackVariant === 2
+                ? "setup-p-rocket-back-v2"
+                : "setup-p-rocket-back-v3"
+            : "setup-p-gutter";
         const hideGutterOnXs = !isRocket && !p.desktopOnly;
         const glyph = particleEmojis[i] ?? p.emoji ?? "✨";
         const fx = tapFx[i];
@@ -363,16 +504,23 @@ export function SetupScreen({
         const cardVars = {
           "--pd": p.dur,
           "--pdd": p.delay,
+          "--orbit-r": `${variance.moonOrbitRem}rem`,
         } as React.CSSProperties;
 
         const wrapperStyle: React.CSSProperties = {
           position: "fixed",
           ...(p.bottom !== undefined
-            ? { bottom: p.bottom, top: "auto" }
-            : { top: p.top ?? "0" }),
+            ? {
+                bottom: `calc(${p.bottom} + ${variance.yPx}px)`,
+                top: "auto",
+              }
+            : { top: `calc(${p.top ?? "0"} + ${variance.yPx}px)` }),
           ...(p.right !== undefined
-            ? { right: p.right, left: "auto" }
-            : { left: p.left ?? "0" }),
+            ? {
+                right: `calc(${p.right} + ${variance.xPx}px)`,
+                left: "auto",
+              }
+            : { left: `calc(${p.left ?? "0"} + ${variance.xPx}px)` }),
           opacity: p.bright ? 0.88 : 0.4,
           pointerEvents: "auto",
           cursor: "pointer",
@@ -387,7 +535,7 @@ export function SetupScreen({
               ? fx.k === "rocket"
                 ? "transform 0.34s cubic-bezier(0.2, 0.95, 0.3, 1)"
                 : "transform 0.5s cubic-bezier(0.2, 0.85, 0.25, 1)"
-              : undefined,
+              : "top 1.8s ease, right 1.8s ease, bottom 1.8s ease, left 1.8s ease",
         };
 
         if (p.anim === "rocketMoon") {
@@ -400,7 +548,7 @@ export function SetupScreen({
               style={wrapperStyle}
             >
               <div className="setup-moon-stack" style={cardVars}>
-                <span className="setup-moon-body">🌙</span>
+                <span className="setup-moon-body">🌕</span>
                 <div
                   className="setup-moon-orbit-arm"
                   style={{ animation: fleeing ? "none" : undefined }}
@@ -431,7 +579,13 @@ export function SetupScreen({
               <div className="setup-earth-stack" style={cardVars}>
                 <span className="setup-earth-globe">🌍</span>
                 <span
-                  className="setup-earth-rocket setup-p setup-p-rocket-flame"
+                  className={`setup-earth-rocket setup-p setup-p-rocket-flame ${
+                    variance.earthVariant === 1
+                      ? ""
+                      : variance.earthVariant === 2
+                        ? "setup-earth-rocket-v2"
+                        : "setup-earth-rocket-v3"
+                  }`}
                   style={{
                     animation: fleeing ? "none" : undefined,
                   }}
