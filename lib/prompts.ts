@@ -1,3 +1,4 @@
+import { SURRENDER_PLAYER_MOVE } from "@/lib/debateSurrender";
 import type { FactCheck, RoundData, Side } from "@/lib/types";
 
 /** Opponent system prompt — Debately Solo spec §3.1 */
@@ -54,7 +55,17 @@ CRITICAL RULES:
 - Be punchy, not rambling
 - Sound human — natural language, occasional rhetorical questions,
   vary sentence length
-- Do NOT use markdown, bullet points, or headers. Natural paragraphs only
+- You MAY lay out 2-4 short points like a real person in a live debate:
+  quick lines starting with "First,", "Second,", or light dashes/numbers,
+  each a sentence or two — not a formal outline. Stay within the word cap.
+  Do not use big markdown headers (#).
+- NEVER write in coach or strategy memo voice. Forbidden examples: "My argument
+  will be…", "This is a good starting point for my ${opponentSide} case",
+  "I will argue that…", "My plan:", step-by-step roadmaps of what you intend
+  to say later, or narrating how search or evidence "supports your line".
+  Say the substance now — as if talking to the other debater, not planning aloud.
+- Do NOT mention "search results", "I searched", or "according to my search"
+  as meta; if you use facts, state them plainly as in conversation.
 - Do NOT start with "I" — vary your openings
 - Language: write in the same language as the player's latest argument and the
   dominant language of the debate transcript. Do not switch languages unless
@@ -129,7 +140,9 @@ ${params.transcript}
 The player just argued:
 "${params.lastPlayerMove}"
 
-Return valid JSON only (same language as the player's last message):
+Return valid JSON only (same language as the player's last message).
+The "text" field must be your spoken reply to them — direct rebuttal or
+support with concrete points — not a strategy outline or essay plan.
 {"text":"your counter-argument in at most 160 words"}`;
 }
 
@@ -288,11 +301,26 @@ export function judgeVerdictUserPrompt(params: {
   opponentSide: Side;
   history: RoundData[];
   skippedTurns: number;
+  /** Player tapped concede — debate ended before all rounds. */
+  playerConceded?: boolean;
 }): string {
   const today = new Date().toISOString().slice(0, 10);
   const full = params.history
     .map((r) => formatRoundForVerdict(r, params.playerSide, params.opponentSide))
     .join("\n\n");
+
+  const concedeBlock =
+    params.playerConceded === true
+      ? `
+
+SPECIAL CASE — PLAYER CONCEDED (surrender):
+The player voluntarily ended the debate early. The final round includes this exact player line: ${JSON.stringify(SURRENDER_PLAYER_MOVE)}.
+- Debately wins the match for final scoring (forfeit). score_opponent MUST be greater than score_player by at least 15 points unless prior rounds are empty.
+- score_player should be very low (typically 5–30) reflecting an unfinished/forfeited end; still judge earlier rounds briefly in summary if any exist.
+- score_opponent should reflect how well Debately argued in completed rounds (typically 55–90).
+- summary MUST state clearly that the player conceded / surrendered.
+`
+      : "";
 
   return `Topic: "${params.topic}"
 Current date (UTC): ${today}
@@ -302,6 +330,7 @@ Skipped turns (player timed out): ${params.skippedTurns} (−5 points per skip t
 
 Full transcript:
 ${full}
+${concedeBlock}
 
 Return JSON (text fields in the transcript's dominant language):
 {"score_player":67,"score_opponent":58,

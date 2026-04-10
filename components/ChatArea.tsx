@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import { SURRENDER_PLAYER_MOVE } from "@/lib/debateSurrender";
 import type { RoundData, Side, ThinkingStage } from "@/lib/types";
 import { AIBubble } from "./AIBubble";
 import { FactCheckCard } from "./FactCheckCard";
@@ -98,7 +99,11 @@ export function ChatArea({
                   <PlayerBubble
                     name={playerName}
                     side={playerSide}
-                    text={round.playerMove}
+                    text={
+                      round.playerMove.trim() === SURRENDER_PLAYER_MOVE
+                        ? "I concede this debate."
+                        : round.playerMove
+                    }
                   />
                 ) : null}
 

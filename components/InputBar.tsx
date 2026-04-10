@@ -10,9 +10,18 @@ type Props = {
   onSubmit: () => void;
   disabled?: boolean;
   onFocus?: () => void;
+  /** End debate early; judge verdict with player conceding. */
+  onSurrender?: () => void;
 };
 
-export function InputBar({ value, onChange, onSubmit, disabled, onFocus }: Props) {
+export function InputBar({
+  value,
+  onChange,
+  onSubmit,
+  disabled,
+  onFocus,
+  onSurrender,
+}: Props) {
   const pct = (value.length / MAX) * 100;
   const nearLimit = pct > 90;
 
@@ -42,22 +51,36 @@ export function InputBar({ value, onChange, onSubmit, disabled, onFocus }: Props
           placeholder="Make your argument… (Enter to send, Shift+Enter for newline)"
           className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
         />
-        <div className="flex items-center justify-between gap-3">
-          <span
-            className={`text-xs font-mono tabular-nums ${
-              nearLimit ? "text-red-400" : "text-zinc-500"
-            }`}
-          >
-            {value.length}/{MAX}
-          </span>
-          <button
-            type="button"
-            disabled={disabled || !value.trim()}
-            onClick={onSubmit}
-            className="cursor-pointer rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-900/20 transition-all hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100"
-          >
-            Send
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {onSurrender ? (
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={onSurrender}
+                className="cursor-pointer rounded-xl border border-rose-600/50 bg-rose-950/40 px-4 py-2 text-sm font-semibold text-rose-200/95 transition-colors hover:border-rose-500 hover:bg-rose-950/70 hover:text-rose-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900/50 disabled:text-zinc-600 disabled:hover:scale-100"
+              >
+                Concede
+              </button>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-xs font-mono tabular-nums ${
+                nearLimit ? "text-red-400" : "text-zinc-500"
+              }`}
+            >
+              {value.length}/{MAX}
+            </span>
+            <button
+              type="button"
+              disabled={disabled || !value.trim()}
+              onClick={onSubmit}
+              className="cursor-pointer rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-900/20 transition-all hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100"
+            >
+              Send
+            </button>
+          </div>
         </div>
       </div>
     </div>

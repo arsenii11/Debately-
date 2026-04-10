@@ -42,10 +42,65 @@ function normalizeRelevance(v: unknown): number {
   return 50;
 }
 
+function unwrapFactcheckPayload(parsed: unknown): Record<string, unknown> | null {
+  let p: unknown = parsed;
+  for (let i = 0; i < 4; i++) {
+    if (typeof p === "string") {
+      const t = p.trim();
+      if (!t) return null;
+      try {
+        p = JSON.parse(t) as unknown;
+      } catch {
+        return null;
+      }
+      continue;
+    }
+    break;
+  }
+  if (Array.isArray(p)) {
+    if (p.length === 0) return null;
+    return {
+      facts: p,
+      relevance: 50,
+      flags: [],
+      flag_details: [],
+    };
+  }
+  if (!p || typeof p !== "object") return null;
+  const o = p as Record<string, unknown>;
+  if (Array.isArray(o.facts)) return o;
+  for (const k of [
+    "result",
+    "data",
+    "factcheck",
+    "output",
+    "response",
+    "judge",
+  ]) {
+    const inner = o[k];
+    if (
+      inner &&
+      typeof inner === "object" &&
+      Array.isArray((inner as Record<string, unknown>).facts)
+    ) {
+      return inner as Record<string, unknown>;
+    }
+  }
+  return o;
+}
+
 function parseFactcheckObject(parsed: unknown): FactCheck | null {
-  if (!parsed || typeof parsed !== "object") return null;
-  const o = parsed as Record<string, unknown>;
-  const factsRaw = o.facts;
+  const root = unwrapFactcheckPayload(parsed);
+  if (!root) return null;
+  const o = root;
+  let factsRaw: unknown = o.facts;
+  if (typeof factsRaw === "string") {
+    try {
+      factsRaw = JSON.parse(factsRaw) as unknown;
+    } catch {
+      return null;
+    }
+  }
   if (!Array.isArray(factsRaw)) return null;
 
   const facts = factsRaw.map((item) => {
@@ -129,7 +184,10 @@ function tryParseBlock(text: string): FactCheck | null {
 
 export function parseFactcheckJson(raw: string): FactCheck {
   // Remove [cite: N, N] markers that pollute string values and break deduplication
-  const cleaned = raw.replace(/\[cite:\s*[\d,\s]+\]/gi, "");
+  const cleaned = raw
+    .replace(/^\uFEFF/, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\[cite:\s*[\d,\s]+\]/gi, "");
 
   // Try every fenced ```json``` block in order (model sometimes emits two blocks)
   const fenceRe = /```(?:json)?\s*([\s\S]*?)```/g;

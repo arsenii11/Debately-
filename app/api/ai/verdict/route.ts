@@ -24,6 +24,7 @@ type Body = {
   opponentSide?: Side;
   history?: RoundData[];
   skippedTurns?: number;
+  playerConceded?: boolean;
 };
 
 function fallbackBestArgFromHistory(
@@ -68,6 +69,7 @@ export async function POST(request: Request) {
     typeof body.skippedTurns === "number" && body.skippedTurns >= 0
       ? Math.floor(body.skippedTurns)
       : 0;
+  const playerConceded = body.playerConceded === true;
 
   const baseUserPrompt = judgeVerdictUserPrompt({
     topic,
@@ -75,6 +77,7 @@ export async function POST(request: Request) {
     opponentSide,
     history,
     skippedTurns,
+    playerConceded,
   });
 
   const VERDICT_TOKENS_FIRST = 4096;
@@ -157,13 +160,26 @@ CRITICAL: best_arg_player and best_arg_opponent must be non-empty specific one-s
       score_player: Math.max(0, parsedVerdict.score_player - pen.player),
       score_opponent: Math.max(0, parsedVerdict.score_opponent - pen.opponent),
     };
-    const verdict = {
+    let verdict = {
       ...parsedVerdict,
       best_arg_player: bestArgPlayer,
       best_arg_opponent: bestArgDebately,
       score_player: Math.min(ceil.playerMax, afterPen.score_player),
       score_opponent: Math.min(ceil.opponentMax, afterPen.score_opponent),
     };
+
+    if (playerConceded && !isVerdictFallback(parsedVerdict)) {
+      const spCap = Math.min(verdict.score_player, 32);
+      const soFloor = Math.max(
+        verdict.score_opponent,
+        Math.min(100, spCap + 18),
+      );
+      verdict = {
+        ...verdict,
+        score_player: spCap,
+        score_opponent: soFloor,
+      };
+    }
 
     if (isVerdictFallback(parsedVerdict)) {
       debatelyLog("verdict", "error", "JSON parse produced fallback", {

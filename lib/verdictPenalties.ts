@@ -1,3 +1,4 @@
+import { SURRENDER_PLAYER_MOVE } from "@/lib/debateSurrender";
 import { countWords } from "@/lib/truncateWords";
 import type { RoundData } from "@/lib/types";
 
@@ -10,6 +11,7 @@ export const SHORT_ANSWER_SCORE_CEILING = 70;
 function penaltyForMove(text: string): number {
   const t = text.trim();
   if (!t) return 14;
+  if (t === SURRENDER_PLAYER_MOVE) return 0;
   if (t.includes(OPPONENT_FAILURE_SUBSTR)) return 0;
   const w = countWords(t);
   if (w <= 4) return 12;
@@ -22,6 +24,7 @@ function penaltyForMove(text: string): number {
 function moveCountsAsShortForCeiling(text: string): boolean {
   const t = text.trim();
   if (!t) return true;
+  if (t === SURRENDER_PLAYER_MOVE) return false;
   if (t.includes(OPPONENT_FAILURE_SUBSTR)) return false;
   return countWords(t) <= SHORT_MOVE_MAX_WORDS;
 }

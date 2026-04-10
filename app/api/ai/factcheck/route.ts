@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
+import { FACTCHECK_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
 import { clampFactcheckArgumentScore } from "@/lib/factcheckScoreAdjust";
 import {
   isFactcheckFallback,
@@ -100,7 +101,28 @@ export async function POST(request: Request) {
 
   try {
     const raw = await generateGeminiText(factcheckParams);
-    const parsed = parseFactcheckJson(raw);
+    let parsed = parseFactcheckJson(raw);
+    if (isFactcheckFallback(parsed) && raw.trim().length > 0) {
+      debatelyLog("factcheck", "warn", "parse fallback with non-empty body; retry without search (structured)", {
+        rawLen: raw.length,
+        rawPreview: raw.slice(0, 400),
+      });
+      try {
+        const raw2 = await generateGeminiText({
+          ...factcheckParams,
+          enableSearch: false,
+          responseSchema: FACTCHECK_RESPONSE_SCHEMA,
+        });
+        const parsed2 = parseFactcheckJson(raw2);
+        if (!isFactcheckFallback(parsed2)) {
+          parsed = parsed2;
+        }
+      } catch (retryErr) {
+        debatelyLog("factcheck", "warn", "structured retry without search failed", {
+          err: retryErr instanceof Error ? retryErr.message : String(retryErr),
+        });
+      }
+    }
     const normalized = finalizeFactcheck(moveText, parsed);
     if (isFactcheckFallback(parsed)) {
       debatelyLog("factcheck", "error", "JSON parse produced fallback", {

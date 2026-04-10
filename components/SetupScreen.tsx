@@ -1,59 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-type ParticleAnim = "rocket" | "zigzag" | "orbit" | "spin3d" | "ambient" | "sway";
-
-type Particle = {
-  emoji: string;
-  top: string;
-  left: string;
-  size: string;
-  dur: string;
-  delay: string;
-  anim: ParticleAnim;
-  /** Higher outer opacity + purple glow. Use for particles away from the form. */
-  bright: boolean;
-  /** Hidden on mobile (<640px), visible on sm+ */
-  desktopOnly: boolean;
-};
-
-const PARTICLES: Particle[] = [
-  // ── always visible (mobile + desktop) ───────────────────────────
-  // top corners — bright
-  { emoji: "🚀", top:  "3%", left: "80%", size: "2.1rem",  dur: "10s", delay:  "0s",  anim: "rocket",  bright: true,  desktopOnly: false },
-  { emoji: "⚖️", top:  "4%", left: "10%", size: "1.9rem",  dur:  "9s", delay: "1.5s", anim: "spin3d",  bright: true,  desktopOnly: false },
-  { emoji: "🏆", top:  "5%", left: "48%", size: "1.8rem",  dur: "12s", delay: "3.2s", anim: "sway",    bright: true,  desktopOnly: false },
-  // bottom corners — bright
-  { emoji: "🔥", top: "87%", left: "12%", size: "1.8rem",  dur:  "8s", delay: "2.1s", anim: "ambient", bright: true,  desktopOnly: false },
-  { emoji: "🎤", top: "89%", left: "74%", size: "1.8rem",  dur: "11s", delay: "0.6s", anim: "sway",    bright: true,  desktopOnly: false },
-  { emoji: "✨", top: "84%", left: "46%", size: "1.5rem",  dur:  "7s", delay: "4.2s", anim: "sway",    bright: true,  desktopOnly: false },
-  // mid sides — dim
-  { emoji: "💬", top: "36%", left:  "4%", size: "1.5rem",  dur:  "9s", delay: "4s",   anim: "orbit",   bright: false, desktopOnly: false },
-  { emoji: "⚡", top: "54%", left: "92%", size: "1.4rem",  dur:  "7s", delay: "2.6s", anim: "ambient", bright: false, desktopOnly: false },
-  { emoji: "💡", top: "68%", left:  "6%", size: "1.5rem",  dur: "11s", delay: "1.1s", anim: "ambient", bright: false, desktopOnly: false },
-  { emoji: "📣", top: "21%", left: "90%", size: "1.5rem",  dur: "10s", delay: "0.9s", anim: "orbit",   bright: false, desktopOnly: false },
-
-  // ── desktop only ─────────────────────────────────────────────────
-  // extreme left edge — some bright (far from form)
-  { emoji: "🚀", top: "44%", left:  "1%", size: "1.7rem",  dur: "13s", delay: "6.5s", anim: "zigzag",  bright: true,  desktopOnly: true  },
-  { emoji: "🔥", top: "20%", left:  "3%", size: "1.5rem",  dur:  "9s", delay: "2.8s", anim: "zigzag",  bright: false, desktopOnly: true  },
-  { emoji: "⚡", top: "62%", left:  "2%", size: "1.3rem",  dur:  "8s", delay: "5.2s", anim: "sway",    bright: false, desktopOnly: true  },
-  { emoji: "⚖️", top: "75%", left:  "1%", size: "1.5rem",  dur: "12s", delay: "3.1s", anim: "orbit",   bright: false, desktopOnly: true  },
-  { emoji: "🎤", top: "32%", left:  "1%", size: "1.4rem",  dur: "10s", delay: "7.5s", anim: "ambient", bright: false, desktopOnly: true  },
-  // extreme right edge — some bright
-  { emoji: "🎯", top: "14%", left: "96%", size: "1.6rem",  dur: "11s", delay: "1.3s", anim: "rocket",  bright: true,  desktopOnly: true  },
-  { emoji: "🌍", top: "30%", left: "96%", size: "1.7rem",  dur: "10s", delay: "0.4s", anim: "spin3d",  bright: true,  desktopOnly: true  },
-  { emoji: "💬", top: "56%", left: "96%", size: "1.4rem",  dur:  "9s", delay: "4.8s", anim: "ambient", bright: false, desktopOnly: true  },
-  { emoji: "🎤", top: "71%", left: "96%", size: "1.5rem",  dur: "11s", delay: "7.2s", anim: "orbit",   bright: false, desktopOnly: true  },
-  { emoji: "⚡", top: "80%", left: "95%", size: "1.4rem",  dur:  "7s", delay: "2.2s", anim: "sway",    bright: true,  desktopOnly: true  },
-  // extras scattered
-  { emoji: "✨", top: "10%", left: "68%", size: "1.2rem",  dur:  "6s", delay: "3.9s", anim: "sway",    bright: false, desktopOnly: true  },
-  { emoji: "✨", top: "50%", left:  "2%", size: "1.1rem",  dur:  "7s", delay: "5.1s", anim: "ambient", bright: false, desktopOnly: true  },
-  { emoji: "📣", top: "94%", left: "33%", size: "1.6rem",  dur:  "8s", delay: "1.6s", anim: "sway",    bright: true,  desktopOnly: true  },
-  { emoji: "🏆", top: "92%", left: "60%", size: "1.5rem",  dur: "10s", delay: "4.7s", anim: "ambient", bright: true,  desktopOnly: true  },
-  { emoji: "💡", top:  "8%", left: "29%", size: "1.3rem",  dur:  "8s", delay: "3.6s", anim: "sway",    bright: false, desktopOnly: true  },
-];
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   MIN_TURN_ROUNDS,
   MAX_TURN_ROUNDS,
@@ -63,6 +10,200 @@ import {
   type TurnRounds,
   type TurnTimerSeconds,
 } from "@/lib/types";
+
+type ParticleAnim =
+  | "rocketBack"
+  /** 🌙 center + 🚀 circular orbit */
+  | "rocketMoon"
+  /** 🌍 on ground + 🚀 launch loop */
+  | "rocketEarth"
+  /** Vertical-only float in side gutters — never drifts over max-w-lg column */
+  | "gutter";
+
+/** Flags, pairs, EU/Baltics, debate + people — cycled in UI so slots are not static */
+const POOL_GEO = [
+  "🇺🇸",
+  "🇮🇷",
+  "🇺🇸🇮🇷",
+  "🇺🇦",
+  "🇷🇺",
+  "🇺🇦🇷🇺",
+  "🇪🇺",
+  "🇪🇪",
+  "🇱🇻",
+  "🇱🇹",
+  "🇪🇪🇱🇻🇱🇹",
+  "🇪🇺🇪🇪",
+  "🇩🇪",
+  "🇫🇷",
+  "🇬🇧",
+  "🇵🇱",
+  "🇹🇷",
+  "🇨🇳",
+  "🇹🇼",
+  "🇮🇱",
+  "🇵🇸",
+  "🇰🇵",
+  "🇸🇦",
+  "🇧🇾",
+  "🇮🇳",
+  "🇯🇵",
+  "🛡️",
+  "🌍",
+  "🌐",
+];
+
+const POOL_PEOPLE = [
+  "🤡",
+  "🎭",
+  "👥",
+  "🧑‍🤝‍🧑",
+  "🗣️",
+  "🙋",
+  "🙋‍♂️",
+  "🙋‍♀️",
+  "🧑‍⚖️",
+  "👔",
+  "🤵",
+  "🥸",
+  "😤",
+  "🤼",
+  "👯",
+  "🧑‍💼",
+  "🧑‍🎓",
+  "👨‍💼",
+  "👩‍💼",
+  "🦸",
+  "🧙",
+  "🤠",
+  "🧑‍🏫",
+];
+
+const FLEE_ON_CLICK = new Set(POOL_PEOPLE);
+
+const POOL_DEBATE = [
+  "💬",
+  "📣",
+  "⚖️",
+  "🎤",
+  "🏛️",
+  "📜",
+  "🗳️",
+  "✅",
+  "❌",
+  "🤝",
+  "📰",
+  "🏆",
+  "🔥",
+  "✨",
+  "💡",
+  "⚡",
+];
+
+const POOL_MIX_A = [...POOL_GEO, ...POOL_PEOPLE];
+const POOL_MIX_B = [...POOL_PEOPLE, ...POOL_DEBATE];
+const POOL_MIX_C = [...POOL_GEO, ...POOL_DEBATE];
+const POOL_CHAOS = [...POOL_GEO, ...POOL_PEOPLE, ...POOL_DEBATE];
+
+function pickRandom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]!;
+}
+
+function pickDifferent(pool: readonly string[], current: string): string {
+  if (pool.length <= 1) return pool[0] ?? current;
+  let next = pickRandom(pool);
+  for (let t = 0; t < 40 && next === current; t++) next = pickRandom(pool);
+  if (next === current) {
+    const i = pool.indexOf(current);
+    return pool[(i + 1) % pool.length]!;
+  }
+  return next;
+}
+
+type Particle = {
+  top?: string;
+  bottom?: string;
+  left?: string;
+  right?: string;
+  size: string;
+  dur: string;
+  delay: string;
+  anim: ParticleAnim;
+  bright: boolean;
+  desktopOnly: boolean;
+  emoji?: "🚀";
+  pool?: readonly string[];
+};
+
+/** Outside centered max-w-lg (32rem); symmetric left/right gutters */
+const GUTTER_EDGE =
+  "clamp(4px, 2.5vw, calc((100vw - min(32rem, 100vw - 1rem)) / 2 - 2.75rem))";
+
+const PARTICLES: Particle[] = [
+  {
+    anim: "rocketMoon",
+    top: "9%",
+    right: GUTTER_EDGE,
+    size: "2rem",
+    dur: "16s",
+    delay: "0s",
+    bright: true,
+    desktopOnly: false,
+  },
+  {
+    anim: "rocketEarth",
+    bottom: "5%",
+    left: GUTTER_EDGE,
+    size: "1.12rem",
+    dur: "15s",
+    delay: "0.7s",
+    bright: true,
+    desktopOnly: false,
+  },
+  { pool: POOL_MIX_C, top: "6%", left: GUTTER_EDGE, size: "1.9rem", dur: "10s", delay: "0.8s", anim: "gutter", bright: true, desktopOnly: false },
+  { pool: POOL_MIX_B, top: "22%", right: GUTTER_EDGE, size: "1.75rem", dur: "11s", delay: "2.4s", anim: "gutter", bright: true, desktopOnly: false },
+  { pool: POOL_GEO, top: "38%", left: GUTTER_EDGE, size: "1.65rem", dur: "9s", delay: "1.1s", anim: "gutter", bright: false, desktopOnly: false },
+  { pool: POOL_PEOPLE, top: "52%", right: GUTTER_EDGE, size: "1.7rem", dur: "12s", delay: "3s", anim: "gutter", bright: true, desktopOnly: false },
+  { pool: POOL_DEBATE, top: "68%", left: GUTTER_EDGE, size: "1.5rem", dur: "8s", delay: "4.3s", anim: "gutter", bright: false, desktopOnly: false },
+  { pool: POOL_MIX_A, top: "82%", right: GUTTER_EDGE, size: "1.55rem", dur: "10s", delay: "0.3s", anim: "gutter", bright: false, desktopOnly: false },
+  { pool: POOL_CHAOS, top: "94%", left: GUTTER_EDGE, size: "1.45rem", dur: "9s", delay: "2.9s", anim: "gutter", bright: true, desktopOnly: false },
+
+  { pool: POOL_GEO, top: "12%", right: GUTTER_EDGE, size: "1.5rem", dur: "9s", delay: "1.2s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_PEOPLE, top: "26%", left: GUTTER_EDGE, size: "1.35rem", dur: "10s", delay: "4.5s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_DEBATE, top: "40%", right: GUTTER_EDGE, size: "1.5rem", dur: "11s", delay: "0.6s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_MIX_A, top: "54%", left: GUTTER_EDGE, size: "1.4rem", dur: "8s", delay: "3.3s", anim: "gutter", bright: false, desktopOnly: true },
+  {
+    emoji: "🚀",
+    top: "8%",
+    right: "3%",
+    size: "1.9rem",
+    dur: "17s",
+    delay: "2s",
+    anim: "rocketBack",
+    bright: true,
+    desktopOnly: true,
+  },
+  { pool: POOL_MIX_C, top: "18%", left: GUTTER_EDGE, size: "1.65rem", dur: "10s", delay: "2.1s", anim: "gutter", bright: true, desktopOnly: true },
+  { pool: POOL_CHAOS, top: "32%", right: GUTTER_EDGE, size: "1.4rem", dur: "9s", delay: "5s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_MIX_B, top: "46%", left: GUTTER_EDGE, size: "1.5rem", dur: "12s", delay: "1.7s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_GEO, top: "60%", right: GUTTER_EDGE, size: "1.45rem", dur: "7s", delay: "0.2s", anim: "gutter", bright: true, desktopOnly: true },
+  { pool: POOL_PEOPLE, top: "72%", left: GUTTER_EDGE, size: "1.3rem", dur: "9s", delay: "4.1s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_DEBATE, top: "84%", right: GUTTER_EDGE, size: "1.5rem", dur: "8s", delay: "2.8s", anim: "gutter", bright: true, desktopOnly: true },
+  { pool: POOL_MIX_A, top: "92%", left: GUTTER_EDGE, size: "1.55rem", dur: "11s", delay: "3.6s", anim: "gutter", bright: true, desktopOnly: true },
+  { pool: POOL_CHAOS, top: "8%", left: GUTTER_EDGE, size: "1.25rem", dur: "7s", delay: "5.5s", anim: "gutter", bright: false, desktopOnly: true },
+  { pool: POOL_GEO, top: "96%", right: GUTTER_EDGE, size: "1.4rem", dur: "10s", delay: "1.4s", anim: "gutter", bright: false, desktopOnly: true },
+];
+
+function initialParticleEmoji(p: Particle): string {
+  if (p.emoji) return p.emoji;
+  if (!p.pool) return "🚀";
+  return pickRandom(p.pool);
+}
+
+type TapFx =
+  | { k: "flee"; tx: number; ty: number }
+  | { k: "rocket"; tx: number; ty: number }
+  | { k: "nudge" };
 
 function formatTimer(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -100,6 +241,80 @@ export function SetupScreen({
   const canStart = nickname.trim().length > 0 && topic.trim().length > 0;
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loadingTopics, setLoadingTopics] = useState(false);
+  const [particleEmojis, setParticleEmojis] = useState<string[]>(() =>
+    PARTICLES.map(initialParticleEmoji),
+  );
+  const [tapFx, setTapFx] = useState<(TapFx | null)[]>(() =>
+    PARTICLES.map(() => null),
+  );
+  const tapFxRef = useRef(tapFx);
+  tapFxRef.current = tapFx;
+
+  const handleParticleClick = useCallback(
+    (i: number, e: React.MouseEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (tapFxRef.current[i]) return;
+      const p = PARTICLES[i];
+      const glyph = particleEmojis[i] ?? p.emoji ?? "✨";
+      const el = e.currentTarget;
+      const rect = el.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = cx - e.clientX;
+      const dy = cy - e.clientY;
+      const len = Math.hypot(dx, dy) || 1;
+      const ux = dx / len;
+      const uy = dy / len;
+      const dist = Math.max(window.innerWidth, window.innerHeight) * 1.15;
+
+      setTapFx((prev) => {
+        const next = [...prev];
+        if (p.anim === "rocketMoon") {
+          next[i] = { k: "rocket", tx: dist * 0.88, ty: -dist * 0.82 };
+        } else if (p.anim === "rocketEarth") {
+          next[i] = { k: "rocket", tx: dist * 0.42, ty: -dist * 0.9 };
+        } else if (p.anim === "rocketBack") {
+          next[i] = { k: "rocket", tx: -dist * 0.92, ty: dist * 0.8 };
+        } else if (FLEE_ON_CLICK.has(glyph)) {
+          next[i] = { k: "flee", tx: ux * dist, ty: uy * dist };
+        } else {
+          next[i] = { k: "nudge" };
+        }
+        return next;
+      });
+
+      const ms =
+        p.anim === "rocketBack" ||
+        p.anim === "rocketMoon" ||
+        p.anim === "rocketEarth"
+          ? 380
+          : FLEE_ON_CLICK.has(glyph)
+            ? 560
+            : 320;
+      window.setTimeout(() => {
+        setTapFx((prev) => {
+          const next = [...prev];
+          next[i] = null;
+          return next;
+        });
+      }, ms);
+    },
+    [particleEmojis],
+  );
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setParticleEmojis((prev) =>
+        PARTICLES.map((p, i) => {
+          if (p.emoji) return p.emoji;
+          if (!p.pool) return prev[i] ?? "🚀";
+          return pickDifferent(p.pool, prev[i] ?? "");
+        }),
+      );
+    }, 5200);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,35 +347,130 @@ export function SetupScreen({
   }, []);
 
   return (
-    <div className="relative mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12">
-      {PARTICLES.map((p, i) => (
-        <div
-          key={i}
-          className={p.desktopOnly ? "hidden sm:block" : undefined}
-          style={{
-            position: "fixed",
-            top: p.top,
-            left: p.left,
-            opacity: p.bright ? 0.88 : 0.4,
-            pointerEvents: "none",
-            userSelect: "none",
-            zIndex: 0,
-          }}
-          aria-hidden
-        >
-          <span
-            className={`setup-p setup-p-${p.anim}${p.bright ? " setup-p-glow" : ""}`}
-            style={{
-              display: "block",
-              fontSize: p.size,
-              "--pd": p.dur,
-              "--pdd": p.delay,
-            } as React.CSSProperties}
+    <div className="relative z-20 mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12">
+      {PARTICLES.map((p, i) => {
+        const isRocket =
+          p.anim === "rocketBack" ||
+          p.anim === "rocketMoon" ||
+          p.anim === "rocketEarth";
+        const animClass =
+          p.anim === "rocketBack" ? "setup-p-rocket-back" : "setup-p-gutter";
+        const hideGutterOnXs = !isRocket && !p.desktopOnly;
+        const glyph = particleEmojis[i] ?? p.emoji ?? "✨";
+        const fx = tapFx[i];
+        const fleeing = fx?.k === "flee" || fx?.k === "rocket";
+        const nudge = fx?.k === "nudge";
+        const cardVars = {
+          "--pd": p.dur,
+          "--pdd": p.delay,
+        } as React.CSSProperties;
+
+        const wrapperStyle: React.CSSProperties = {
+          position: "fixed",
+          ...(p.bottom !== undefined
+            ? { bottom: p.bottom, top: "auto" }
+            : { top: p.top ?? "0" }),
+          ...(p.right !== undefined
+            ? { right: p.right, left: "auto" }
+            : { left: p.left ?? "0" }),
+          opacity: p.bright ? 0.88 : 0.4,
+          pointerEvents: "auto",
+          cursor: "pointer",
+          userSelect: "none",
+          zIndex: isRocket ? 22 : 5,
+          transform:
+            fleeing && fx
+              ? `translate(${fx.tx}px, ${fx.ty}px)`
+              : undefined,
+          transition:
+            fleeing && fx
+              ? fx.k === "rocket"
+                ? "transform 0.34s cubic-bezier(0.2, 0.95, 0.3, 1)"
+                : "transform 0.5s cubic-bezier(0.2, 0.85, 0.25, 1)"
+              : undefined,
+        };
+
+        if (p.anim === "rocketMoon") {
+          return (
+            <div
+              key={i}
+              aria-hidden
+              className={`touch-manipulation ${p.desktopOnly ? "hidden sm:block" : ""} ${hideGutterOnXs ? "max-sm:hidden" : ""}`}
+              onClick={(e) => handleParticleClick(i, e)}
+              style={wrapperStyle}
+            >
+              <div className="setup-moon-stack" style={cardVars}>
+                <span className="setup-moon-body">🌙</span>
+                <div
+                  className="setup-moon-orbit-arm"
+                  style={{ animation: fleeing ? "none" : undefined }}
+                >
+                  <span
+                    className="setup-moon-rocket setup-p setup-p-rocket-flame"
+                    style={{
+                      animation: fleeing ? "none" : undefined,
+                    }}
+                  >
+                    🚀
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        if (p.anim === "rocketEarth") {
+          return (
+            <div
+              key={i}
+              aria-hidden
+              className={`touch-manipulation ${p.desktopOnly ? "hidden sm:block" : ""} ${hideGutterOnXs ? "max-sm:hidden" : ""}`}
+              onClick={(e) => handleParticleClick(i, e)}
+              style={wrapperStyle}
+            >
+              <div className="setup-earth-stack" style={cardVars}>
+                <span className="setup-earth-globe">🌍</span>
+                <span
+                  className="setup-earth-rocket setup-p setup-p-rocket-flame"
+                  style={{
+                    animation: fleeing ? "none" : undefined,
+                  }}
+                >
+                  🚀
+                </span>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={i}
+            aria-hidden
+            className={`touch-manipulation ${p.desktopOnly ? "hidden sm:block" : ""} ${hideGutterOnXs ? "max-sm:hidden" : ""}`}
+            onClick={(e) => handleParticleClick(i, e)}
+            style={wrapperStyle}
           >
-            {p.emoji}
-          </span>
-        </div>
-      ))}
+            <span
+              className={`setup-p${fleeing ? "" : ` ${animClass}`}${isRocket ? " setup-p-rocket-flame" : ""}${!isRocket && p.bright ? " setup-p-glow" : ""}`}
+              style={
+                {
+                  display: "block",
+                  fontSize: p.size,
+                  ...cardVars,
+                  animation: fleeing ? "none" : undefined,
+                } as React.CSSProperties
+              }
+            >
+              <span
+                className={`inline-block${nudge ? " setup-p-nudge-pulse" : ""}`}
+              >
+                {glyph}
+              </span>
+            </span>
+          </div>
+        );
+      })}
       <header className="text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">
           Debately

@@ -21,6 +21,7 @@ import {
   FACTCHECK_PARSE_FALLBACK,
   isFactcheckFallback,
 } from "@/lib/factcheckFallback";
+import { buildSurrenderRound } from "@/lib/debateSurrender";
 import {
   clearDebatelySession,
   loadDebatelySession,
@@ -100,6 +101,9 @@ export function DebatelyApp() {
   >(() => Promise.resolve());
 
   const opponentSide = opponentSideFor(playerSide);
+  const playerDisplay = nickname.trim() || "Player";
+  const playerInitial =
+    playerDisplay.trim().charAt(0).toUpperCase() || "?";
 
   const scrollLastOpponentIntoViewMobile = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -488,6 +492,63 @@ export function DebatelyApp() {
     void runTurn(inputText, false);
   }, [inputText, runTurn]);
 
+  const handleSurrender = useCallback(() => {
+    if (phase !== "debating" || isAIThinking || launchCountdown !== null) return;
+    if (
+      !window.confirm(
+        "Concede this debate? The judge will issue a final verdict and Debately wins by surrender.",
+      )
+    )
+      return;
+
+    setError(null);
+    setTimer(0);
+    setTimerPaused(false);
+    setIsAIThinking(true);
+    setThinkingStage("verdict");
+    setThinkingLabel("Judge is deliberating final verdict…");
+
+    const surrenderRound = buildSurrenderRound(currentRound);
+    const histForVerdict = [
+      ...history.slice(0, currentRound - 1),
+      surrenderRound,
+    ];
+    setHistory(histForVerdict);
+
+    void (async () => {
+      try {
+        const vRes = await postJson<Verdict>("/api/ai/verdict", {
+          topic,
+          playerSide,
+          opponentSide,
+          history: histForVerdict,
+          skippedTurns,
+          playerConceded: true,
+        });
+        setVerdict(vRes);
+      } catch (e) {
+        console.error("[Debately] verdict (surrender) failed", e);
+        setVerdict(null);
+        setError("Could not load verdict.");
+      } finally {
+        setPhase("finished");
+        setIsAIThinking(false);
+        setThinkingStage(null);
+        setThinkingLabel("");
+      }
+    })();
+  }, [
+    phase,
+    isAIThinking,
+    launchCountdown,
+    currentRound,
+    history,
+    topic,
+    playerSide,
+    opponentSide,
+    skippedTurns,
+  ]);
+
   const handleStart = useCallback(() => {
     setPhase("debating");
     setHistory([]);
@@ -562,57 +623,110 @@ export function DebatelyApp() {
       {launchCountdown !== null ? (
         <DebateLaunchOverlay step={launchCountdown} />
       ) : null}
-      <header className="sticky top-0 z-40 flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/90 px-3 py-3 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/75 sm:px-5">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-semibold tracking-tight">Debately</span>
-          <span className="rounded-md bg-fuchsia-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
-            Solo
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
-          {phase === "debating" && (
-            <span className="text-sm text-zinc-400">
-              Round{" "}
-              <span className="font-mono text-zinc-200">
-                {currentRound}/{turnRounds}
+      <header className="sticky top-0 z-40 shrink-0 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/75">
+        <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+          <div className="flex items-center justify-between gap-2 sm:contents">
+            <div className="flex shrink-0 items-center gap-2 sm:order-1">
+              <span className="text-lg font-semibold tracking-tight">
+                Debately
               </span>
-            </span>
-          )}
-          {phase === "debating" &&
-          launchCountdown === null &&
-          !isAIThinking &&
-          timer > 0 ? (
-            <div className="flex flex-wrap items-end gap-2 sm:gap-3">
-              <Timer
-                seconds={timer}
-                maxSeconds={turnTimerSeconds}
-                paused={timerPaused}
-              />
+              <span className="rounded-md bg-fuchsia-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
+                Solo
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-3 sm:order-3">
+              {phase === "debating" && (
+                <span className="text-sm text-zinc-400">
+                  Round{" "}
+                  <span className="font-mono text-zinc-200">
+                    {currentRound}/{turnRounds}
+                  </span>
+                </span>
+              )}
+              {phase === "debating" &&
+              launchCountdown === null &&
+              !isAIThinking &&
+              timer > 0 ? (
+                <div className="flex flex-wrap items-end gap-2 sm:gap-3">
+                  <Timer
+                    seconds={timer}
+                    maxSeconds={turnTimerSeconds}
+                    paused={timerPaused}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setTimerPaused((p) => !p)}
+                    className="cursor-pointer rounded-lg border border-zinc-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-100 active:scale-[0.98]"
+                  >
+                    {timerPaused ? "Resume" : "Pause"}
+                  </button>
+                </div>
+              ) : phase === "debating" &&
+                launchCountdown === null &&
+                !isAIThinking &&
+                timer === 0 ? (
+                <span className="text-xs text-red-400">Time&apos;s up</span>
+              ) : phase === "debating" && launchCountdown !== null ? (
+                <span className="text-xs font-medium uppercase tracking-wide text-fuchsia-400/90">
+                  Starting…
+                </span>
+              ) : null}
               <button
                 type="button"
-                onClick={() => setTimerPaused((p) => !p)}
-                className="cursor-pointer rounded-lg border border-zinc-600 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-100 active:scale-[0.98]"
+                onClick={handleNew}
+                className="cursor-pointer rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-fuchsia-900/40 transition-all hover:from-fuchsia-500 hover:to-pink-500 hover:shadow-fuchsia-500/25 active:scale-[0.98]"
               >
-                {timerPaused ? "Resume" : "Pause"}
+                New
               </button>
             </div>
-          ) : phase === "debating" &&
-            launchCountdown === null &&
-            !isAIThinking &&
-            timer === 0 ? (
-            <span className="text-xs text-red-400">Time&apos;s up</span>
-          ) : phase === "debating" && launchCountdown !== null ? (
-            <span className="text-xs font-medium uppercase tracking-wide text-fuchsia-400/90">
-              Starting…
+          </div>
+          <div className="flex min-w-0 items-center justify-center gap-3 border-t border-zinc-800/70 pt-2 sm:order-2 sm:flex-1 sm:border-t-0 sm:pt-0 sm:px-2">
+            <div className="flex min-w-0 max-w-[46%] items-center gap-2 sm:max-w-none">
+              <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
+                  playerSide === "FOR" ? "bg-emerald-600" : "bg-rose-600"
+                }`}
+              >
+                {playerInitial}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-zinc-200 sm:text-sm">
+                  {playerDisplay}
+                </p>
+                <span
+                  className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    playerSide === "FOR"
+                      ? "bg-emerald-500/25 text-emerald-300"
+                      : "bg-rose-500/25 text-rose-300"
+                  }`}
+                >
+                  {playerSide}
+                </span>
+              </div>
+            </div>
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+              vs
             </span>
-          ) : null}
-          <button
-            type="button"
-            onClick={handleNew}
-            className="cursor-pointer rounded-xl bg-gradient-to-r from-fuchsia-600 to-pink-600 px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg shadow-fuchsia-900/40 transition-all hover:from-fuchsia-500 hover:to-pink-500 hover:shadow-fuchsia-500/25 active:scale-[0.98]"
-          >
-            New
-          </button>
+            <div className="flex min-w-0 max-w-[46%] items-center gap-2 sm:max-w-none">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-600 to-pink-600 text-[10px] font-bold text-white">
+                AI
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-zinc-200 sm:text-sm">
+                  Debately
+                </p>
+                <span
+                  className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    opponentSide === "FOR"
+                      ? "bg-emerald-500/25 text-emerald-300"
+                      : "bg-rose-500/25 text-rose-300"
+                  }`}
+                >
+                  {opponentSide}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -667,6 +781,7 @@ export function DebatelyApp() {
           onSubmit={handleSubmit}
           disabled={isAIThinking || launchCountdown !== null}
           onFocus={scrollLastOpponentIntoViewMobile}
+          onSurrender={handleSurrender}
         />
       ) : null}
     </div>
