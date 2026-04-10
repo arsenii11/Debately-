@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+type ParticleAnim = "rocket" | "zigzag" | "orbit" | "spin3d" | "ambient" | "sway";
+
 type Particle = {
   emoji: string;
   top: string;
@@ -9,25 +11,48 @@ type Particle = {
   size: string;
   dur: string;
   delay: string;
-  drift: boolean;
+  anim: ParticleAnim;
+  /** Higher outer opacity + purple glow. Use for particles away from the form. */
+  bright: boolean;
+  /** Hidden on mobile (<640px), visible on sm+ */
+  desktopOnly: boolean;
 };
 
 const PARTICLES: Particle[] = [
-  { emoji: "💬", top: "8%",  left: "7%",  size: "1.7rem", dur: "9s",  delay: "0s",    drift: false },
-  { emoji: "🚀", top: "14%", left: "88%", size: "2rem",   dur: "11s", delay: "1.2s",  drift: true  },
-  { emoji: "⚡", top: "30%", left: "4%",  size: "1.4rem", dur: "7s",  delay: "2.5s",  drift: false },
-  { emoji: "⚖️", top: "22%", left: "80%", size: "1.6rem", dur: "10s", delay: "0.8s",  drift: true  },
-  { emoji: "🔥", top: "50%", left: "92%", size: "1.5rem", dur: "8s",  delay: "3.1s",  drift: false },
-  { emoji: "🎤", top: "60%", left: "3%",  size: "1.5rem", dur: "12s", delay: "1.7s",  drift: true  },
-  { emoji: "🎯", top: "72%", left: "85%", size: "1.6rem", dur: "9s",  delay: "0.4s",  drift: false },
-  { emoji: "💡", top: "80%", left: "10%", size: "1.4rem", dur: "11s", delay: "2s",    drift: true  },
-  { emoji: "📣", top: "88%", left: "78%", size: "1.5rem", dur: "8s",  delay: "4s",    drift: false },
-  { emoji: "🏆", top: "6%",  left: "50%", size: "1.6rem", dur: "13s", delay: "1.5s",  drift: true  },
-  { emoji: "✨", top: "42%", left: "96%", size: "1.2rem", dur: "6s",  delay: "0.2s",  drift: false },
-  { emoji: "✨", top: "38%", left: "1%",  size: "1rem",   dur: "7s",  delay: "3.8s",  drift: false },
-  { emoji: "💬", top: "65%", left: "60%", size: "1.3rem", dur: "14s", delay: "2.8s",  drift: true  },
-  { emoji: "🚀", top: "92%", left: "40%", size: "1.5rem", dur: "10s", delay: "5s",    drift: false },
-  { emoji: "⚡", top: "5%",  left: "25%", size: "1.2rem", dur: "8s",  delay: "3.5s",  drift: true  },
+  // ── always visible (mobile + desktop) ───────────────────────────
+  // top corners — bright
+  { emoji: "🚀", top:  "3%", left: "80%", size: "2.1rem",  dur: "10s", delay:  "0s",  anim: "rocket",  bright: true,  desktopOnly: false },
+  { emoji: "⚖️", top:  "4%", left: "10%", size: "1.9rem",  dur:  "9s", delay: "1.5s", anim: "spin3d",  bright: true,  desktopOnly: false },
+  { emoji: "🏆", top:  "5%", left: "48%", size: "1.8rem",  dur: "12s", delay: "3.2s", anim: "sway",    bright: true,  desktopOnly: false },
+  // bottom corners — bright
+  { emoji: "🔥", top: "87%", left: "12%", size: "1.8rem",  dur:  "8s", delay: "2.1s", anim: "ambient", bright: true,  desktopOnly: false },
+  { emoji: "🎤", top: "89%", left: "74%", size: "1.8rem",  dur: "11s", delay: "0.6s", anim: "sway",    bright: true,  desktopOnly: false },
+  { emoji: "✨", top: "84%", left: "46%", size: "1.5rem",  dur:  "7s", delay: "4.2s", anim: "sway",    bright: true,  desktopOnly: false },
+  // mid sides — dim
+  { emoji: "💬", top: "36%", left:  "4%", size: "1.5rem",  dur:  "9s", delay: "4s",   anim: "orbit",   bright: false, desktopOnly: false },
+  { emoji: "⚡", top: "54%", left: "92%", size: "1.4rem",  dur:  "7s", delay: "2.6s", anim: "ambient", bright: false, desktopOnly: false },
+  { emoji: "💡", top: "68%", left:  "6%", size: "1.5rem",  dur: "11s", delay: "1.1s", anim: "ambient", bright: false, desktopOnly: false },
+  { emoji: "📣", top: "21%", left: "90%", size: "1.5rem",  dur: "10s", delay: "0.9s", anim: "orbit",   bright: false, desktopOnly: false },
+
+  // ── desktop only ─────────────────────────────────────────────────
+  // extreme left edge — some bright (far from form)
+  { emoji: "🚀", top: "44%", left:  "1%", size: "1.7rem",  dur: "13s", delay: "6.5s", anim: "zigzag",  bright: true,  desktopOnly: true  },
+  { emoji: "🔥", top: "20%", left:  "3%", size: "1.5rem",  dur:  "9s", delay: "2.8s", anim: "zigzag",  bright: false, desktopOnly: true  },
+  { emoji: "⚡", top: "62%", left:  "2%", size: "1.3rem",  dur:  "8s", delay: "5.2s", anim: "sway",    bright: false, desktopOnly: true  },
+  { emoji: "⚖️", top: "75%", left:  "1%", size: "1.5rem",  dur: "12s", delay: "3.1s", anim: "orbit",   bright: false, desktopOnly: true  },
+  { emoji: "🎤", top: "32%", left:  "1%", size: "1.4rem",  dur: "10s", delay: "7.5s", anim: "ambient", bright: false, desktopOnly: true  },
+  // extreme right edge — some bright
+  { emoji: "🎯", top: "14%", left: "96%", size: "1.6rem",  dur: "11s", delay: "1.3s", anim: "rocket",  bright: true,  desktopOnly: true  },
+  { emoji: "🌍", top: "30%", left: "96%", size: "1.7rem",  dur: "10s", delay: "0.4s", anim: "spin3d",  bright: true,  desktopOnly: true  },
+  { emoji: "💬", top: "56%", left: "96%", size: "1.4rem",  dur:  "9s", delay: "4.8s", anim: "ambient", bright: false, desktopOnly: true  },
+  { emoji: "🎤", top: "71%", left: "96%", size: "1.5rem",  dur: "11s", delay: "7.2s", anim: "orbit",   bright: false, desktopOnly: true  },
+  { emoji: "⚡", top: "80%", left: "95%", size: "1.4rem",  dur:  "7s", delay: "2.2s", anim: "sway",    bright: true,  desktopOnly: true  },
+  // extras scattered
+  { emoji: "✨", top: "10%", left: "68%", size: "1.2rem",  dur:  "6s", delay: "3.9s", anim: "sway",    bright: false, desktopOnly: true  },
+  { emoji: "✨", top: "50%", left:  "2%", size: "1.1rem",  dur:  "7s", delay: "5.1s", anim: "ambient", bright: false, desktopOnly: true  },
+  { emoji: "📣", top: "94%", left: "33%", size: "1.6rem",  dur:  "8s", delay: "1.6s", anim: "sway",    bright: true,  desktopOnly: true  },
+  { emoji: "🏆", top: "92%", left: "60%", size: "1.5rem",  dur: "10s", delay: "4.7s", anim: "ambient", bright: true,  desktopOnly: true  },
+  { emoji: "💡", top:  "8%", left: "29%", size: "1.3rem",  dur:  "8s", delay: "3.6s", anim: "sway",    bright: false, desktopOnly: true  },
 ];
 import {
   MIN_TURN_ROUNDS,
@@ -109,20 +134,32 @@ export function SetupScreen({
   return (
     <div className="relative mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12">
       {PARTICLES.map((p, i) => (
-        <span
+        <div
           key={i}
-          className={p.drift ? "setup-particle-drift" : "setup-particle"}
+          className={p.desktopOnly ? "hidden sm:block" : undefined}
           style={{
+            position: "fixed",
             top: p.top,
             left: p.left,
-            fontSize: p.size,
-            "--p-dur": p.dur,
-            "--p-delay": p.delay,
-          } as React.CSSProperties}
+            opacity: p.bright ? 0.88 : 0.4,
+            pointerEvents: "none",
+            userSelect: "none",
+            zIndex: 0,
+          }}
           aria-hidden
         >
-          {p.emoji}
-        </span>
+          <span
+            className={`setup-p setup-p-${p.anim}${p.bright ? " setup-p-glow" : ""}`}
+            style={{
+              display: "block",
+              fontSize: p.size,
+              "--pd": p.dur,
+              "--pdd": p.delay,
+            } as React.CSSProperties}
+          >
+            {p.emoji}
+          </span>
+        </div>
       ))}
       <header className="text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">

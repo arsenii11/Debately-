@@ -57,45 +57,90 @@ body {
   animation: debately-count-pop 0.55s cubic-bezier(0.34, 1.3, 0.64, 1) both;
 }
 
-@keyframes setup-float {
-  0% {
-    transform: translateY(0px) translateX(0px) rotate(0deg);
-    opacity: var(--p-opacity-min, 0.04);
-  }
-  30% {
-    transform: translateY(-28px) translateX(10px) rotate(8deg);
-    opacity: var(--p-opacity-max, 0.13);
-  }
-  60% {
-    transform: translateY(-52px) translateX(-8px) rotate(-5deg);
-    opacity: var(--p-opacity-max, 0.13);
-  }
-  100% {
-    transform: translateY(-80px) translateX(4px) rotate(4deg);
-    opacity: var(--p-opacity-min, 0.04);
-  }
+/* ── Setup screen particles ─────────────────────────────────────── */
+
+/* Long rocket arc upward; snaps back at opacity 0 */
+@keyframes setup-rocket {
+  0%   { transform: translate(  0px,    0px) rotate(-12deg) scale(1   ); opacity: 0;    }
+  7%   { transform: translate(  9px,  -65px) rotate(  0deg) scale(1.06); opacity: 0.75; }
+  20%  { transform: translate( -7px, -175px) rotate( 19deg) scale(1.16); opacity: 1;    }
+  34%  { transform: translate( 19px, -290px) rotate( 35deg) scale(1.1 ); opacity: 0.88; }
+  50%  { transform: translate( -5px, -395px) rotate( 45deg) scale(0.95); opacity: 0.6;  }
+  63%  { transform: translate( 13px, -475px) rotate( 37deg) scale(0.8 ); opacity: 0.28; }
+  78%  { transform: translate(  2px, -540px) rotate( 20deg) scale(0.63); opacity: 0.06; }
+  88%  { transform: translate(  0px, -580px) rotate(  8deg) scale(0.48); opacity: 0;    }
+  100% { transform: translate(  0px,    0px) rotate(-12deg) scale(1   ); opacity: 0;    }
 }
 
-@keyframes setup-drift {
-  0%   { transform: translateY(0px)   translateX(0px)   rotate(0deg);  opacity: 0.05; }
-  25%  { transform: translateY(-18px) translateX(14px)  rotate(10deg); opacity: 0.14; }
-  50%  { transform: translateY(-36px) translateX(-6px)  rotate(-6deg); opacity: 0.1;  }
-  75%  { transform: translateY(-18px) translateX(-14px) rotate(4deg);  opacity: 0.14; }
-  100% { transform: translateY(0px)   translateX(0px)   rotate(0deg);  opacity: 0.05; }
+/* Wide sweeping zigzag diagonally upward */
+@keyframes setup-zigzag {
+  0%   { transform: translate(  0px,    0px) rotate(  0deg) scale(1   ); opacity: 0;    }
+  10%  { transform: translate( 42px,  -70px) rotate( 23deg) scale(1.1 ); opacity: 0.85; }
+  22%  { transform: translate(-32px, -160px) rotate(-16deg) scale(1.14); opacity: 1;    }
+  35%  { transform: translate( 48px, -255px) rotate( 26deg) scale(1.08); opacity: 0.92; }
+  49%  { transform: translate(-26px, -340px) rotate(-12deg) scale(0.97); opacity: 0.7;  }
+  62%  { transform: translate( 40px, -415px) rotate( 18deg) scale(0.86); opacity: 0.4;  }
+  74%  { transform: translate(-14px, -475px) rotate( -7deg) scale(0.73); opacity: 0.13; }
+  84%  { transform: translate(  4px, -518px) rotate(  3deg) scale(0.57); opacity: 0;    }
+  100% { transform: translate(  0px,    0px) rotate(  0deg) scale(1   ); opacity: 0;    }
 }
 
-.setup-particle {
+/* Elliptical orbit (continuous loop) */
+@keyframes setup-orbit {
+  0%   { transform: translate(   0px,   0px) rotate(  0deg); opacity: 0.06; }
+  25%  { transform: translate(  60px, -45px) rotate( 90deg); opacity: 1;    }
+  50%  { transform: translate(   0px, -90px) rotate(180deg); opacity: 0.65; }
+  75%  { transform: translate( -60px, -45px) rotate(270deg); opacity: 1;    }
+  100% { transform: translate(   0px,   0px) rotate(360deg); opacity: 0.06; }
+}
+
+/* 3-D coin/card spin + gentle rise */
+@keyframes setup-spin3d {
+  0%   { transform: perspective(500px) rotateY(  0deg) rotateX(  0deg) translateY(   0px) scale(1   ); opacity: 0.08; }
+  25%  { transform: perspective(500px) rotateY( 90deg) rotateX( 24deg) translateY( -42px) scale(1.2 ); opacity: 1;    }
+  50%  { transform: perspective(500px) rotateY(180deg) rotateX(  0deg) translateY( -84px) scale(1.1 ); opacity: 0.7;  }
+  75%  { transform: perspective(500px) rotateY(270deg) rotateX(-24deg) translateY( -42px) scale(1.2 ); opacity: 1;    }
+  100% { transform: perspective(500px) rotateY(360deg) rotateX(  0deg) translateY(   0px) scale(1   ); opacity: 0.08; }
+}
+
+/* Soft ambient float (short path, stays near spawn) */
+@keyframes setup-ambient {
+  0%   { transform: translate(  0px,    0px) rotate(  0deg) scale(1   ); opacity: 0;    }
+  13%  { transform: translate( 11px,  -25px) rotate(  7deg) scale(1.07); opacity: 0.9;  }
+  48%  { transform: translate( -8px,  -58px) rotate( -5deg) scale(1.11); opacity: 1;    }
+  82%  { transform: translate( 10px,  -95px) rotate(  8deg) scale(1.04); opacity: 0.5;  }
+  93%  { transform: translate(  2px, -113px) rotate(  2deg) scale(0.94); opacity: 0.08; }
+  100% { transform: translate(  0px, -125px) rotate(  0deg) scale(0.88); opacity: 0;    }
+}
+
+/* Wobbly sway in place */
+@keyframes setup-sway {
+  0%   { transform: translate(  0px,  0px) rotate(  0deg) scale(1   ); opacity: 0.06; }
+  20%  { transform: translate( 20px,-18px) rotate( 13deg) scale(1.12); opacity: 1;    }
+  40%  { transform: translate(-14px,-32px) rotate(-10deg) scale(1.07); opacity: 0.8;  }
+  60%  { transform: translate( 22px,-20px) rotate( 15deg) scale(1.14); opacity: 1;    }
+  80%  { transform: translate( -9px, -9px) rotate( -7deg) scale(1.05); opacity: 0.7;  }
+  100% { transform: translate(  0px,  0px) rotate(  0deg) scale(1   ); opacity: 0.06; }
+}
+
+.setup-p {
   position: fixed;
   pointer-events: none;
   user-select: none;
-  animation: setup-float var(--p-dur, 8s) ease-in-out infinite;
-  animation-delay: var(--p-delay, 0s);
+  will-change: transform, opacity;
+  z-index: 0;
+  line-height: 1;
 }
 
-.setup-particle-drift {
-  position: fixed;
-  pointer-events: none;
-  user-select: none;
-  animation: setup-drift var(--p-dur, 10s) ease-in-out infinite;
-  animation-delay: var(--p-delay, 0s);
+.setup-p-glow {
+  filter:
+    drop-shadow(0 0 6px rgba(167, 139, 250, 0.7))
+    drop-shadow(0 0 20px rgba(99, 102, 241, 0.4));
 }
+
+.setup-p-rocket  { animation: setup-rocket  var(--pd, 10s) ease-in-out infinite var(--pdd, 0s); }
+.setup-p-zigzag  { animation: setup-zigzag  var(--pd, 12s) ease-in-out infinite var(--pdd, 0s); }
+.setup-p-orbit   { animation: setup-orbit   var(--pd, 11s) ease-in-out infinite var(--pdd, 0s); }
+.setup-p-spin3d  { animation: setup-spin3d  var(--pd,  9s) linear      infinite var(--pdd, 0s); }
+.setup-p-ambient { animation: setup-ambient var(--pd, 13s) ease-in-out infinite var(--pdd, 0s); }
+.setup-p-sway    { animation: setup-sway    var(--pd,  8s) ease-in-out infinite var(--pdd, 0s); }
