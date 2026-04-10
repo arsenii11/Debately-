@@ -21,6 +21,7 @@ import {
   FACTCHECK_PARSE_FALLBACK,
   isFactcheckFallback,
 } from "@/lib/factcheckFallback";
+import { isVerdictFallback } from "@/lib/verdictParse";
 import { buildSurrenderRound } from "@/lib/debateSurrender";
 import {
   clearDebatelySession,
@@ -41,6 +42,8 @@ import type {
   TurnTimerSeconds,
   Verdict,
 } from "@/lib/types";
+
+const OPPONENT_FAILED_TEXT = "Debately failed to respond.";
 
 function opponentSideFor(player: Side): Side {
   return player === "FOR" ? "AGAINST" : "FOR";
@@ -97,7 +100,14 @@ export function DebatelyApp() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastOpponentAnchorRef = useRef<HTMLDivElement>(null);
   const runTurnRef = useRef<
-    (move: string, isTimedOut: boolean) => Promise<void>
+    (
+      move: string,
+      isTimedOut: boolean,
+      options?: {
+        roundNumber?: number;
+        suppressSkipIncrement?: boolean;
+      },
+    ) => Promise<void>
   >(() => Promise.resolve());
 
   const opponentSide = opponentSideFor(playerSide);
@@ -298,7 +308,14 @@ export function DebatelyApp() {
   );
 
   const runTurn = useCallback(
-    async (rawMove: string, isTimedOut: boolean) => {
+    async (
+      rawMove: string,
+      isTimedOut: boolean,
+      options?: {
+        roundNumber?: number;
+        suppressSkipIncrement?: boolean;
+      },
+    ) => {
       if (phase !== "debating") return;
 
       const move = rawMove.trim();
@@ -308,13 +325,14 @@ export function DebatelyApp() {
       const displayMove = isTimedOut
         ? "[Turn skipped — time expired]"
         : move;
-      const roundNumber = currentRound;
+      const roundNumber = options?.roundNumber ?? currentRound;
       const debateLanguage = detectPlayerLanguage(history, displayMove);
 
       setError(null);
       setTimer(0);
-      const nextSkipCount = skippedTurns + (isTimedOut ? 1 : 0);
-      if (isTimedOut) setSkippedTurns(nextSkipCount);
+      const shouldAddSkip = isTimedOut && !options?.suppressSkipIncrement;
+      const nextSkipCount = skippedTurns + (shouldAddSkip ? 1 : 0);
+      if (shouldAddSkip) setSkippedTurns(nextSkipCount);
 
       updateRound(roundNumber, { playerMove: displayMove });
       setInputText("");
@@ -459,7 +477,7 @@ export function DebatelyApp() {
             const fcOpp = await requestOpponentFactcheck(false);
             updateRound(roundNumber, { aiFactcheckOpponent: fcOpp });
           })();
-          setCurrentRound((r) => r + 1);
+          setCurrentRound(Math.min(turnRounds, roundNumber + 1));
           setTimer(turnTimerSeconds);
           setTimerPaused(false);
         }
@@ -491,6 +509,39 @@ export function DebatelyApp() {
   const handleSubmit = useCallback(() => {
     void runTurn(inputText, false);
   }, [inputText, runTurn]);
+
+  const lastRound = history[history.length - 1] ?? null;
+  const lastRoundRetryable = Boolean(
+    lastRound &&
+      (lastRound.opponentMove?.trim() === OPPONENT_FAILED_TEXT ||
+        (lastRound.aiFactcheckPlayer &&
+          isFactcheckFallback(lastRound.aiFactcheckPlayer)) ||
+        (lastRound.aiFactcheckOpponent &&
+          isFactcheckFallback(lastRound.aiFactcheckOpponent))),
+  );
+  const verdictRetryable =
+    phase === "finished" && verdict ? isVerdictFallback(verdict) : false;
+  const canRetryAi =
+    !isAIThinking &&
+    launchCountdown === null &&
+    Boolean(error || lastRoundRetryable || verdictRetryable);
+
+  const handleRetryAi = useCallback(() => {
+    if (!canRetryAi || !lastRound?.playerMove?.trim()) return;
+    const roundToRetry = lastRound.round;
+    const moveToRetry = lastRound.playerMove.trim();
+
+    setError(null);
+    setVerdict(null);
+    if (phase === "finished") {
+      setPhase("debating");
+    }
+    setCurrentRound(roundToRetry);
+    void runTurn(moveToRetry, false, {
+      roundNumber: roundToRetry,
+      suppressSkipIncrement: true,
+    });
+  }, [canRetryAi, lastRound, phase, runTurn]);
 
   const handleSurrender = useCallback(() => {
     if (phase !== "debating" || isAIThinking || launchCountdown !== null) return;
@@ -678,6 +729,15 @@ export function DebatelyApp() {
               >
                 New
               </button>
+              {canRetryAi ? (
+                <button
+                  type="button"
+                  onClick={handleRetryAi}
+                  className="cursor-pointer rounded-xl border border-indigo-500/55 bg-indigo-950/35 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-indigo-200 transition-colors hover:border-indigo-400 hover:bg-indigo-950/55 hover:text-indigo-100 active:scale-[0.98]"
+                >
+                  Retry AI
+                </button>
+              ) : null}
             </div>
           </div>
           <div className="flex min-w-0 items-center justify-center gap-3 border-t border-zinc-800/70 pt-2 sm:order-2 sm:flex-1 sm:border-t-0 sm:pt-0 sm:px-2">

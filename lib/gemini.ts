@@ -48,6 +48,25 @@ function getSearchMaxAttempts(): number {
   return Number.isFinite(n) && n >= 1 ? Math.min(4, Math.floor(n)) : DEFAULT_SEARCH_MAX_ATTEMPTS;
 }
 
+function getModelCandidates(): string[] {
+  const explicit = process.env.GEMINI_MODELS?.trim();
+  if (explicit) {
+    const models = explicit
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (models.length > 0) return Array.from(new Set(models));
+  }
+
+  const primary = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+  const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set([primary, ...fallbacks]));
+}
+
 /** Parse server retry hint from error message (429 / quota). Uncapped raw ms. */
 function parseRetryDelayMsFromError(err: unknown): number | null {
   const msg = err instanceof Error ? err.message : String(err);
@@ -121,8 +140,7 @@ export async function generateGeminiText(params: {
 }): Promise<string> {
   return runSerializedGemini(async () => {
     const apiKey = await resolveGeminiApiKey();
-    const modelName =
-      process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+    const modelCandidates = getModelCandidates();
     const requestTimeoutMs = getRequestTimeoutMs();
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -135,104 +153,140 @@ export async function generateGeminiText(params: {
         : {}),
     };
     const searchRequested = params.enableSearch ?? true;
-    let searchEnabled = searchRequested;
     const maxAttempts = searchRequested
       ? Math.min(MAX_GEMINI_ATTEMPTS, getSearchMaxAttempts())
       : MAX_GEMINI_ATTEMPTS;
-    const effectiveTimeoutMs = searchRequested
-      ? getSearchTimeoutMs(requestTimeoutMs)
-      : requestTimeoutMs;
-    let loggedJsonSearchCompat = false;
+    let lastError: unknown = new Error("Gemini: retry loop exhausted");
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const jsonWithSearch =
-          searchEnabled && params.responseMimeType === "application/json";
-        if (jsonWithSearch && !loggedJsonSearchCompat) {
-          debatelyLog(
-            "gemini",
-            "warn",
-            "search+json mime unsupported; using plain-text JSON mode",
-            { model: modelName },
+    for (let modelIdx = 0; modelIdx < modelCandidates.length; modelIdx++) {
+      const modelName = modelCandidates[modelIdx]!;
+      let searchEnabled = searchRequested;
+      let loggedJsonSearchCompat = false;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const jsonWithSearch =
+            searchEnabled && params.responseMimeType === "application/json";
+          if (jsonWithSearch && !loggedJsonSearchCompat) {
+            debatelyLog(
+              "gemini",
+              "warn",
+              "search+json mime unsupported; using plain-text JSON mode",
+              { model: modelName },
+            );
+            loggedJsonSearchCompat = true;
+          }
+          const generationConfig = {
+            ...baseGenerationConfig,
+            ...(!jsonWithSearch && params.responseMimeType
+              ? { responseMimeType: params.responseMimeType }
+              : {}),
+            ...(!jsonWithSearch &&
+            params.responseSchema &&
+            params.responseMimeType === "application/json"
+              ? { responseSchema: params.responseSchema }
+              : {}),
+          };
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: params.systemInstruction,
+            generationConfig,
+            ...(searchEnabled ? { tools: [buildSearchTool()] } : {}),
+          } as any);
+          const effectiveTimeoutMs = searchEnabled
+            ? getSearchTimeoutMs(requestTimeoutMs)
+            : requestTimeoutMs;
+          const result = await model.generateContent(
+            params.userPrompt,
+            { timeout: effectiveTimeoutMs },
           );
-          loggedJsonSearchCompat = true;
-        }
-        const generationConfig = {
-          ...baseGenerationConfig,
-          ...(!jsonWithSearch && params.responseMimeType
-            ? { responseMimeType: params.responseMimeType }
-            : {}),
-          ...(!jsonWithSearch &&
-          params.responseSchema &&
-          params.responseMimeType === "application/json"
-            ? { responseSchema: params.responseSchema }
-            : {}),
-        };
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: params.systemInstruction,
-          generationConfig,
-          ...(searchEnabled ? { tools: [buildSearchTool()] } : {}),
-        } as any);
-        const result = await model.generateContent(
-          params.userPrompt,
-          { timeout: effectiveTimeoutMs },
-        );
 
-        const text = result.response.text();
-        if (!text?.trim()) {
-          throw new Error("Empty response from Gemini");
-        }
-        return text;
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (searchEnabled && isSearchToolConfigError(e)) {
-          searchEnabled = false;
-          debatelyLog("gemini", "warn", "search tool unavailable; fallback", {
-            message: msg,
-            model: modelName,
-          });
-          attempt -= 1;
-          continue;
-        }
-        const retryable =
-          isRetryableQuotaError(e) || isRetryableTransientError(e);
-        if (attempt >= maxAttempts || !retryable) {
-          debatelyLog("gemini", "error", "generateContent failed", {
-            message: msg,
-            model: modelName,
-            hasSchema: Boolean(params.responseSchema),
+          const text = result.response.text();
+          if (!text?.trim()) {
+            throw new Error("Empty response from Gemini");
+          }
+          return text;
+        } catch (e) {
+          lastError = e;
+          const msg = e instanceof Error ? e.message : String(e);
+          if (searchEnabled && isSearchToolConfigError(e)) {
+            searchEnabled = false;
+            debatelyLog("gemini", "warn", "search tool unavailable; fallback", {
+              message: msg,
+              model: modelName,
+            });
+            attempt -= 1;
+            continue;
+          }
+          const retryable =
+            isRetryableQuotaError(e) || isRetryableTransientError(e);
+          if (attempt >= maxAttempts && retryable && searchEnabled) {
+            // Search path can be unstable under provider load; retry once more without search.
+            debatelyLog("gemini", "warn", "search retries exhausted; retrying without search", {
+              model: modelName,
+              attempt,
+              maxAttempts,
+              message: msg,
+            });
+            searchEnabled = false;
+            attempt = 0;
+            continue;
+          }
+          if (attempt >= maxAttempts || !retryable) {
+            const hasNextModel = modelIdx < modelCandidates.length - 1;
+            if (retryable && hasNextModel) {
+              debatelyLog("gemini", "warn", "model overloaded; switching model", {
+                fromModel: modelName,
+                toModel: modelCandidates[modelIdx + 1],
+                attempt,
+                maxAttempts,
+                searchRequested,
+                searchEnabled,
+                message: msg,
+              });
+              break;
+            }
+            debatelyLog("gemini", "error", "generateContent failed", {
+              message: msg,
+              model: modelName,
+              hasSchema: Boolean(params.responseSchema),
+              attempt,
+              maxAttempts,
+              searchRequested,
+              searchEnabled,
+              requestTimeoutMs: searchEnabled
+                ? getSearchTimeoutMs(requestTimeoutMs)
+                : requestTimeoutMs,
+            });
+            throw e;
+          }
+          const maxWait = searchEnabled
+            ? Math.min(getRetryMaxWaitMs(), 2500)
+            : getRetryMaxWaitMs();
+          const hintedRaw = parseRetryDelayMsFromError(e);
+          const expFallback = Math.min(
+            maxWait,
+            1500 * 2 ** (attempt - 1),
+          );
+          const backoff = Math.min(
+            maxWait,
+            hintedRaw ?? expFallback,
+          );
+          debatelyLog("gemini", "warn", "quota/rate limit — retrying", {
             attempt,
-            maxAttempts,
-            searchRequested,
-            searchEnabled,
-            requestTimeoutMs: effectiveTimeoutMs,
+            nextInMs: backoff,
+            model: modelName,
+            hintFromServer: hintedRaw != null,
+            ...(hintedRaw != null && hintedRaw > maxWait
+              ? { serverHintMs: hintedRaw, cappedToMs: maxWait }
+              : {}),
           });
-          throw e;
+          await sleep(backoff);
         }
-        const maxWait = searchRequested
-          ? Math.min(getRetryMaxWaitMs(), 2500)
-          : getRetryMaxWaitMs();
-        const hintedRaw = parseRetryDelayMsFromError(e);
-        const expFallback = Math.min(
-          maxWait,
-          1500 * 2 ** (attempt - 1),
-        );
-        const backoff = Math.min(
-          maxWait,
-          hintedRaw ?? expFallback,
-        );
-        debatelyLog("gemini", "warn", "quota/rate limit — retrying", {
-          attempt,
-          nextInMs: backoff,
-          hintFromServer: hintedRaw != null,
-          ...(hintedRaw != null && hintedRaw > maxWait
-            ? { serverHintMs: hintedRaw, cappedToMs: maxWait }
-            : {}),
-        });
-        await sleep(backoff);
       }
     }
-    throw new Error("Gemini: retry loop exhausted");
+    throw lastError instanceof Error
+      ? lastError
+      : new Error("Gemini: retry loop exhausted");
   });
 }
