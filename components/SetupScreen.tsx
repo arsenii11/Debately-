@@ -430,27 +430,30 @@ export function SetupScreen({
       const uy = dy / len;
       const dist = Math.max(window.innerWidth, window.innerHeight) * 1.15;
 
-      let fxKind: TapFx["k"] = "nudge";
+      const fxKind: TapFx["k"] =
+        p.anim === "rocketMoon" ||
+        p.anim === "rocketEarth" ||
+        p.anim === "rocketBack"
+          ? "rocket"
+          : glyph === "🤡"
+            ? "hop"
+            : FLEE_ON_CLICK.has(glyph)
+              ? "flee"
+              : "nudge";
       setTapFx((prev) => {
         const next = [...prev];
-        if (p.anim === "rocketMoon") {
+        if (fxKind === "rocket" && p.anim === "rocketMoon") {
           next[i] = { k: "rocket", tx: dist * 0.88, ty: -dist * 0.82 };
-          fxKind = "rocket";
-        } else if (p.anim === "rocketEarth") {
+        } else if (fxKind === "rocket" && p.anim === "rocketEarth") {
           next[i] = { k: "rocket", tx: dist * 0.42, ty: -dist * 0.9 };
-          fxKind = "rocket";
-        } else if (p.anim === "rocketBack") {
+        } else if (fxKind === "rocket" && p.anim === "rocketBack") {
           next[i] = { k: "rocket", tx: -dist * 0.92, ty: dist * 0.8 };
-          fxKind = "rocket";
-        } else if (glyph === "🤡") {
+        } else if (fxKind === "hop") {
           next[i] = { k: "hop", tx: ux * 64, ty: uy * 64 };
-          fxKind = "hop";
-        } else if (FLEE_ON_CLICK.has(glyph)) {
+        } else if (fxKind === "flee") {
           next[i] = { k: "flee", tx: ux * dist, ty: uy * dist };
-          fxKind = "flee";
         } else {
           next[i] = { k: "nudge" };
-          fxKind = "nudge";
         }
         return next;
       });
