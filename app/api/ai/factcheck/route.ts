@@ -147,9 +147,35 @@ export async function POST(request: Request) {
     }
     return NextResponse.json(normalized);
   } catch (e) {
-    debatelyLog("factcheck", "error", "Gemini failed; returning fallback factcheck", {
+    debatelyLog("factcheck", "warn", "Gemini failed on primary call; retrying no-search structured", {
       err: e instanceof Error ? e.message : String(e),
     });
-    return NextResponse.json(FACTCHECK_PARSE_FALLBACK);
+    try {
+      const rawRetry = await generateGeminiText({
+        ...factcheckParams,
+        enableSearch: false,
+        responseSchema: FACTCHECK_RESPONSE_SCHEMA,
+      });
+      const parsedRetry = parseFactcheckJson(rawRetry);
+      const normalizedRetry = finalizeFactcheck(moveText, parsedRetry);
+      if (isFactcheckFallback(parsedRetry)) {
+        debatelyLog("factcheck", "error", "retry parse still fallback", {
+          rawLen: rawRetry.length,
+          rawResponse: rawRetry,
+        });
+      } else {
+        debatelyLog("factcheck", "info", "factcheck ok on no-search retry", {
+          rawLen: rawRetry.length,
+          facts: normalizedRetry.facts.length,
+          relevance: normalizedRetry.relevance,
+        });
+      }
+      return NextResponse.json(normalizedRetry);
+    } catch (retryErr) {
+      debatelyLog("factcheck", "error", "Gemini failed; returning fallback factcheck", {
+        err: retryErr instanceof Error ? retryErr.message : String(retryErr),
+      });
+      return NextResponse.json(FACTCHECK_PARSE_FALLBACK);
+    }
   }
 }

@@ -98,26 +98,26 @@ body {
   0%   { transform: translate(0, 0) rotate(168deg) scale(0.88); opacity: 0; }
   4%   { opacity: 1; }
   /* Up-left escape */
-  12%  { transform: translate(-14vw, -6vh) rotate(150deg) scale(1.02); opacity: 1; }
-  24%  { transform: translate(-34vw, -16vh) rotate(142deg) scale(1.08); opacity: 1; }
-  38%  { transform: translate(-58vw, -30vh) rotate(136deg) scale(1.12); opacity: 1; }
-  52%  { transform: translate(-82vw, -48vh) rotate(130deg) scale(1.08); opacity: 0.94; }
-  68%  { transform: translate(-108vw, -70vh) rotate(124deg) scale(0.98); opacity: 0.66; }
-  84%  { transform: translate(-132vw, -96vh) rotate(118deg) scale(0.8); opacity: 0.14; }
-  100% { transform: translate(-148vw, -118vh) rotate(114deg) scale(0.68); opacity: 0; }
+  12%  { transform: translate(-14vw, -6vh) rotate(258deg) scale(1.02); opacity: 1; }
+  24%  { transform: translate(-34vw, -16vh) rotate(252deg) scale(1.08); opacity: 1; }
+  38%  { transform: translate(-58vw, -30vh) rotate(246deg) scale(1.12); opacity: 1; }
+  52%  { transform: translate(-82vw, -48vh) rotate(240deg) scale(1.08); opacity: 0.94; }
+  68%  { transform: translate(-108vw, -70vh) rotate(234deg) scale(0.98); opacity: 0.66; }
+  84%  { transform: translate(-132vw, -96vh) rotate(228deg) scale(0.8); opacity: 0.14; }
+  100% { transform: translate(-148vw, -118vh) rotate(224deg) scale(0.68); opacity: 0; }
 }
 
 @keyframes setup-rocket-back-v3 {
   0%   { transform: translate(0, 0) rotate(184deg) scale(0.9); opacity: 0; }
   5%   { opacity: 1; }
   /* Down-right dive */
-  11%  { transform: translate(10vw, 10vh) rotate(212deg) scale(1.02); opacity: 1; }
-  22%  { transform: translate(24vw, 24vh) rotate(220deg) scale(1.08); opacity: 1; }
-  34%  { transform: translate(40vw, 42vh) rotate(228deg) scale(1.12); opacity: 1; }
-  48%  { transform: translate(56vw, 62vh) rotate(236deg) scale(1.08); opacity: 0.9; }
-  64%  { transform: translate(76vw, 86vh) rotate(244deg) scale(0.98); opacity: 0.62; }
-  80%  { transform: translate(100vw, 108vh) rotate(252deg) scale(0.8); opacity: 0.18; }
-  100% { transform: translate(124vw, 126vh) rotate(260deg) scale(0.68); opacity: 0; }
+  11%  { transform: translate(10vw, 10vh) rotate(92deg) scale(1.02); opacity: 1; }
+  22%  { transform: translate(24vw, 24vh) rotate(96deg) scale(1.08); opacity: 1; }
+  34%  { transform: translate(40vw, 42vh) rotate(100deg) scale(1.12); opacity: 1; }
+  48%  { transform: translate(56vw, 62vh) rotate(104deg) scale(1.08); opacity: 0.9; }
+  64%  { transform: translate(76vw, 86vh) rotate(108deg) scale(0.98); opacity: 0.62; }
+  80%  { transform: translate(100vw, 108vh) rotate(112deg) scale(0.8); opacity: 0.18; }
+  100% { transform: translate(124vw, 126vh) rotate(116deg) scale(0.68); opacity: 0; }
 }
 
 /* Wide sweeping zigzag diagonally upward */

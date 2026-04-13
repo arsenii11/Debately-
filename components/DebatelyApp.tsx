@@ -524,7 +524,8 @@ export function DebatelyApp() {
   const canRetryAi =
     !isAIThinking &&
     launchCountdown === null &&
-    Boolean(error || lastRoundRetryable || verdictRetryable);
+    (phase === "debating" || phase === "finished") &&
+    history.length > 0;
 
   const handleRetryAi = useCallback(() => {
     if (!canRetryAi || !lastRound?.playerMove?.trim()) return;
