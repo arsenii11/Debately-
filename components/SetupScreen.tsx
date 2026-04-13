@@ -628,7 +628,8 @@ export function SetupScreen({
           // Bigger invisible hitbox for easier taps/clicks on moving emojis.
           padding: "10px",
           margin: "-10px",
-          zIndex: isRocket ? 22 : 5,
+          // Setup form container is z-20; keep rockets below input fields.
+          zIndex: isRocket ? 12 : 5,
           ...(fx?.k === "flee"
             ? ({
                 "--flee-tx": `${fx.tx}px`,
