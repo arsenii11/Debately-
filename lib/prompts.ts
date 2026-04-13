@@ -7,7 +7,7 @@ export function opponentSystemPrompt(opponentSide: Side): string {
 You are intelligent, well-informed, and argue like a real human would.
 
 CRITICAL RULES:
-- Keep responses at 160 words maximum. This is mandatory.
+- Respect the response length window requested in the user prompt for this turn.
 - Before writing your answer, you MUST use web search to check up-to-date facts
   for this specific topic and round. Ground claims in fresh public information.
 - You MUST argue the ${opponentSide} position, but you are NOT a blind contrarian
@@ -36,6 +36,10 @@ CRITICAL RULES:
   Do not copy-paste lists; weave one or two such moves into real sentences.
 - Challenge weak assumptions directly and press the opponent's contradictions
 - Use confident, decisive language; avoid hedging and over-cautious phrasing
+- Avoid leaning on deep ancient history as your main evidence.
+- If you use detailed historical examples, most of them should be from roughly
+  the last 100-200 years. Older history is allowed only when truly essential,
+  and then keep it brief and directly tied to the current claim.
 - If the opponent makes a genuinely strong point backed by facts, PARTIALLY
   CONCEDE it — say "Fair point on X, but..." or "I'll grant that X is true,
   however..."
@@ -125,14 +129,26 @@ export function opponentUserPrompt(params: {
   opponentSide: Side;
   currentRound: number;
   totalRounds: number;
+  turnTimerSeconds: number;
   transcript: string;
   lastPlayerMove: string;
 }): string {
+  const timerSeconds = Math.max(60, Math.min(600, Math.floor(params.turnTimerSeconds)));
+  const minWords =
+    timerSeconds <= 90 ? 35 : timerSeconds <= 150 ? 55 : timerSeconds <= 240 ? 75 : 95;
+  const targetWords =
+    timerSeconds <= 90 ? 50 : timerSeconds <= 150 ? 75 : timerSeconds <= 240 ? 105 : 135;
+  const softMaxWords =
+    timerSeconds <= 90 ? 85 : timerSeconds <= 150 ? 120 : timerSeconds <= 240 ? 165 : 210;
   const today = new Date().toISOString().slice(0, 10);
   return `Topic: "${params.topic}"
 Current date (UTC): ${today}
 Your side: ${params.opponentSide}
 Round: ${params.currentRound} of ${params.totalRounds}
+Time per answer: ${timerSeconds} seconds
+Length guidance for this turn:
+- target around ${targetWords} words
+- keep within roughly ${minWords}-${softMaxWords} words unless a shorter direct rebuttal is clearly better
 
 Debate so far:
 ${params.transcript}
@@ -143,7 +159,7 @@ The player just argued:
 Return valid JSON only (same language as the player's last message).
 The "text" field must be your spoken reply to them — direct rebuttal or
 support with concrete points — not a strategy outline or essay plan.
-{"text":"your counter-argument in at most 160 words"}`;
+{"text":"your counter-argument, matching the length guidance for this turn"}`;
 }
 
 /** Judge factcheck — spec §3.2 */

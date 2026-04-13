@@ -8,11 +8,19 @@ import {
   opponentUserPrompt,
 } from "@/lib/prompts";
 import { extractBalancedJsonObject } from "@/lib/extractJson";
-import { countWords, truncateToMaxWords } from "@/lib/truncateWords";
+import { countWords } from "@/lib/truncateWords";
 import type { RoundData, Side } from "@/lib/types";
 
-/** Hard cap (prompt also asks for ≤120 words). */
-const OPPONENT_MAX_WORDS = 120;
+function getOpponentLengthProfile(turnTimerSeconds: number): {
+  softMaxWords: number;
+  maxOutputTokens: number;
+} {
+  const t = Math.max(60, Math.min(600, Math.floor(turnTimerSeconds)));
+  if (t <= 90) return { softMaxWords: 85, maxOutputTokens: 360 };
+  if (t <= 150) return { softMaxWords: 120, maxOutputTokens: 520 };
+  if (t <= 240) return { softMaxWords: 165, maxOutputTokens: 760 };
+  return { softMaxWords: 210, maxOutputTokens: 980 };
+}
 
 type Body = {
   topic?: string;
@@ -21,6 +29,7 @@ type Body = {
   history?: RoundData[];
   currentRound?: number;
   totalRounds?: number;
+  turnTimerSeconds?: number;
 };
 
 type OpponentResponse = {
@@ -64,6 +73,9 @@ export async function POST(request: Request) {
     typeof body.currentRound === "number" ? body.currentRound : 1;
   const totalRounds =
     typeof body.totalRounds === "number" ? body.totalRounds : 3;
+  const turnTimerSeconds =
+    typeof body.turnTimerSeconds === "number" ? body.turnTimerSeconds : 120;
+  const lengthProfile = getOpponentLengthProfile(turnTimerSeconds);
 
   const last = history[history.length - 1];
   const lastPlayerMove = last?.playerMove?.trim() ?? "";
@@ -82,10 +94,12 @@ export async function POST(request: Request) {
         opponentSide,
         currentRound,
         totalRounds,
+        turnTimerSeconds,
         transcript,
         lastPlayerMove,
       }),
       responseMimeType: "application/json" as const,
+      maxOutputTokens: lengthProfile.maxOutputTokens,
     };
 
     let raw: string;
@@ -109,25 +123,23 @@ export async function POST(request: Request) {
     const parsed = parseOpponentResponse(raw);
     const trimmed = (parsed?.text ?? raw).trim();
     const beforeWords = countWords(trimmed);
-    const text = truncateToMaxWords(trimmed, OPPONENT_MAX_WORDS);
+    const text = trimmed || "Debately returned an empty response.";
     const afterWords = countWords(text);
-    if (beforeWords > OPPONENT_MAX_WORDS) {
-      debatelyLog("opponent", "warn", "truncated Debately reply to word cap", {
-        beforeWords,
-        afterWords,
-        cap: OPPONENT_MAX_WORDS,
-        rawResponse: raw,
-        replyPreview: clipForLog(text),
-      });
-    } else {
-      debatelyLog("opponent", "info", "Debately response ok", {
+    if (afterWords > lengthProfile.softMaxWords) {
+      debatelyLog("opponent", "warn", "Debately reply exceeded soft length guidance", {
         words: afterWords,
+        softMaxWords: lengthProfile.softMaxWords,
         rawResponse: raw,
         replyPreview: clipForLog(text),
       });
     }
+    debatelyLog("opponent", "info", "Debately response ok", {
+      words: afterWords,
+      rawResponse: raw,
+      replyPreview: clipForLog(text),
+    });
     return NextResponse.json({
-      text: text || "Debately returned an empty response.",
+      text,
     });
   } catch (e) {
     debatelyLog("opponent", "error", "Gemini failed for Debately", {

@@ -398,6 +398,7 @@ export function DebatelyApp() {
             history: histForOpp,
             currentRound: roundNumber,
             totalRounds: turnRounds,
+            turnTimerSeconds,
           });
           opponentText =
             oppRes.text?.trim() || "Debately failed to respond.";
