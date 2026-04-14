@@ -294,8 +294,8 @@ const PARTICLES: Particle[] = [
     bottom: "5%",
     left: EDGE_WIDE,
     size: "1.12rem",
-    dur: "6.8s",
-    delay: "0.7s",
+    dur: "18s",
+    delay: "1.4s",
     bright: true,
     desktopOnly: false,
   },
@@ -740,6 +740,7 @@ export function SetupScreen({
           </div>
         );
       })}
+      <div className="relative z-30">
       <header className="text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">
           Debately
@@ -890,6 +891,7 @@ export function SetupScreen({
       >
         Start Debate — {turnRounds} rounds
       </button>
+      </div>
     </div>
   );
 }

@@ -309,7 +309,7 @@ body {
   bottom: 1.55rem;
   font-size: 1.12rem;
   line-height: 1;
-  animation: setup-earth-launch var(--pd, 14s) cubic-bezier(0.33, 0.82, 0.22, 1)
+  animation: setup-earth-launch var(--pd, 18s) cubic-bezier(0.16, 0.02, 0.26, 1)
     infinite var(--pdd, 0s);
 }
 
@@ -318,31 +318,28 @@ body {
     transform: translate(-50%, 0) rotate(-40deg) scale(0.8);
     opacity: 0;
   }
-  5% {
+  58% {
+    transform: translate(-50%, 0) rotate(-40deg) scale(0.8);
+    opacity: 0;
+  }
+  63% {
+    transform: translate(-50%, calc(-4vh)) rotate(-34deg) scale(0.86);
     opacity: 1;
   }
-  18% {
-    transform: translate(-49%, calc(-9vh)) rotate(-30deg) scale(0.92);
+  74% {
+    transform: translate(-44%, calc(-20vh)) rotate(-18deg) scale(0.98);
     opacity: 1;
   }
-  42% {
-    transform: translate(-42%, calc(-28vh)) rotate(-14deg) scale(1.04);
-    opacity: 1;
-  }
-  68% {
-    transform: translate(-28%, calc(-48vh)) rotate(2deg) scale(1.08);
-    opacity: 0.85;
-  }
-  84% {
-    transform: translate(-7%, calc(-73vh)) rotate(12deg) scale(0.98);
-    opacity: 0.3;
+  86% {
+    transform: translate(-28%, calc(-58vh)) rotate(1deg) scale(1.08);
+    opacity: 0.82;
   }
   94% {
-    transform: translate(6%, calc(-98vh)) rotate(17deg) scale(0.86);
-    opacity: 0.08;
+    transform: translate(-6%, calc(-99vh)) rotate(13deg) scale(0.9);
+    opacity: 0.2;
   }
   100% {
-    transform: translate(15%, calc(-118vh)) rotate(20deg) scale(0.74);
+    transform: translate(12%, calc(-130vh)) rotate(18deg) scale(0.74);
     opacity: 0;
   }
 }
@@ -352,29 +349,28 @@ body {
     transform: translate(-50%, 0) rotate(-46deg) scale(0.78);
     opacity: 0;
   }
-  5% { opacity: 1; }
-  20% {
-    transform: translate(-54%, calc(-10vh)) rotate(-34deg) scale(0.94);
+  60% {
+    transform: translate(-50%, 0) rotate(-46deg) scale(0.78);
+    opacity: 0;
+  }
+  65% {
+    transform: translate(-54%, calc(-5vh)) rotate(-36deg) scale(0.85);
     opacity: 1;
   }
-  44% {
-    transform: translate(-62%, calc(-31vh)) rotate(-19deg) scale(1.05);
+  76% {
+    transform: translate(-62%, calc(-22vh)) rotate(-23deg) scale(0.98);
     opacity: 1;
   }
-  72% {
-    transform: translate(-68%, calc(-55vh)) rotate(-4deg) scale(1.08);
-    opacity: 0.78;
-  }
-  86% {
-    transform: translate(-74%, calc(-78vh)) rotate(10deg) scale(0.98);
-    opacity: 0.26;
+  88% {
+    transform: translate(-69%, calc(-60vh)) rotate(-7deg) scale(1.08);
+    opacity: 0.8;
   }
   95% {
-    transform: translate(-78%, calc(-101vh)) rotate(16deg) scale(0.84);
-    opacity: 0.06;
+    transform: translate(-76%, calc(-102vh)) rotate(9deg) scale(0.88);
+    opacity: 0.18;
   }
   100% {
-    transform: translate(-82%, calc(-122vh)) rotate(21deg) scale(0.72);
+    transform: translate(-81%, calc(-132vh)) rotate(15deg) scale(0.72);
     opacity: 0;
   }
 }
@@ -384,29 +380,28 @@ body {
     transform: translate(-50%, 0) rotate(-34deg) scale(0.82);
     opacity: 0;
   }
-  5% { opacity: 1; }
-  18% {
-    transform: translate(-44%, calc(-9vh)) rotate(-22deg) scale(0.93);
-    opacity: 1;
-  }
-  38% {
-    transform: translate(-30%, calc(-25vh)) rotate(-9deg) scale(1.04);
-    opacity: 1;
+  57% {
+    transform: translate(-50%, 0) rotate(-34deg) scale(0.82);
+    opacity: 0;
   }
   62% {
-    transform: translate(-12%, calc(-47vh)) rotate(8deg) scale(1.08);
+    transform: translate(-46%, calc(-4vh)) rotate(-24deg) scale(0.86);
+    opacity: 1;
+  }
+  73% {
+    transform: translate(-34%, calc(-18vh)) rotate(-11deg) scale(0.98);
+    opacity: 1;
+  }
+  85% {
+    transform: translate(-15%, calc(-56vh)) rotate(7deg) scale(1.08);
     opacity: 0.84;
   }
-  84% {
-    transform: translate(14%, calc(-78vh)) rotate(18deg) scale(0.98);
-    opacity: 0.28;
-  }
-  95% {
-    transform: translate(24%, calc(-103vh)) rotate(23deg) scale(0.84);
-    opacity: 0.07;
+  94% {
+    transform: translate(10%, calc(-101vh)) rotate(18deg) scale(0.9);
+    opacity: 0.18;
   }
   100% {
-    transform: translate(32%, calc(-124vh)) rotate(26deg) scale(0.72);
+    transform: translate(28%, calc(-134vh)) rotate(24deg) scale(0.72);
     opacity: 0;
   }
 }
@@ -428,12 +423,12 @@ body {
 }
 
 .setup-earth-rocket-v2 {
-  animation: setup-earth-launch-v2 var(--pd, 14s) cubic-bezier(0.33, 0.82, 0.22, 1)
+  animation: setup-earth-launch-v2 var(--pd, 18s) cubic-bezier(0.16, 0.02, 0.26, 1)
     infinite var(--pdd, 0s);
 }
 
 .setup-earth-rocket-v3 {
-  animation: setup-earth-launch-v3 var(--pd, 14s) cubic-bezier(0.33, 0.82, 0.22, 1)
+  animation: setup-earth-launch-v3 var(--pd, 18s) cubic-bezier(0.16, 0.02, 0.26, 1)
     infinite var(--pdd, 0s);
 }
 
