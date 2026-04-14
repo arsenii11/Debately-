@@ -740,7 +740,7 @@ export function SetupScreen({
           </div>
         );
       })}
-      <div className="relative z-30">
+      <div className="relative z-30 flex flex-col gap-8">
       <header className="text-center">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">
           Debately
