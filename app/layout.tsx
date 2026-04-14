@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Debately Solo",
-  description: "Debate an AI opponent with a neutral Judge — MVP",
+  description: "Debate an AI opponent with a neutral Judge",
 };
 
 export default function RootLayout({

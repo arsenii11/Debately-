@@ -745,7 +745,7 @@ export function SetupScreen({
           Debately
         </h1>
         <p className="mt-1 text-sm font-medium uppercase tracking-widest text-fuchsia-400/90">
-          Solo — MVP
+          Solo
         </p>
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
           Pick a topic, choose a side, and debate Debately. A neutral Judge
