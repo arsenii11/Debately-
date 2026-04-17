@@ -64,7 +64,36 @@ function finalizeFactcheck(moveText: string, parsed: FactCheck): FactCheck {
 }
 
 function hasMalformedFactText(parsed: FactCheck): boolean {
-  return parsed.facts.some((f) => /```|^\s*\{|\uFFFD/.test(`${f.claim} ${f.comment}`));
+  if (parsed.facts.length === 0) return true;
+  return parsed.facts.some((f) => {
+    const claim = f.claim.trim();
+    const comment = f.comment.trim();
+    if (!claim || !comment) return true;
+    return /```|^\s*\{|\uFFFD/.test(`${claim} ${comment}`);
+  });
+}
+
+function rawLooksTruncatedJson(raw: string): boolean {
+  const t = raw.trim();
+  if (!t) return true;
+  // When Gemini cuts off mid-object, response often ends with commas/colons or
+  // has unbalanced braces. Treat that as malformed and force retry.
+  if (/[,:]\s*$/.test(t)) return true;
+  const openCurly = (t.match(/\{/g) ?? []).length;
+  const closeCurly = (t.match(/\}/g) ?? []).length;
+  return openCurly !== closeCurly;
+}
+
+function shouldExpandFactcheck(moveText: string, parsed: FactCheck): boolean {
+  if (isFactcheckFallback(parsed)) return false;
+  const moveWords = countWords(moveText);
+  if (moveWords < 18) return false;
+
+  const nonEmptyComments = parsed.facts.filter((f) => f.comment.trim().length > 0);
+  const commentChars = nonEmptyComments.reduce((sum, f) => sum + f.comment.trim().length, 0);
+  if (parsed.facts.length < 2) return true;
+  if (nonEmptyComments.length < parsed.facts.length) return true;
+  return commentChars < 180;
 }
 
 export async function POST(request: Request) {
@@ -117,7 +146,11 @@ export async function POST(request: Request) {
     const raw = await generateGeminiText(factcheckParams);
     let parsed = parseFactcheckJson(raw);
     if (
-      (isFactcheckFallback(parsed) || hasMalformedFactText(parsed)) &&
+      (
+        isFactcheckFallback(parsed) ||
+        hasMalformedFactText(parsed) ||
+        rawLooksTruncatedJson(raw)
+      ) &&
       raw.trim().length > 0
     ) {
       debatelyLog("factcheck", "warn", "parse fallback with non-empty body; retry without search (structured)", {
@@ -166,6 +199,33 @@ export async function POST(request: Request) {
       } catch (retryErr) {
         debatelyLog("factcheck", "warn", "structured retry without search failed", {
           err: retryErr instanceof Error ? retryErr.message : String(retryErr),
+        });
+      }
+    }
+    if (shouldExpandFactcheck(moveText, parsed)) {
+      debatelyLog("factcheck", "warn", "factcheck too short for long argument; retrying expanded", {
+        moveWords: countWords(moveText),
+        facts: parsed.facts.length,
+        commentChars: parsed.facts.reduce((sum, f) => sum + f.comment.trim().length, 0),
+      });
+      try {
+        const rawExpanded = await generateGeminiText({
+          ...factcheckParams,
+          userPrompt:
+            factcheckParams.userPrompt +
+            `\n\nEXPANSION RETRY: The previous factcheck was too short. Extract 2-3 factual claims (when present) and provide concise but complete comments for each claim (up to 2 short sentences each). Keep strict JSON shape.`,
+          enableSearch: false,
+          responseSchema: FACTCHECK_RESPONSE_SCHEMA,
+          maxOutputTokens: 2600,
+          temperature: 0.2,
+        });
+        const parsedExpanded = parseFactcheckJson(rawExpanded);
+        if (!isFactcheckFallback(parsedExpanded) && !hasMalformedFactText(parsedExpanded)) {
+          parsed = parsedExpanded;
+        }
+      } catch (expandedErr) {
+        debatelyLog("factcheck", "warn", "expanded factcheck retry failed", {
+          err: expandedErr instanceof Error ? expandedErr.message : String(expandedErr),
         });
       }
     }
