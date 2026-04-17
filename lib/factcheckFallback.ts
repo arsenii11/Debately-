@@ -135,21 +135,40 @@ function unescapeJsonString(s: string): string {
 
 function recoverFactcheckFromPartialRaw(raw: string): FactCheck | null {
   const facts: FactCheck["facts"] = [];
-  const re =
+  // Pair claim + status; comment is optional (may be missing or truncated).
+  const reFull =
     /"claim"\s*:\s*"((?:\\.|[^"\\])*)"\s*,[\s\S]*?"status"\s*:\s*"((?:\\.|[^"\\])*)"\s*,[\s\S]*?"comment"\s*:\s*"((?:\\.|[^"\\])*)"/gm;
+  const seenClaims = new Set<string>();
   let m: RegExpExecArray | null;
-  while ((m = re.exec(raw)) !== null) {
+  while ((m = reFull.exec(raw)) !== null) {
+    const claim = unescapeJsonString(m[1]).trim() || "Claim";
     facts.push({
-      claim: unescapeJsonString(m[1]).trim() || "Claim",
+      claim,
       status: normalizeFactStatus(unescapeJsonString(m[2])),
       comment: unescapeJsonString(m[3]).trim(),
     });
+    seenClaims.add(claim);
+  }
+  if (facts.length === 0) {
+    // Salvage pairs with missing/truncated comment.
+    const rePair =
+      /"claim"\s*:\s*"((?:\\.|[^"\\])*)"\s*,[\s\S]*?"status"\s*:\s*"((?:\\.|[^"\\])*)"/gm;
+    while ((m = rePair.exec(raw)) !== null) {
+      const claim = unescapeJsonString(m[1]).trim() || "Claim";
+      if (seenClaims.has(claim)) continue;
+      facts.push({
+        claim,
+        status: normalizeFactStatus(unescapeJsonString(m[2])),
+        comment: "",
+      });
+      seenClaims.add(claim);
+    }
   }
   if (facts.length === 0) return null;
 
   const uniqueFacts = Array.from(
     new Map(
-      facts.map((f) => [`${f.claim}::${f.status}::${f.comment}`, f]),
+      facts.map((f) => [`${f.claim}::${f.status}`, f]),
     ).values(),
   );
   const relM = /"relevance"\s*:\s*(-?\d+(?:\.\d+)?)/.exec(raw);

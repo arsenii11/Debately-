@@ -10,6 +10,7 @@ import {
 } from "@/lib/factcheckFallback";
 import {
   JUDGE_FACTCHECK_SYSTEM,
+  JUDGE_FACTCHECK_COMPACT_RETRY_SUFFIX,
   judgeFactcheckUserPrompt,
 } from "@/lib/prompts";
 import type { FactCheck, Side } from "@/lib/types";
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
       moveText,
       outputLanguage,
     }),
-    maxOutputTokens: 1400,
+    maxOutputTokens: 1800,
     responseMimeType: "application/json" as const,
     temperature: 0.35,
     enableSearch: true,
@@ -110,12 +111,41 @@ export async function POST(request: Request) {
       try {
         const raw2 = await generateGeminiText({
           ...factcheckParams,
+          userPrompt:
+            factcheckParams.userPrompt + JUDGE_FACTCHECK_COMPACT_RETRY_SUFFIX,
           enableSearch: false,
           responseSchema: FACTCHECK_RESPONSE_SCHEMA,
+          maxOutputTokens: 2000,
+          temperature: 0.2,
         });
         const parsed2 = parseFactcheckJson(raw2);
         if (!isFactcheckFallback(parsed2)) {
           parsed = parsed2;
+        } else {
+          debatelyLog("factcheck", "warn", "structured retry still fallback", {
+            rawLen: raw2.length,
+            rawPreview: raw2.slice(0, 400),
+          });
+          // Last-chance retry: no search, no schema, compact retry suffix.
+          try {
+            const raw3 = await generateGeminiText({
+              ...factcheckParams,
+              userPrompt:
+                factcheckParams.userPrompt + JUDGE_FACTCHECK_COMPACT_RETRY_SUFFIX,
+              enableSearch: false,
+              responseSchema: undefined,
+              maxOutputTokens: 1400,
+              temperature: 0.1,
+            });
+            const parsed3 = parseFactcheckJson(raw3);
+            if (!isFactcheckFallback(parsed3)) {
+              parsed = parsed3;
+            }
+          } catch (lastErr) {
+            debatelyLog("factcheck", "warn", "last-chance no-schema retry failed", {
+              err: lastErr instanceof Error ? lastErr.message : String(lastErr),
+            });
+          }
         }
       } catch (retryErr) {
         debatelyLog("factcheck", "warn", "structured retry without search failed", {

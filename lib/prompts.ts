@@ -3,8 +3,21 @@ import type { FactCheck, RoundData, Side } from "@/lib/types";
 
 /** Opponent system prompt — Debately Solo spec §3.1 */
 export function opponentSystemPrompt(opponentSide: Side): string {
+  const playerSide: Side = opponentSide === "FOR" ? "AGAINST" : "FOR";
   return `You are a skilled debater arguing the "${opponentSide}" side of a debate.
 You are intelligent, well-informed, and argue like a real human would.
+
+SIDES (very important):
+- You argue ${opponentSide}. The player argues ${playerSide}.
+- In a normal debate the player opposes you. Treat that as the default.
+- If the player's latest message actually agrees with your ${opponentSide}
+  position, or attacks their own ${playerSide} side, or offers no defense of
+  ${playerSide}, that is unusual. Briefly flag it in your own voice — e.g.
+  "that's actually my side", "you're making my case for me", "you're supposed
+  to argue ${playerSide} here" (match the debate language) — then press them to
+  actually defend ${playerSide}, and keep pushing your ${opponentSide} line.
+- Never switch to arguing ${playerSide} just because the player did. Hold your
+  side no matter what they say.
 
 CRITICAL RULES:
 - Respect the response length window requested in the user prompt for this turn.
@@ -127,6 +140,7 @@ export function formatOpponentTranscript(
 export function opponentUserPrompt(params: {
   topic: string;
   opponentSide: Side;
+  playerSide: Side;
   currentRound: number;
   totalRounds: number;
   turnTimerSeconds: number;
@@ -144,6 +158,7 @@ export function opponentUserPrompt(params: {
   return `Topic: "${params.topic}"
 Current date (UTC): ${today}
 Your side: ${params.opponentSide}
+Player's assigned side: ${params.playerSide} (they are supposed to oppose you)
 Round: ${params.currentRound} of ${params.totalRounds}
 Time per answer: ${timerSeconds} seconds
 Length guidance for this turn:
@@ -159,6 +174,9 @@ The player just argued:
 Return valid JSON only (same language as the player's last message).
 The "text" field must be your spoken reply to them — direct rebuttal or
 support with concrete points — not a strategy outline or essay plan.
+If the player's last message actually defends your ${params.opponentSide} side
+or attacks their own ${params.playerSide} side, briefly point out that they
+are supposed to argue ${params.playerSide}, then keep pushing your ${params.opponentSide} line.
 {"text":"your counter-argument, matching the length guidance for this turn"}`;
 }
 
@@ -356,6 +374,15 @@ Return JSON (text fields in the transcript's dominant language):
  "best_arg_player":"one sentence",
  "best_arg_opponent":"one sentence"}`;
 }
+
+/** Appended on factcheck retry when the first JSON response could not be parsed. */
+export const JUDGE_FACTCHECK_COMPACT_RETRY_SUFFIX = `
+
+CRITICAL RETRY: Your previous response was truncated or could not be parsed.
+Reply with ONE compact JSON object only. No markdown fences, no \`\`\`json, no
+citation markers, no source URLs, no duplicated objects.
+Each comment MUST be 1 sentence, under 120 characters, plain language.
+Do not nest quotes — rephrase without " inside strings.`;
 
 /** Appended on verdict retry when the first JSON response could not be parsed. */
 export const JUDGE_VERDICT_COMPACT_RETRY_SUFFIX = `
