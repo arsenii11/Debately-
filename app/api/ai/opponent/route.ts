@@ -34,6 +34,23 @@ function looksTruncated(text: string, minWords: number): boolean {
   return false;
 }
 
+function stripAccidentalDuplicateBlock(text: string): string {
+  const t = text.trim();
+  if (t.length < 220) return t;
+  const probeLen = Math.min(160, Math.floor(t.length * 0.45));
+  const probe = t.slice(0, probeLen).trim();
+  if (probe.length < 80) return t;
+
+  const repeatAt = t.indexOf(probe, Math.floor(probe.length * 0.8));
+  if (repeatAt <= 0) return t;
+
+  const first = t.slice(0, repeatAt).trim();
+  const second = t.slice(repeatAt).trim();
+  if (first.length < 80 || second.length < 80) return t;
+  if (!second.startsWith(probe.slice(0, Math.min(100, probe.length)))) return t;
+  return first;
+}
+
 type Body = {
   topic?: string;
   playerSide?: Side;
@@ -137,7 +154,7 @@ export async function POST(request: Request) {
     }
 
     const parsed = parseOpponentResponse(raw);
-    let trimmed = (parsed?.text ?? raw).trim();
+    let trimmed = stripAccidentalDuplicateBlock((parsed?.text ?? raw).trim());
 
     // If the result looks cut mid-sentence, retry once with a bigger budget
     // and a compact-reply hint so the model finishes its thought.
@@ -161,7 +178,7 @@ export async function POST(request: Request) {
           maxOutputTokens: Math.round(lengthProfile.maxOutputTokens * 2),
         });
         const parsed2 = parseOpponentResponse(raw2);
-        const trimmed2 = (parsed2?.text ?? raw2).trim();
+        const trimmed2 = stripAccidentalDuplicateBlock((parsed2?.text ?? raw2).trim());
         if (trimmed2 && !looksTruncated(trimmed2, lengthProfile.softMaxWords)) {
           raw = raw2;
           trimmed = trimmed2;

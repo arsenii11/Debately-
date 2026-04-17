@@ -63,6 +63,10 @@ function finalizeFactcheck(moveText: string, parsed: FactCheck): FactCheck {
   return out;
 }
 
+function hasMalformedFactText(parsed: FactCheck): boolean {
+  return parsed.facts.some((f) => /```|^\s*\{|\uFFFD/.test(`${f.claim} ${f.comment}`));
+}
+
 export async function POST(request: Request) {
   let body: Body;
   try {
@@ -83,6 +87,12 @@ export async function POST(request: Request) {
   const playerSide = body.playerSide === "AGAINST" ? "AGAINST" : "FOR";
   const opponentSide = body.opponentSide === "FOR" ? "FOR" : "AGAINST";
   const side: Side = speaker === "player" ? playerSide : opponentSide;
+  const hasNoPreviousArgument =
+    previousMoveText.trim().length === 0 ||
+    /^no previous argument$/i.test(previousMoveText.trim());
+  // First user move (before any opponent reply) is the noisiest place for
+  // malformed search output. Prefer strict structured mode immediately.
+  const firstPlayerFactcheck = speaker === "player" && round <= 1 && hasNoPreviousArgument;
 
   const factcheckParams = {
     systemInstruction: JUDGE_FACTCHECK_SYSTEM,
@@ -97,13 +107,19 @@ export async function POST(request: Request) {
     maxOutputTokens: 1800,
     responseMimeType: "application/json" as const,
     temperature: 0.35,
-    enableSearch: true,
+    enableSearch: !firstPlayerFactcheck,
+    ...(firstPlayerFactcheck
+      ? { responseSchema: FACTCHECK_RESPONSE_SCHEMA }
+      : {}),
   };
 
   try {
     const raw = await generateGeminiText(factcheckParams);
     let parsed = parseFactcheckJson(raw);
-    if (isFactcheckFallback(parsed) && raw.trim().length > 0) {
+    if (
+      (isFactcheckFallback(parsed) || hasMalformedFactText(parsed)) &&
+      raw.trim().length > 0
+    ) {
       debatelyLog("factcheck", "warn", "parse fallback with non-empty body; retry without search (structured)", {
         rawLen: raw.length,
         rawPreview: raw.slice(0, 400),

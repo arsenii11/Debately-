@@ -200,11 +200,19 @@ Your job:
    appeal_to_emotion, red_herring
 
 IMPORTANT:
-- You MUST use web search before finalizing this factcheck, especially for
-  recent events, current politics, wars, elections, sanctions, markets, and
-  fast-changing statistics.
+- Use web search when available before finalizing this factcheck, especially
+  for recent events, current politics, wars, elections, sanctions, markets,
+  and fast-changing statistics.
 - If evidence is conflicting or unclear after searching, mark as "disputed"
   rather than guessing.
+- Do NOT treat official policy goals/statements as proof that outcomes happen
+  in reality. Distinguish "stated purpose" from "observed effect".
+- For claims about real-world effectiveness, abuse, discrimination, or
+  enforcement patterns, prefer independent evidence (audits, court cases,
+  investigations, stats, credible reporting). If only official claims exist,
+  status should usually be "disputed", not "verified".
+- Be careful with absolute words ("always", "never", "all", "none"). Unless
+  very strong evidence supports absolutes, downgrade to "disputed" or "false".
 - Output strict JSON only. Do not add citation markers like [cite: ...], URLs,
   source lists, or any extra blocks outside the JSON object.
 - KEEP EACH COMMENT VERY SHORT — 1–2 sentences max, plain language, no padding.

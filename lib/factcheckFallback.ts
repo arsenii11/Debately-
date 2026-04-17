@@ -42,6 +42,24 @@ function normalizeRelevance(v: unknown): number {
   return 50;
 }
 
+function sanitizeClaimText(v: string): string {
+  return v
+    .replace(/```(?:json)?/gi, " ")
+    .replace(/\uFFFD/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sanitizeCommentText(v: string): string {
+  let text = v.replace(/\uFFFD/g, "").trim();
+  // If model started to emit a second JSON object inside comment, cut it.
+  text = text.replace(/```(?:json)?[\s\S]*$/i, "").trim();
+  text = text.replace(/\n\s*\{\s*"facts"[\s\S]*$/i, "").trim();
+  text = text.replace(/\{\s*"facts"[\s\S]*$/i, "").trim();
+  text = text.replace(/\s+/g, " ").trim();
+  return text;
+}
+
 function unwrapFactcheckPayload(parsed: unknown): Record<string, unknown> | null {
   let p: unknown = parsed;
   for (let i = 0; i < 4; i++) {
@@ -106,12 +124,13 @@ function parseFactcheckObject(parsed: unknown): FactCheck | null {
   const facts = factsRaw.map((item) => {
     const f = item && typeof item === "object" ? (item as Record<string, unknown>) : {};
     return {
-      claim: typeof f.claim === "string" ? f.claim : String(f.claim ?? "Claim"),
+      claim: sanitizeClaimText(
+        typeof f.claim === "string" ? f.claim : String(f.claim ?? "Claim"),
+      ) || "Claim",
       status: normalizeFactStatus(f.status),
-      comment:
-        typeof f.comment === "string"
-          ? f.comment
-          : String(f.comment ?? ""),
+      comment: sanitizeCommentText(
+        typeof f.comment === "string" ? f.comment : String(f.comment ?? ""),
+      ),
     };
   });
 
@@ -141,11 +160,11 @@ function recoverFactcheckFromPartialRaw(raw: string): FactCheck | null {
   const seenClaims = new Set<string>();
   let m: RegExpExecArray | null;
   while ((m = reFull.exec(raw)) !== null) {
-    const claim = unescapeJsonString(m[1]).trim() || "Claim";
+    const claim = sanitizeClaimText(unescapeJsonString(m[1])) || "Claim";
     facts.push({
       claim,
       status: normalizeFactStatus(unescapeJsonString(m[2])),
-      comment: unescapeJsonString(m[3]).trim(),
+      comment: sanitizeCommentText(unescapeJsonString(m[3])),
     });
     seenClaims.add(claim);
   }
@@ -154,7 +173,7 @@ function recoverFactcheckFromPartialRaw(raw: string): FactCheck | null {
     const rePair =
       /"claim"\s*:\s*"((?:\\.|[^"\\])*)"\s*,[\s\S]*?"status"\s*:\s*"((?:\\.|[^"\\])*)"/gm;
     while ((m = rePair.exec(raw)) !== null) {
-      const claim = unescapeJsonString(m[1]).trim() || "Claim";
+      const claim = sanitizeClaimText(unescapeJsonString(m[1])) || "Claim";
       if (seenClaims.has(claim)) continue;
       facts.push({
         claim,
