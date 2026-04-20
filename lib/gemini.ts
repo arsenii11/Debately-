@@ -113,6 +113,16 @@ function isRetryableTransientError(e: unknown): boolean {
   );
 }
 
+function isModelUnavailableError(e: unknown): boolean {
+  if (e instanceof GoogleGenerativeAIFetchError) {
+    if (e.status === 404) return true;
+  }
+  const msg = e instanceof Error ? e.message : String(e);
+  return /404|not found|no longer available|unknown model|model .* unavailable/i.test(
+    msg,
+  );
+}
+
 function buildSearchTool(): Record<string, unknown> {
   const mode = process.env.GEMINI_SEARCH_TOOL?.trim();
   if (mode === "googleSearchRetrieval") {
@@ -237,8 +247,9 @@ export async function generateGeminiText(params: {
           }
           if (attempt >= maxAttempts || !retryable) {
             const hasNextModel = modelIdx < modelCandidates.length - 1;
-            if (retryable && hasNextModel) {
-              debatelyLog("gemini", "warn", "model overloaded; switching model", {
+            const unavailable = isModelUnavailableError(e);
+            if ((retryable || unavailable) && hasNextModel) {
+              debatelyLog("gemini", "warn", "switching to next model candidate", {
                 fromModel: modelName,
                 toModel: modelCandidates[modelIdx + 1],
                 attempt,
@@ -246,6 +257,7 @@ export async function generateGeminiText(params: {
                 searchRequested,
                 searchEnabled,
                 message: msg,
+                ...(unavailable ? { reason: "model_unavailable" } : {}),
               });
               break;
             }
