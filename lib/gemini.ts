@@ -49,7 +49,8 @@ function getSearchMaxAttempts(): number {
 }
 
 function getModelCandidates(): string[] {
-  const explicit = process.env.GEMINI_MODELS?.trim();
+  const explicit =
+    process.env.GEMINI_MODELS?.trim() ?? process.env.MODELS?.trim();
   if (explicit) {
     const models = explicit
       .split(",")
@@ -58,6 +59,8 @@ function getModelCandidates(): string[] {
     if (models.length > 0) return Array.from(new Set(models));
   }
 
+  // Backward-compatible fallback for older deployments that still provide
+  // a single-model variable instead of MODELS.
   const primary = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
   const fallbacks = (process.env.GEMINI_FALLBACK_MODELS ?? "")
     .split(",")
