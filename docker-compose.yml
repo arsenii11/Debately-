@@ -18,8 +18,14 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      GEMINI_MODEL: gemini-2.5-flash
+      GEMINI_USE_VERTEX: "true"
+      GEMINI_VERTEX_PROJECT: REDACTED-PROJECT-ID
+      GEMINI_VERTEX_LOCATION: us-central1
+      MODELS: gemini-2.5-flash,gemini-1.5-flash
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/vertex-sa.json
       GEMINI_SEARCH_TOOL: googleSearch
+    volumes:
+      - ./secrets/vertex-sa.json:/run/secrets/vertex-sa.json:ro
     expose:
       - "3000"
     healthcheck:
