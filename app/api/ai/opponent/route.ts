@@ -156,8 +156,8 @@ export async function POST(request: Request) {
     const parsed = parseOpponentResponse(raw);
     let trimmed = stripAccidentalDuplicateBlock((parsed?.text ?? raw).trim());
 
-    // If the result looks cut mid-sentence, retry once with a bigger budget
-    // and a compact-reply hint so the model finishes its thought.
+    // If the result looks cut mid-sentence, retry in plain-text mode so the
+    // model spends all tokens on content rather than JSON scaffolding.
     if (looksTruncated(trimmed, lengthProfile.softMaxWords)) {
       debatelyLog(
         "opponent",
@@ -170,17 +170,23 @@ export async function POST(request: Request) {
         },
       );
       try {
+        const maxWords = Math.max(40, Math.floor(lengthProfile.softMaxWords * 0.75));
         const raw2 = await generateGeminiText({
-          ...opponentParams,
+          systemInstruction: opponentParams.systemInstruction,
           userPrompt:
             opponentParams.userPrompt +
-            `\n\nIMPORTANT: reply MUST fit in one compact JSON object ending with a full sentence. Keep it under ${Math.max(40, Math.floor(lengthProfile.softMaxWords * 0.7))} words. Do not get cut off.`,
-          maxOutputTokens: Math.round(lengthProfile.maxOutputTokens * 2),
+            `\n\nIMPORTANT: Output ONLY your spoken response as plain text — no JSON, no markdown, no formatting. End with a complete sentence. Keep it under ${maxWords} words.`,
+          maxOutputTokens: Math.round(lengthProfile.maxOutputTokens * 2.5),
         });
-        const parsed2 = parseOpponentResponse(raw2);
-        const trimmed2 = stripAccidentalDuplicateBlock((parsed2?.text ?? raw2).trim());
+        const trimmed2 = stripAccidentalDuplicateBlock(
+          raw2
+            .replace(/^```(?:json)?\s*/i, "")
+            .replace(/\s*```$/i, "")
+            .replace(/^\{?"text"\s*:\s*"?/i, "")
+            .replace(/"?\}?$/, "")
+            .trim(),
+        );
         if (trimmed2 && !looksTruncated(trimmed2, lengthProfile.softMaxWords)) {
-          raw = raw2;
           trimmed = trimmed2;
         }
       } catch (retryErr) {
