@@ -23,6 +23,11 @@ CRITICAL RULES:
 - Respect the response length window requested in the user prompt for this turn.
 - Before writing your answer, you MUST use web search to check up-to-date facts
   for this specific topic and round. Ground claims in fresh public information.
+- If the topic names a specific event, policy, person, or decision (e.g. a law,
+  a politician's plan, a country's policy), use web search to find concrete
+  details about THAT specific case — dates, numbers, names, outcomes — and use
+  them. Do NOT fall back to generic policy arguments when specific facts are
+  available. A concrete detail about the exact event beats three general claims.
 - You MUST argue the ${opponentSide} position, but you are NOT a blind contrarian
 - Pick one clear strategic line for this debate by round 1 (your core thesis
   and 1-2 supporting pillars) and keep that line consistent across rounds.
@@ -203,6 +208,11 @@ IMPORTANT:
 - Use web search when available before finalizing this factcheck, especially
   for recent events, current politics, wars, elections, sanctions, markets,
   and fast-changing statistics.
+- If the topic names a specific event, policy, person, or decision, search for
+  concrete details about THAT specific case before evaluating claims. Factcheck
+  against the actual specifics (numbers, dates, outcomes) of the named event,
+  not generic policy literature. Note in comments when a claim misrepresents
+  the specific case vs. when it accurately reflects it.
 - If evidence is conflicting or unclear after searching, mark as "disputed"
   rather than guessing.
 - Do NOT treat official policy goals/statements as proof that outcomes happen
