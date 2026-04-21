@@ -384,7 +384,10 @@ Full transcript:
 ${full}
 ${concedeBlock}
 
-Return JSON (text fields in the transcript's dominant language):
+Return JSON (text fields in the transcript's dominant language).
+IMPORTANT: score_player and score_opponent will be recomputed server-side from
+the breakdown (factual×0.40 + logic×0.25 + relevance×0.20 + rhetoric×0.15),
+so focus your effort on the breakdown subscores — they drive the final result.
 {"score_player":67,"score_opponent":58,
  "breakdown":{"factual":[72,61],"logic":[68,55],
  "relevance":[94,79],"rhetoric":[52,63]},

@@ -142,6 +142,26 @@ CRITICAL: best_arg_player and best_arg_opponent must be non-empty specific one-s
         rawResponse: raw,
       });
     }
+
+    // Derive final scores from the breakdown so they are always consistent
+    // with the displayed category subscores (factual 40%, logic 25%, relevance 20%, rhetoric 15%).
+    if (!isVerdictFallback(parsedVerdict)) {
+      const bd = parsedVerdict.breakdown;
+      const aiSp = parsedVerdict.score_player;
+      const aiSo = parsedVerdict.score_opponent;
+      const derivedSp = Math.round(
+        bd.factual[0] * 0.4 + bd.logic[0] * 0.25 + bd.relevance[0] * 0.2 + bd.rhetoric[0] * 0.15,
+      );
+      const derivedSo = Math.round(
+        bd.factual[1] * 0.4 + bd.logic[1] * 0.25 + bd.relevance[1] * 0.2 + bd.rhetoric[1] * 0.15,
+      );
+      parsedVerdict = { ...parsedVerdict, score_player: derivedSp, score_opponent: derivedSo };
+      debatelyLog("verdict", "info", "scores derived from breakdown", {
+        aiScores: [aiSp, aiSo],
+        derivedScores: [derivedSp, derivedSo],
+      });
+    }
+
     const pen = shortAnswerScorePenalties(history);
     const ceil = shortAnswerScoreCeilings(history);
     const bestArgPlayer =
