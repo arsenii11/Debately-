@@ -7,7 +7,7 @@ export const UNTIMED_TURN_TIMER_SECONDS = 0;
 export const MIN_TURN_TIMER_SECONDS = 60;
 export const MAX_TURN_TIMER_SECONDS = 300;
 export const DEFAULT_TIMED_TURN_TIMER_SECONDS = 120;
-export const DEFAULT_TURN_TIMER_SECONDS = UNTIMED_TURN_TIMER_SECONDS;
+export const DEFAULT_TURN_TIMER_SECONDS = DEFAULT_TIMED_TURN_TIMER_SECONDS;
 export type TurnTimerSeconds = number;
 
 export type Phase = "setup" | "debating" | "finished";

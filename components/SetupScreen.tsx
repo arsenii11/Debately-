@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_TIMED_TURN_TIMER_SECONDS,
@@ -353,48 +354,7 @@ function formatTimer(seconds: number): string {
   return s === 0 ? `${m} min` : `${m}:${String(s).padStart(2, "0")}`;
 }
 
-const STARTER_TOPIC_GROUPS = [
-  {
-    id: "easy",
-    label: "Easy",
-    topics: [
-      "Remote work is better than working from the office",
-      "Social media does more harm than good",
-      "University is worth the cost",
-      "Living in a big city is better than living in a small town",
-    ],
-  },
-  {
-    id: "fun",
-    label: "Fun",
-    topics: [
-      "Cats are better pets than dogs",
-      "Pineapple belongs on pizza",
-      "Video games are a better hobby than watching TV",
-      "Spoilers ruin movies completely",
-    ],
-  },
-  {
-    id: "life",
-    label: "Life",
-    topics: [
-      "A four-day workweek should become the norm",
-      "People should be allowed to use phones less at school",
-      "Online friendships can be as real as offline ones",
-      "Success depends more on discipline than talent",
-    ],
-  },
-  {
-    id: "tech",
-    label: "Tech",
-    topics: [
-      "AI tools make students learn less",
-      "Influencers should label AI-generated content",
-      "Online anonymity should be protected",
-      "Streaming has made movies worse",
-    ],
-  },
-] as const;
+import type { TopicCategory } from "@/app/api/ai/topics/route";
 
 function dedupeTopics(topics: string[]): string[] {
   return Array.from(
@@ -430,11 +390,9 @@ export function SetupScreen({
   onStart,
 }: Props) {
   const canStart = nickname.trim().length > 0 && topic.trim().length > 0;
-  const [activeTopicGroup, setActiveTopicGroup] = useState<
-    (typeof STARTER_TOPIC_GROUPS)[number]["id"]
-  >(STARTER_TOPIC_GROUPS[0].id);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [loadingTopics, setLoadingTopics] = useState(false);
+  const [topicCategories, setTopicCategories] = useState<TopicCategory[] | null>(null);
+  const [activeTopicGroup, setActiveTopicGroup] = useState<string>("easy");
+  const [loadingTopics, setLoadingTopics] = useState(true);
   const [particleEmojis, setParticleEmojis] = useState<string[]>(() =>
     PARTICLES.map(initialParticleEmoji),
   );
@@ -451,16 +409,16 @@ export function SetupScreen({
   tapFxRef.current = tapFx;
   const timedModeEnabled = turnTimerSeconds > UNTIMED_TURN_TIMER_SECONDS;
   const activeStarterTopics =
-    STARTER_TOPIC_GROUPS.find((group) => group.id === activeTopicGroup)?.topics ??
-    STARTER_TOPIC_GROUPS[0].topics;
+    (topicCategories ?? []).find((g) => g.id === activeTopicGroup)?.topics ??
+    (topicCategories ?? [])[0]?.topics ??
+    [];
 
   const handleRandomTopic = useCallback(() => {
-    const allTopics = dedupeTopics([
-      ...STARTER_TOPIC_GROUPS.flatMap((group) => group.topics),
-      ...suggestions,
-    ]);
+    const allTopics = dedupeTopics(
+      (topicCategories ?? []).flatMap((g) => g.topics),
+    );
     if (allTopics.length > 0) onTopic(pickRandom(allTopics));
-  }, [onTopic, suggestions]);
+  }, [onTopic, topicCategories]);
 
   const setTimedMode = useCallback(
     (enabled: boolean) => {
@@ -634,13 +592,21 @@ export function SetupScreen({
         if (
           data &&
           typeof data === "object" &&
-          "topics" in data &&
-          Array.isArray((data as { topics: unknown }).topics)
+          "categories" in data &&
+          Array.isArray((data as { categories: unknown }).categories)
         ) {
-          const topics = (data as { topics: string[] }).topics.filter(
-            (t): t is string => typeof t === "string" && t.trim().length > 0,
+          const categories = (data as { categories: TopicCategory[] }).categories.filter(
+            (c) =>
+              c &&
+              typeof c.id === "string" &&
+              typeof c.label === "string" &&
+              Array.isArray(c.topics) &&
+              c.topics.length > 0,
           );
-          if (topics.length > 0) setSuggestions(topics);
+          if (categories.length > 0) {
+            setTopicCategories(categories);
+            setActiveTopicGroup(categories[0].id);
+          }
         }
       })
       .catch(() => {
@@ -834,57 +800,82 @@ export function SetupScreen({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-zinc-100">
-                  Pick a starter topic
+                  Pick a topic
                 </p>
                 <p className="mt-1 text-sm text-zinc-400">
-                  Choose something easy, or let Debately pick for you.
+                  Fresh topics every day — or let Debately pick for you.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleRandomTopic}
-                className="shrink-0 cursor-pointer rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 transition-all hover:border-indigo-400 hover:bg-indigo-500/15 hover:text-indigo-100 active:scale-[0.98]"
+                disabled={loadingTopics || !topicCategories}
+                className="shrink-0 cursor-pointer rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 transition-all hover:border-indigo-400 hover:bg-indigo-500/15 hover:text-indigo-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Random topic
+                Random
               </button>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {STARTER_TOPIC_GROUPS.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => setActiveTopicGroup(group.id)}
-                  className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
-                    group.id === activeTopicGroup
-                      ? "bg-zinc-100 text-zinc-950"
-                      : "border border-zinc-700 bg-zinc-950/70 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
-                  }`}
-                >
-                  {group.label}
-                </button>
-              ))}
-            </div>
+            {loadingTopics ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-2">
+                  {[72, 56, 64, 52, 80].map((w) => (
+                    <span
+                      key={w}
+                      className="h-7 animate-pulse rounded-full bg-zinc-800"
+                      style={{ width: `${w}px` }}
+                    />
+                  ))}
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[1, 2, 3, 4].map((n) => (
+                    <span
+                      key={n}
+                      className="h-[52px] animate-pulse rounded-2xl bg-zinc-800/70"
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  {(topicCategories ?? []).map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => setActiveTopicGroup(group.id)}
+                      className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                        group.id === activeTopicGroup
+                          ? "bg-zinc-100 text-zinc-950"
+                          : "border border-zinc-700 bg-zinc-950/70 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+                      }`}
+                    >
+                      {group.label}
+                    </button>
+                  ))}
+                </div>
 
-            <div className="grid gap-2 sm:grid-cols-2">
-              {activeStarterTopics.map((starterTopic) => {
-                const selected = topic.trim() === starterTopic;
-                return (
-                  <button
-                    key={starterTopic}
-                    type="button"
-                    onClick={() => onTopic(starterTopic)}
-                    className={`cursor-pointer rounded-2xl border px-4 py-3 text-left text-sm leading-relaxed transition-all active:scale-[0.99] ${
-                      selected
-                        ? "border-indigo-500 bg-indigo-500/15 text-zinc-50 shadow-md shadow-indigo-950/30"
-                        : "border-zinc-700 bg-zinc-950/60 text-zinc-200 hover:border-indigo-500/45 hover:bg-zinc-900 hover:text-white"
-                    }`}
-                  >
-                    {starterTopic}
-                  </button>
-                );
-              })}
-            </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {activeStarterTopics.map((starterTopic) => {
+                    const selected = topic.trim() === starterTopic;
+                    return (
+                      <button
+                        key={starterTopic}
+                        type="button"
+                        onClick={() => onTopic(starterTopic)}
+                        className={`cursor-pointer rounded-2xl border px-4 py-3 text-left text-sm leading-relaxed transition-all active:scale-[0.99] ${
+                          selected
+                            ? "border-indigo-500 bg-indigo-500/15 text-zinc-50 shadow-md shadow-indigo-950/30"
+                            : "border-zinc-700 bg-zinc-950/60 text-zinc-200 hover:border-indigo-500/45 hover:bg-zinc-900 hover:text-white"
+                        }`}
+                      >
+                        {starterTopic}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </section>
 
@@ -905,29 +896,6 @@ export function SetupScreen({
             <span className="text-zinc-600">{topic.length}/200</span>
           </div>
         </div>
-
-        {(loadingTopics || suggestions.length > 0) && (
-          <div className="flex flex-col gap-3">
-            <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-              More topic ideas
-              {loadingTopics && (
-                <span className="inline-block h-3 w-3 animate-spin rounded-full border border-zinc-600 border-t-indigo-400" />
-              )}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.map((suggestedTopic) => (
-                <button
-                  key={suggestedTopic}
-                  type="button"
-                  onClick={() => onTopic(suggestedTopic)}
-                  className="cursor-pointer rounded-full border border-zinc-700 bg-zinc-900/40 px-3 py-2 text-left text-sm text-zinc-300 transition-all hover:border-indigo-500/40 hover:bg-zinc-800/80 hover:text-zinc-100 active:scale-[0.98]"
-                >
-                  {suggestedTopic}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -999,42 +967,14 @@ export function SetupScreen({
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Answer mode
+              Time per turn
             </span>
-            <span className="text-sm font-semibold text-indigo-300">
-              {timedModeEnabled ? formatTimer(turnTimerSeconds) : "Untimed"}
+            <span className={`text-sm font-semibold transition-colors ${timedModeEnabled ? "text-indigo-300" : "text-zinc-500"}`}>
+              {timedModeEnabled ? formatTimer(turnTimerSeconds) : "No timer"}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setTimedMode(false)}
-              className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
-                !timedModeEnabled
-                  ? "border-indigo-500 bg-indigo-500/20 text-indigo-100 shadow-md shadow-indigo-900/30"
-                  : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-indigo-500/45 hover:bg-zinc-900/80 hover:text-zinc-100"
-              }`}
-            >
-              Untimed
-            </button>
-            <button
-              type="button"
-              onClick={() => setTimedMode(true)}
-              className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
-                timedModeEnabled
-                  ? "border-indigo-500 bg-indigo-500/20 text-indigo-100 shadow-md shadow-indigo-900/30"
-                  : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-indigo-500/45 hover:bg-zinc-900/80 hover:text-zinc-100"
-              }`}
-            >
-              Timed
-            </button>
-          </div>
-          <p className="text-sm text-zinc-400">
-            {timedModeEnabled
-              ? "You can still pause during the debate."
-              : "Best for a relaxed first run. No countdown, no stress."}
-          </p>
-          {timedModeEnabled && (
+
+          {timedModeEnabled ? (
             <>
               <input
                 type="range"
@@ -1049,7 +989,28 @@ export function SetupScreen({
                 <span>{formatTimer(MIN_TURN_TIMER_SECONDS)}</span>
                 <span>{formatTimer(MAX_TURN_TIMER_SECONDS)}</span>
               </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-zinc-500">You can pause at any time.</p>
+                <button
+                  type="button"
+                  onClick={() => setTimedMode(false)}
+                  className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
+                >
+                  Play without a timer →
+                </button>
+              </div>
             </>
+          ) : (
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-zinc-500">No countdown, no pressure.</p>
+              <button
+                type="button"
+                onClick={() => setTimedMode(true)}
+                className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
+              >
+                ← Add a timer
+              </button>
+            </div>
           )}
         </div>
 
@@ -1061,6 +1022,16 @@ export function SetupScreen({
         >
           Start debate
         </button>
+
+        <footer className="flex items-center justify-center gap-4 text-xs text-zinc-600">
+          <span>© {new Date().getFullYear()} Bluume, Inc</span>
+          <Link href="/privacy" className="transition-colors hover:text-zinc-400">
+            Privacy
+          </Link>
+          <Link href="/terms" className="transition-colors hover:text-zinc-400">
+            Terms
+          </Link>
+        </footer>
       </div>
     </div>
   );

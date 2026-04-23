@@ -227,7 +227,17 @@ export function parseFactcheckJson(raw: string): FactCheck {
     .replace(/[\u200B-\u200D\uFEFF]/g, "")
     .replace(/\[cite:\s*[\d,\s]+\]/gi, "");
 
-  // Try every fenced ```json``` block in order (model sometimes emits two blocks)
+  // extractBalancedJsonObject respects string boundaries (handles ``` inside string values),
+  // so try it first on the full cleaned string before the fence-regex path.
+  const balancedExtract = extractBalancedJsonObject(cleaned);
+  if (balancedExtract) {
+    const ok = tryParseBlock(balancedExtract);
+    if (ok) return ok;
+  }
+
+  // Try every fenced ```json``` block in order (model sometimes emits two blocks).
+  // Note: the fence regex is NOT string-aware, so backtick sequences inside JSON string
+  // values can cause early termination — the balanced path above is the safer primary path.
   const fenceRe = /```(?:json)?\s*([\s\S]*?)```/g;
   let m: RegExpExecArray | null;
   while ((m = fenceRe.exec(cleaned)) !== null) {
@@ -237,7 +247,7 @@ export function parseFactcheckJson(raw: string): FactCheck {
     if (ok) return ok;
   }
 
-  // No fenced blocks, or all failed — try the cleaned string directly
+  // Last resort: try the cleaned string as-is
   const ok = tryParseBlock(cleaned);
   if (ok) return ok;
 
