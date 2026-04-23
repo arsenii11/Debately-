@@ -1,4 +1,8 @@
 import { SURRENDER_PLAYER_MOVE } from "@/lib/debateSurrender";
+import {
+  DEFAULT_TIMED_TURN_TIMER_SECONDS,
+  UNTIMED_TURN_TIMER_SECONDS,
+} from "@/lib/types";
 import type { FactCheck, RoundData, Side } from "@/lib/types";
 
 /** Opponent system prompt — Debately Solo spec §3.1 */
@@ -152,7 +156,10 @@ export function opponentUserPrompt(params: {
   transcript: string;
   lastPlayerMove: string;
 }): string {
-  const timerSeconds = Math.max(60, Math.min(600, Math.floor(params.turnTimerSeconds)));
+  const isUntimed = params.turnTimerSeconds <= UNTIMED_TURN_TIMER_SECONDS;
+  const timerSeconds = isUntimed
+    ? DEFAULT_TIMED_TURN_TIMER_SECONDS
+    : Math.max(60, Math.min(600, Math.floor(params.turnTimerSeconds)));
   const minWords =
     timerSeconds <= 90 ? 35 : timerSeconds <= 150 ? 55 : timerSeconds <= 240 ? 75 : 95;
   const targetWords =
@@ -165,7 +172,7 @@ Current date (UTC): ${today}
 Your side: ${params.opponentSide}
 Player's assigned side: ${params.playerSide} (they are supposed to oppose you)
 Round: ${params.currentRound} of ${params.totalRounds}
-Time per answer: ${timerSeconds} seconds
+Time per answer: ${isUntimed ? "No time limit (untimed mode)" : `${timerSeconds} seconds`}
 Length guidance for this turn:
 - target around ${targetWords} words
 - keep within roughly ${minWords}-${softMaxWords} words unless a shorter direct rebuttal is clearly better

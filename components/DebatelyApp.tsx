@@ -31,6 +31,7 @@ import {
 import {
   DEFAULT_TURN_ROUNDS,
   DEFAULT_TURN_TIMER_SECONDS,
+  UNTIMED_TURN_TIMER_SECONDS,
 } from "@/lib/types";
 import type {
   FactCheck,
@@ -111,6 +112,7 @@ export function DebatelyApp() {
   >(() => Promise.resolve());
 
   const opponentSide = opponentSideFor(playerSide);
+  const isTimedDebate = turnTimerSeconds > UNTIMED_TURN_TIMER_SECONDS;
   const playerDisplay = nickname.trim() || "Player";
   const playerInitial =
     playerDisplay.trim().charAt(0).toUpperCase() || "?";
@@ -162,10 +164,12 @@ export function DebatelyApp() {
       setTurnTimerSeconds(s.turnTimerSeconds);
       setTimerPaused(s.timerPaused);
       setTimer(
-        Math.max(
-          0,
-          Math.min(s.turnTimerSeconds, Math.floor(s.timer)),
-        ),
+        s.turnTimerSeconds === UNTIMED_TURN_TIMER_SECONDS
+          ? 0
+          : Math.max(
+              0,
+              Math.min(s.turnTimerSeconds, Math.floor(s.timer)),
+            ),
       );
       setVerdict(s.verdict);
       setError(s.error);
@@ -258,6 +262,7 @@ export function DebatelyApp() {
   useEffect(() => {
     if (
       phase !== "debating" ||
+      !isTimedDebate ||
       isAIThinking ||
       launchCountdown !== null ||
       timerPaused
@@ -284,7 +289,7 @@ export function DebatelyApp() {
     }, 1000);
 
     return () => window.clearInterval(id);
-  }, [phase, isAIThinking, currentRound, launchCountdown, timerPaused]);
+  }, [phase, isTimedDebate, isAIThinking, currentRound, launchCountdown, timerPaused]);
 
   const updateRound = useCallback(
     (roundNumber: number, patch: Partial<RoundData>) => {
@@ -615,8 +620,11 @@ export function DebatelyApp() {
     setIsAIThinking(false);
     setThinkingStage(null);
     skipScheduled.current = false;
-    setLaunchCountdown(3);
-  }, []);
+    setLaunchCountdown(isTimedDebate ? 3 : null);
+    if (!isTimedDebate) {
+      setTimer(UNTIMED_TURN_TIMER_SECONDS);
+    }
+  }, [isTimedDebate]);
 
   const handleNew = useCallback(() => {
     clearDebatelySession();
@@ -696,7 +704,11 @@ export function DebatelyApp() {
                   </span>
                 </span>
               )}
-              {phase === "debating" &&
+              {phase === "debating" && !isTimedDebate ? (
+                <span className="text-xs font-medium uppercase tracking-wide text-indigo-300">
+                  Untimed
+                </span>
+              ) : phase === "debating" &&
               launchCountdown === null &&
               !isAIThinking &&
               timer > 0 ? (
@@ -715,6 +727,7 @@ export function DebatelyApp() {
                   </button>
                 </div>
               ) : phase === "debating" &&
+                isTimedDebate &&
                 launchCountdown === null &&
                 !isAIThinking &&
                 timer === 0 ? (

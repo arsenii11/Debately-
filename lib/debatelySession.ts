@@ -2,6 +2,7 @@ import {
   MIN_TURN_ROUNDS,
   MAX_TURN_ROUNDS,
   DEFAULT_TURN_ROUNDS,
+  UNTIMED_TURN_TIMER_SECONDS,
   MIN_TURN_TIMER_SECONDS,
   MAX_TURN_TIMER_SECONDS,
   DEFAULT_TURN_TIMER_SECONDS,
@@ -47,7 +48,9 @@ function isPhase(x: unknown): x is Phase {
 
 function turnTimerSecondsFromUnknown(x: unknown): TurnTimerSeconds {
   if (typeof x === "number" && Number.isFinite(x)) {
-    return Math.min(MAX_TURN_TIMER_SECONDS, Math.max(MIN_TURN_TIMER_SECONDS, Math.floor(x)));
+    const value = Math.floor(x);
+    if (value <= 0) return UNTIMED_TURN_TIMER_SECONDS;
+    return Math.min(MAX_TURN_TIMER_SECONDS, Math.max(MIN_TURN_TIMER_SECONDS, value));
   }
   return DEFAULT_TURN_TIMER_SECONDS;
 }
@@ -113,7 +116,10 @@ export function loadDebatelySession(): DebatelyPersisted | null {
       currentRound: Math.max(1, Math.min(turnRounds, Math.floor(p.currentRound))),
       turnRounds,
       inputText: p.inputText,
-      timer: Math.max(0, Math.min(turnTimerSeconds, Math.floor(p.timer))),
+      timer:
+        turnTimerSeconds === UNTIMED_TURN_TIMER_SECONDS
+          ? 0
+          : Math.max(0, Math.min(turnTimerSeconds, Math.floor(p.timer))),
       turnTimerSeconds,
       timerPaused,
       verdict: p.verdict as Verdict | null,

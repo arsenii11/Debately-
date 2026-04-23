@@ -9,12 +9,16 @@ import {
 } from "@/lib/prompts";
 import { extractBalancedJsonObject } from "@/lib/extractJson";
 import { countWords } from "@/lib/truncateWords";
+import { DEFAULT_TIMED_TURN_TIMER_SECONDS } from "@/lib/types";
 import type { RoundData, Side } from "@/lib/types";
 
 function getOpponentLengthProfile(turnTimerSeconds: number): {
   softMaxWords: number;
   maxOutputTokens: number;
 } {
+  if (turnTimerSeconds <= 0) {
+    return { softMaxWords: 120, maxOutputTokens: 1040 };
+  }
   const t = Math.max(60, Math.min(600, Math.floor(turnTimerSeconds)));
   // Token budget includes JSON scaffolding + possible Cyrillic (Russian tokens
   // are ~2x more expensive). Be generous to avoid mid-sentence truncation.
@@ -103,7 +107,9 @@ export async function POST(request: Request) {
   const totalRounds =
     typeof body.totalRounds === "number" ? body.totalRounds : 3;
   const turnTimerSeconds =
-    typeof body.turnTimerSeconds === "number" ? body.turnTimerSeconds : 120;
+    typeof body.turnTimerSeconds === "number"
+      ? body.turnTimerSeconds
+      : DEFAULT_TIMED_TURN_TIMER_SECONDS;
   const lengthProfile = getOpponentLengthProfile(turnTimerSeconds);
 
   const last = history[history.length - 1];

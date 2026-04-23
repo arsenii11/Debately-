@@ -15,8 +15,11 @@ function buildTopicsPrompt(): string {
 
 Generate exactly 10 debate topics as single-sentence statements (assertive claims, not questions).
 Topics must be:
-- Current and relevant to real events happening in the world right now
-- Diverse: mix geopolitics, technology, economics, science, society
+- Easy to understand in under a second for a casual first-time user
+- Short, concrete, and low-jargon
+- Fun to argue even without deep prior knowledge
+- Diverse: mix everyday life, internet culture, work, technology, society, and a few current-events topics
+- Avoid overly niche policy language, obscure geopolitics, or topics that require expert context
 - Debatable: a reasonable person could argue FOR or AGAINST
 
 Output format (JSON only, no markdown fencing):
@@ -76,16 +79,16 @@ export async function GET() {
   }
 
   const fallback = [
-    "US tariffs on Chinese imports do more harm than good to American consumers",
-    "AI-generated content should require mandatory disclosure labels",
-    "NATO should extend membership to Ukraine before the conflict ends",
-    "Social media platforms bear legal responsibility for radicalization on their sites",
-    "Central banks should adopt digital currencies to replace physical cash",
-    "Space colonization is a moral imperative for humanity's survival",
-    "Universal basic income would reduce poverty without harming work incentives",
-    "Nuclear energy is essential for achieving net-zero carbon emissions by 2050",
-    "The UN Security Council veto power should be abolished",
-    "Autonomous weapons should be banned under international law",
+    "Remote work is better than working from the office",
+    "AI tools make students learn less",
+    "Social media does more harm than good",
+    "Streaming has made movies worse",
+    "Universal basic income would improve society",
+    "Video games should be treated like sports",
+    "Online anonymity should be protected",
+    "Nuclear energy is essential for the future",
+    "Influencers should label edited photos",
+    "Four-day workweeks should become the norm",
   ];
 
   return NextResponse.json({ topics: fallback, cached: false });

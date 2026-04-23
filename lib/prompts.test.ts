@@ -31,6 +31,21 @@ describe("opponent prompts", () => {
     expect(prompt).toContain("briefly point out that they");
     expect(prompt).toContain("are supposed to argue FOR");
   });
+
+  it("describes untimed debates clearly", () => {
+    const prompt = opponentUserPrompt({
+      topic: "Cats are better pets than dogs",
+      opponentSide: "FOR",
+      playerSide: "AGAINST",
+      currentRound: 1,
+      totalRounds: 3,
+      turnTimerSeconds: 0,
+      transcript: "No prior rounds.",
+      lastPlayerMove: "Dogs are more social.",
+    });
+
+    expect(prompt).toContain("Time per answer: No time limit (untimed mode)");
+  });
 });
 
 describe("factcheck retry suffix", () => {

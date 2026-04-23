@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  DEFAULT_TIMED_TURN_TIMER_SECONDS,
+  UNTIMED_TURN_TIMER_SECONDS,
   MIN_TURN_ROUNDS,
   MAX_TURN_ROUNDS,
   MIN_TURN_TIMER_SECONDS,
@@ -351,6 +353,55 @@ function formatTimer(seconds: number): string {
   return s === 0 ? `${m} min` : `${m}:${String(s).padStart(2, "0")}`;
 }
 
+const STARTER_TOPIC_GROUPS = [
+  {
+    id: "easy",
+    label: "Easy",
+    topics: [
+      "Remote work is better than working from the office",
+      "Social media does more harm than good",
+      "University is worth the cost",
+      "Living in a big city is better than living in a small town",
+    ],
+  },
+  {
+    id: "fun",
+    label: "Fun",
+    topics: [
+      "Cats are better pets than dogs",
+      "Pineapple belongs on pizza",
+      "Video games are a better hobby than watching TV",
+      "Spoilers ruin movies completely",
+    ],
+  },
+  {
+    id: "life",
+    label: "Life",
+    topics: [
+      "A four-day workweek should become the norm",
+      "People should be allowed to use phones less at school",
+      "Online friendships can be as real as offline ones",
+      "Success depends more on discipline than talent",
+    ],
+  },
+  {
+    id: "tech",
+    label: "Tech",
+    topics: [
+      "AI tools make students learn less",
+      "Influencers should label AI-generated content",
+      "Online anonymity should be protected",
+      "Streaming has made movies worse",
+    ],
+  },
+] as const;
+
+function dedupeTopics(topics: string[]): string[] {
+  return Array.from(
+    new Set(topics.map((topic) => topic.trim()).filter((topic) => topic.length > 0)),
+  );
+}
+
 type Props = {
   nickname: string;
   topic: string;
@@ -379,6 +430,9 @@ export function SetupScreen({
   onStart,
 }: Props) {
   const canStart = nickname.trim().length > 0 && topic.trim().length > 0;
+  const [activeTopicGroup, setActiveTopicGroup] = useState<
+    (typeof STARTER_TOPIC_GROUPS)[number]["id"]
+  >(STARTER_TOPIC_GROUPS[0].id);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loadingTopics, setLoadingTopics] = useState(false);
   const [particleEmojis, setParticleEmojis] = useState<string[]>(() =>
@@ -395,6 +449,27 @@ export function SetupScreen({
   );
   const tapFxRef = useRef(tapFx);
   tapFxRef.current = tapFx;
+  const timedModeEnabled = turnTimerSeconds > UNTIMED_TURN_TIMER_SECONDS;
+  const activeStarterTopics =
+    STARTER_TOPIC_GROUPS.find((group) => group.id === activeTopicGroup)?.topics ??
+    STARTER_TOPIC_GROUPS[0].topics;
+
+  const handleRandomTopic = useCallback(() => {
+    const allTopics = dedupeTopics([
+      ...STARTER_TOPIC_GROUPS.flatMap((group) => group.topics),
+      ...suggestions,
+    ]);
+    if (allTopics.length > 0) onTopic(pickRandom(allTopics));
+  }, [onTopic, suggestions]);
+
+  const setTimedMode = useCallback(
+    (enabled: boolean) => {
+      onTurnTimerSeconds(
+        enabled ? DEFAULT_TIMED_TURN_TIMER_SECONDS : UNTIMED_TURN_TIMER_SECONDS,
+      );
+    },
+    [onTurnTimerSeconds],
+  );
 
   const rerollSpawnAtIndex = useCallback((i: number) => {
     setParticleVariance((prev) =>
@@ -741,156 +816,251 @@ export function SetupScreen({
         );
       })}
       <div className="relative z-30 flex flex-col gap-8">
-      <header className="text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">
-          Debately
-        </h1>
-        <p className="mt-1 text-sm font-medium uppercase tracking-widest text-fuchsia-400/90">
-          Solo
-        </p>
-        <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          Pick a topic, choose a side, and debate Debately. A neutral Judge
-          factchecks each move and scores the match.
-        </p>
-      </header>
+        <header className="text-center">
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">
+            Debately
+          </h1>
+          <p className="mt-1 text-sm font-medium uppercase tracking-widest text-fuchsia-400/90">
+            Solo
+          </p>
+          <p className="mt-4 text-sm leading-relaxed text-zinc-400">
+            Start with a topic, pick your side, and jump in. The Judge factchecks
+            both sides and scores the debate.
+          </p>
+        </header>
 
-      <div className="flex flex-col gap-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Nickname
-        </label>
-        <input
-          type="text"
-          maxLength={20}
-          value={nickname}
-          onChange={(e) => onNickname(e.target.value)}
-          placeholder="e.g. Alex"
-          className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        />
-        <span className="text-right text-xs text-zinc-600">
-          {nickname.length}/20
-        </span>
-      </div>
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/45 p-4 shadow-lg shadow-black/10">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">
+                  Pick a starter topic
+                </p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Choose something easy, or let Debately pick for you.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleRandomTopic}
+                className="shrink-0 cursor-pointer rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 transition-all hover:border-indigo-400 hover:bg-indigo-500/15 hover:text-indigo-100 active:scale-[0.98]"
+              >
+                Random topic
+              </button>
+            </div>
 
-      <div className="flex flex-col gap-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Topic (as a statement)
-        </label>
-        <textarea
-          maxLength={200}
-          rows={3}
-          value={topic}
-          onChange={(e) => onTopic(e.target.value)}
-          placeholder='e.g. "Nuclear energy is essential for climate goals"'
-          className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-        />
-        <span className="text-right text-xs text-zinc-600">
-          {topic.length}/200
-        </span>
-      </div>
+            <div className="flex flex-wrap gap-2">
+              {STARTER_TOPIC_GROUPS.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => setActiveTopicGroup(group.id)}
+                  className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                    group.id === activeTopicGroup
+                      ? "bg-zinc-100 text-zinc-950"
+                      : "border border-zinc-700 bg-zinc-950/70 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
+                  }`}
+                >
+                  {group.label}
+                </button>
+              ))}
+            </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
+            <div className="grid gap-2 sm:grid-cols-2">
+              {activeStarterTopics.map((starterTopic) => {
+                const selected = topic.trim() === starterTopic;
+                return (
+                  <button
+                    key={starterTopic}
+                    type="button"
+                    onClick={() => onTopic(starterTopic)}
+                    className={`cursor-pointer rounded-2xl border px-4 py-3 text-left text-sm leading-relaxed transition-all active:scale-[0.99] ${
+                      selected
+                        ? "border-indigo-500 bg-indigo-500/15 text-zinc-50 shadow-md shadow-indigo-950/30"
+                        : "border-zinc-700 bg-zinc-950/60 text-zinc-200 hover:border-indigo-500/45 hover:bg-zinc-900 hover:text-white"
+                    }`}
+                  >
+                    {starterTopic}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Topic
+          </label>
+          <textarea
+            maxLength={200}
+            rows={3}
+            value={topic}
+            onChange={(e) => onTopic(e.target.value)}
+            placeholder='e.g. "Remote work is better than working from the office"'
+            className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <span className="text-zinc-500">Or write your own statement.</span>
+            <span className="text-zinc-600">{topic.length}/200</span>
+          </div>
+        </div>
+
+        {(loadingTopics || suggestions.length > 0) && (
+          <div className="flex flex-col gap-3">
+            <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+              More topic ideas
+              {loadingTopics && (
+                <span className="inline-block h-3 w-3 animate-spin rounded-full border border-zinc-600 border-t-indigo-400" />
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((suggestedTopic) => (
+                <button
+                  key={suggestedTopic}
+                  type="button"
+                  onClick={() => onTopic(suggestedTopic)}
+                  className="cursor-pointer rounded-full border border-zinc-700 bg-zinc-900/40 px-3 py-2 text-left text-sm text-zinc-300 transition-all hover:border-indigo-500/40 hover:bg-zinc-800/80 hover:text-zinc-100 active:scale-[0.98]"
+                >
+                  {suggestedTopic}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2">
           <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Debate rounds
+            Your side
           </span>
-          <span className="text-sm font-semibold text-indigo-300">
-            {turnRounds} rounds
-          </span>
+          <div className="grid grid-cols-2 gap-3">
+            {(["FOR", "AGAINST"] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onSide(s)}
+                className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                  s === "FOR"
+                    ? side === s
+                      ? "border-emerald-500 bg-emerald-500/20 text-emerald-100 shadow-md shadow-emerald-900/30"
+                      : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-emerald-500/45 hover:bg-emerald-950/25 hover:text-emerald-100/95"
+                    : side === s
+                      ? "border-rose-500 bg-rose-500/20 text-rose-100 shadow-md shadow-rose-900/30"
+                      : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
-        <input
-          type="range"
-          min={MIN_TURN_ROUNDS}
-          max={MAX_TURN_ROUNDS}
-          step={1}
-          value={turnRounds}
-          onChange={(e) => onTurnRounds(Number(e.target.value))}
-          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
-        />
-        <div className="flex justify-between text-xs text-zinc-600">
-          <span>{MIN_TURN_ROUNDS}</span>
-          <span>{MAX_TURN_ROUNDS}</span>
-        </div>
-      </div>
 
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Time per answer
-          </span>
-          <span className="text-sm font-semibold text-indigo-300">
-            {formatTimer(turnTimerSeconds)}
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+            Nickname
+          </label>
+          <input
+            type="text"
+            maxLength={20}
+            value={nickname}
+            onChange={(e) => onNickname(e.target.value)}
+            placeholder="e.g. Alex"
+            className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          />
+          <span className="text-right text-xs text-zinc-600">
+            {nickname.length}/20
           </span>
         </div>
-        <input
-          type="range"
-          min={MIN_TURN_TIMER_SECONDS}
-          max={MAX_TURN_TIMER_SECONDS}
-          step={30}
-          value={turnTimerSeconds}
-          onChange={(e) => onTurnTimerSeconds(Number(e.target.value))}
-          className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
-        />
-        <div className="flex justify-between text-xs text-zinc-600">
-          <span>{formatTimer(MIN_TURN_TIMER_SECONDS)}</span>
-          <span>{formatTimer(MAX_TURN_TIMER_SECONDS)}</span>
-        </div>
-      </div>
 
-      <div className="flex flex-col gap-2">
-        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Your side
-        </span>
-        <div className="grid grid-cols-2 gap-3">
-          {(["FOR", "AGAINST"] as const).map((s) => (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Debate rounds
+            </span>
+            <span className="text-sm font-semibold text-indigo-300">
+              {turnRounds} rounds
+            </span>
+          </div>
+          <input
+            type="range"
+            min={MIN_TURN_ROUNDS}
+            max={MAX_TURN_ROUNDS}
+            step={1}
+            value={turnRounds}
+            onChange={(e) => onTurnRounds(Number(e.target.value))}
+            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
+          />
+          <div className="flex justify-between text-xs text-zinc-600">
+            <span>{MIN_TURN_ROUNDS}</span>
+            <span>{MAX_TURN_ROUNDS}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Answer mode
+            </span>
+            <span className="text-sm font-semibold text-indigo-300">
+              {timedModeEnabled ? formatTimer(turnTimerSeconds) : "Untimed"}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <button
-              key={s}
               type="button"
-              onClick={() => onSide(s)}
+              onClick={() => setTimedMode(false)}
               className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
-                s === "FOR"
-                  ? side === s
-                    ? "border-emerald-500 bg-emerald-500/20 text-emerald-100 shadow-md shadow-emerald-900/30"
-                    : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-emerald-500/45 hover:bg-emerald-950/25 hover:text-emerald-100/95"
-                  : side === s
-                    ? "border-rose-500 bg-rose-500/20 text-rose-100 shadow-md shadow-rose-900/30"
-                    : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
+                !timedModeEnabled
+                  ? "border-indigo-500 bg-indigo-500/20 text-indigo-100 shadow-md shadow-indigo-900/30"
+                  : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-indigo-500/45 hover:bg-zinc-900/80 hover:text-zinc-100"
               }`}
             >
-              {s}
+              Untimed
             </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Suggested topics
-          {loadingTopics && (
-            <span className="inline-block h-3 w-3 animate-spin rounded-full border border-zinc-600 border-t-indigo-400" />
-          )}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {suggestions.map((t) => (
             <button
-              key={t}
               type="button"
-              onClick={() => onTopic(t)}
-              className="cursor-pointer rounded-full border border-zinc-700 bg-zinc-900/40 px-3 py-1.5 text-left text-xs text-zinc-300 transition-all hover:border-indigo-500/40 hover:bg-zinc-800/80 hover:text-zinc-100 active:scale-[0.98]"
+              onClick={() => setTimedMode(true)}
+              className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                timedModeEnabled
+                  ? "border-indigo-500 bg-indigo-500/20 text-indigo-100 shadow-md shadow-indigo-900/30"
+                  : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-indigo-500/45 hover:bg-zinc-900/80 hover:text-zinc-100"
+              }`}
             >
-              {t}
+              Timed
             </button>
-          ))}
+          </div>
+          <p className="text-sm text-zinc-400">
+            {timedModeEnabled
+              ? "You can still pause during the debate."
+              : "Best for a relaxed first run. No countdown, no stress."}
+          </p>
+          {timedModeEnabled && (
+            <>
+              <input
+                type="range"
+                min={MIN_TURN_TIMER_SECONDS}
+                max={MAX_TURN_TIMER_SECONDS}
+                step={30}
+                value={turnTimerSeconds}
+                onChange={(e) => onTurnTimerSeconds(Number(e.target.value))}
+                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
+              />
+              <div className="flex justify-between text-xs text-zinc-600">
+                <span>{formatTimer(MIN_TURN_TIMER_SECONDS)}</span>
+                <span>{formatTimer(MAX_TURN_TIMER_SECONDS)}</span>
+              </div>
+            </>
+          )}
         </div>
-      </div>
 
-      <button
-        type="button"
-        disabled={!canStart}
-        onClick={onStart}
-        className="cursor-pointer rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100"
-      >
-        Start Debate — {turnRounds} rounds
-      </button>
+        <button
+          type="button"
+          disabled={!canStart}
+          onClick={onStart}
+          className="cursor-pointer rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100"
+        >
+          Start debate
+        </button>
       </div>
     </div>
   );
