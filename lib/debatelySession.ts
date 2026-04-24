@@ -16,7 +16,8 @@ import type {
   Verdict,
 } from "@/lib/types";
 
-const STORAGE_KEY = "debately:v1";
+// Bumped to v2 to apply the new default (timed mode by default).
+const STORAGE_KEY = "debately:v2";
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
 
 export type DebatelyPersisted = {
