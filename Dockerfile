@@ -13,6 +13,11 @@ COPY . .
 ENV NODE_ENV=production
 RUN npm run build
 
+FROM base AS tester
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+CMD ["npm", "run", "test:ai"]
+
 FROM base AS runner
 ENV NODE_ENV=production
 RUN apt-get update \

@@ -54,6 +54,25 @@ services:
     depends_on:
       - app
 
+  # Запуск: docker compose --profile test run --rm test
+  test:
+    build:
+      context: .
+      target: tester
+    env_file:
+      - .env
+    environment:
+      GEMINI_USE_VERTEX: "true"
+      GEMINI_VERTEX_PROJECT: REDACTED-PROJECT-ID
+      GEMINI_VERTEX_LOCATION: us-central1
+      MODELS: gemini-2.5-flash,gemini-1.5-flash
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/vertex-sa.json
+      GEMINI_SEARCH_TOOL: googleSearch
+    volumes:
+      - ./secrets/vertex-sa.json:/run/secrets/vertex-sa.json:ro
+    profiles:
+      - test
+
   # Запуск только вручную: docker compose --profile certbot run --rm certbot certonly ...
   certbot:
     image: certbot/certbot:v2.11.0
