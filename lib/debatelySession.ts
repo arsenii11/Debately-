@@ -16,9 +16,20 @@ import type {
   Verdict,
 } from "@/lib/types";
 
-// Bumped to v2 to apply the new default (timed mode by default).
 const STORAGE_KEY = "debately:v2";
+const LEGACY_STORAGE_KEYS = ["debately:v1"] as const;
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000;
+
+function clearLegacyDebatelySessions(): void {
+  if (typeof window === "undefined") return;
+  for (const key of LEGACY_STORAGE_KEYS) {
+    try {
+      sessionStorage.removeItem(key);
+    } catch {
+      /* ignore */
+    }
+  }
+}
 
 export type DebatelyPersisted = {
   v: 1;
@@ -75,6 +86,7 @@ function isRoundData(x: unknown): x is RoundData {
 
 export function loadDebatelySession(): DebatelyPersisted | null {
   if (typeof window === "undefined") return null;
+  clearLegacyDebatelySessions();
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
