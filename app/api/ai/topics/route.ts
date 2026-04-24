@@ -1,8 +1,8 @@
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import { NextResponse } from "next/server";
 import { generateGeminiText } from "@/lib/gemini";
 import { extractBalancedJsonObject } from "@/lib/extractJson";
-
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export type TopicCategory = {
   id: string;
@@ -10,8 +10,45 @@ export type TopicCategory = {
   topics: string[];
 };
 
-let cachedCategories: TopicCategory[] | null = null;
-let cachedAt = 0;
+type CacheEntry = { date: string; categories: TopicCategory[] };
+
+// Disk cache survives container restarts; /tmp is writable for the runtime user.
+const DISK_CACHE_PATH =
+  process.env.TOPICS_CACHE_PATH ?? path.join("/tmp", "debately-topics.json");
+
+let memoryCache: CacheEntry | null = null;
+// Single-flight lock: if a generation is in progress, all concurrent requests await it.
+let inflight: Promise<TopicCategory[] | null> | null = null;
+
+function todayUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+async function readDiskCache(): Promise<CacheEntry | null> {
+  try {
+    const raw = await fs.readFile(DISK_CACHE_PATH, "utf8");
+    const parsed = JSON.parse(raw) as Partial<CacheEntry>;
+    if (
+      parsed &&
+      typeof parsed.date === "string" &&
+      Array.isArray(parsed.categories)
+    ) {
+      return { date: parsed.date, categories: parsed.categories };
+    }
+  } catch {
+    /* missing or unreadable — ignore */
+  }
+  return null;
+}
+
+async function writeDiskCache(entry: CacheEntry): Promise<void> {
+  try {
+    await fs.mkdir(path.dirname(DISK_CACHE_PATH), { recursive: true });
+    await fs.writeFile(DISK_CACHE_PATH, JSON.stringify(entry), "utf8");
+  } catch {
+    /* best effort */
+  }
+}
 
 const CATEGORY_DEFS = [
   { id: "easy", label: "Easy" },
@@ -141,13 +178,7 @@ const FALLBACK_CATEGORIES: TopicCategory[] = [
   },
 ];
 
-export async function GET() {
-  const now = Date.now();
-
-  if (cachedCategories && now - cachedAt < CACHE_TTL_MS) {
-    return NextResponse.json({ categories: cachedCategories, cached: true });
-  }
-
+async function generateCategoriesOnce(): Promise<TopicCategory[] | null> {
   try {
     const raw = await generateGeminiText({
       systemInstruction: TOPICS_SYSTEM,
@@ -157,16 +188,43 @@ export async function GET() {
       temperature: 0.85,
       enableSearch: true,
     });
-
-    const categories = parseCategories(raw);
-    if (categories) {
-      cachedCategories = categories;
-      cachedAt = now;
-      return NextResponse.json({ categories, cached: false });
-    }
+    return parseCategories(raw);
   } catch {
-    /* fall through to fallback */
+    return null;
+  }
+}
+
+export async function GET() {
+  const today = todayUtc();
+
+  if (memoryCache && memoryCache.date === today) {
+    return NextResponse.json({ categories: memoryCache.categories, cached: "memory" });
   }
 
-  return NextResponse.json({ categories: FALLBACK_CATEGORIES, cached: false });
+  const diskEntry = await readDiskCache();
+  if (diskEntry && diskEntry.date === today) {
+    memoryCache = diskEntry;
+    return NextResponse.json({ categories: diskEntry.categories, cached: "disk" });
+  }
+
+  // Single-flight: only one AI call per day across all concurrent requests.
+  if (!inflight) {
+    inflight = generateCategoriesOnce().finally(() => {
+      inflight = null;
+    });
+  }
+
+  const categories = await inflight;
+  if (categories) {
+    const entry: CacheEntry = { date: today, categories };
+    memoryCache = entry;
+    await writeDiskCache(entry);
+    return NextResponse.json({ categories, cached: false });
+  }
+
+  // Generation failed — serve stale disk cache if any, otherwise fallback.
+  if (diskEntry) {
+    return NextResponse.json({ categories: diskEntry.categories, cached: "stale" });
+  }
+  return NextResponse.json({ categories: FALLBACK_CATEGORIES, cached: "fallback" });
 }

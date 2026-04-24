@@ -24,8 +24,10 @@ services:
       MODELS: gemini-2.5-flash,gemini-1.5-flash
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/vertex-sa.json
       GEMINI_SEARCH_TOOL: googleSearch
+      TOPICS_CACHE_PATH: /var/cache/debately/topics.json
     volumes:
       - ./secrets/vertex-sa.json:/run/secrets/vertex-sa.json:ro
+      - debately-cache:/var/cache/debately
     expose:
       - "3000"
     healthcheck:
@@ -86,3 +88,4 @@ services:
 volumes:
   certbot-www:
   certbot-etc:
+  debately-cache:
