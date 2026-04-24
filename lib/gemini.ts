@@ -301,8 +301,11 @@ export async function generateGeminiText(params: {
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
+          // Both public Gemini API and Vertex reject controlled generation
+          // (responseMimeType/responseSchema=json) when used together with the
+          // Search tool. Drop responseMimeType/Schema in that case so we don't
+          // waste a 400 round-trip.
           const jsonWithSearchUnsupported =
-            !useVertex &&
             searchEnabled &&
             params.responseMimeType === "application/json";
           if (jsonWithSearchUnsupported && !loggedJsonSearchCompat) {
