@@ -21,7 +21,9 @@ services:
       GEMINI_USE_VERTEX: "true"
       GEMINI_VERTEX_PROJECT: REDACTED-PROJECT-ID
       GEMINI_VERTEX_LOCATION: us-central1
-      MODELS: gemini-2.5-flash,gemini-3-flash-preview,gemini-2.5-flash-lite,gemini-2.0-flash-001
+      # Drop gemini-3-flash-preview: project doesn't have access (404).
+      # Re-add once the model is enabled in Vertex Model Garden.
+      MODELS: gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash-001
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/vertex-sa.json
       GEMINI_SEARCH_TOOL: googleSearch
       TOPICS_CACHE_PATH: /var/cache/debately/topics.json
@@ -68,7 +70,7 @@ services:
       GEMINI_VERTEX_PROJECT: REDACTED-PROJECT-ID
       GEMINI_VERTEX_LOCATION: us-central1
       # Same fallback chain as prod so tests cover it.
-      MODELS: gemini-2.5-flash,gemini-3-flash-preview,gemini-2.5-flash-lite,gemini-2.0-flash-001
+      MODELS: gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash-001
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/vertex-sa.json
       GEMINI_SEARCH_TOOL: googleSearch
     volumes:
