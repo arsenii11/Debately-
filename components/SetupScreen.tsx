@@ -362,6 +362,48 @@ function dedupeTopics(topics: string[]): string[] {
   );
 }
 
+// Pastel color per category. Active = filled tinted bg + ring, inactive = soft tinted bg.
+const CATEGORY_COLORS: Record<
+  string,
+  { active: string; idle: string }
+> = {
+  easy: {
+    active:
+      "bg-emerald-400/25 text-emerald-50 ring-1 ring-emerald-300/50 shadow-sm shadow-emerald-900/30",
+    idle: "bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-50",
+  },
+  fun: {
+    active:
+      "bg-amber-400/25 text-amber-50 ring-1 ring-amber-300/50 shadow-sm shadow-amber-900/30",
+    idle: "bg-amber-400/10 text-amber-200 hover:bg-amber-400/20 hover:text-amber-50",
+  },
+  life: {
+    active:
+      "bg-rose-400/25 text-rose-50 ring-1 ring-rose-300/50 shadow-sm shadow-rose-900/30",
+    idle: "bg-rose-400/10 text-rose-200 hover:bg-rose-400/20 hover:text-rose-50",
+  },
+  tech: {
+    active:
+      "bg-sky-400/25 text-sky-50 ring-1 ring-sky-300/50 shadow-sm shadow-sky-900/30",
+    idle: "bg-sky-400/10 text-sky-200 hover:bg-sky-400/20 hover:text-sky-50",
+  },
+  politics: {
+    active:
+      "bg-violet-400/25 text-violet-50 ring-1 ring-violet-300/50 shadow-sm shadow-violet-900/30",
+    idle: "bg-violet-400/10 text-violet-200 hover:bg-violet-400/20 hover:text-violet-50",
+  },
+};
+
+const CATEGORY_FALLBACK_COLOR = {
+  active:
+    "bg-zinc-200/20 text-zinc-50 ring-1 ring-zinc-300/40 shadow-sm shadow-zinc-900/30",
+  idle: "bg-zinc-400/10 text-zinc-300 hover:bg-zinc-400/20 hover:text-zinc-50",
+};
+
+function getCategoryColor(id: string) {
+  return CATEGORY_COLORS[id] ?? CATEGORY_FALLBACK_COLOR;
+}
+
 type Props = {
   nickname: string;
   topic: string;
@@ -818,11 +860,11 @@ export function SetupScreen({
 
             {loadingTopics ? (
               <div className="flex flex-col gap-3">
-                <div className="flex gap-2">
-                  {[72, 56, 64, 52, 80].map((w) => (
+                <div className="flex gap-2.5">
+                  {[88, 72, 80, 64, 96].map((w) => (
                     <span
                       key={w}
-                      className="h-7 animate-pulse rounded-full bg-zinc-800"
+                      className="h-10 animate-pulse rounded-full bg-zinc-800 sm:h-11"
                       style={{ width: `${w}px` }}
                     />
                   ))}
@@ -838,21 +880,23 @@ export function SetupScreen({
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap gap-2">
-                  {(topicCategories ?? []).map((group) => (
-                    <button
-                      key={group.id}
-                      type="button"
-                      onClick={() => setActiveTopicGroup(group.id)}
-                      className={`cursor-pointer rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
-                        group.id === activeTopicGroup
-                          ? "bg-zinc-100 text-zinc-950"
-                          : "border border-zinc-700 bg-zinc-950/70 text-zinc-300 hover:border-zinc-500 hover:text-zinc-100"
-                      }`}
-                    >
-                      {group.label}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap gap-2.5">
+                  {(topicCategories ?? []).map((group) => {
+                    const colors = getCategoryColor(group.id);
+                    const active = group.id === activeTopicGroup;
+                    return (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => setActiveTopicGroup(group.id)}
+                        className={`cursor-pointer rounded-full px-4 py-2 text-sm font-semibold backdrop-blur-sm transition-all active:scale-[0.97] sm:px-5 sm:py-2.5 sm:text-base ${
+                          active ? colors.active : colors.idle
+                        }`}
+                      >
+                        {group.label}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-2">

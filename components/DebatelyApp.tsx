@@ -554,15 +554,7 @@ export function DebatelyApp() {
     });
   }, [canRetryAi, lastRound, phase, runTurn]);
 
-  const handleSurrender = useCallback(() => {
-    if (phase !== "debating" || isAIThinking || launchCountdown !== null) return;
-    if (
-      !window.confirm(
-        "Concede this debate? The judge will issue a final verdict and Debately wins by surrender.",
-      )
-    )
-      return;
-
+  const runConcede = useCallback(() => {
     setError(null);
     setTimer(0);
     setTimerPaused(false);
@@ -600,9 +592,6 @@ export function DebatelyApp() {
       }
     })();
   }, [
-    phase,
-    isAIThinking,
-    launchCountdown,
     currentRound,
     history,
     topic,
@@ -610,6 +599,17 @@ export function DebatelyApp() {
     opponentSide,
     skippedTurns,
   ]);
+
+  const handleSurrender = useCallback(() => {
+    if (phase !== "debating" || isAIThinking || launchCountdown !== null) return;
+    if (
+      !window.confirm(
+        "Concede this debate? The judge will issue a final verdict and Debately wins by surrender.",
+      )
+    )
+      return;
+    runConcede();
+  }, [phase, isAIThinking, launchCountdown, runConcede]);
 
   const handleStart = useCallback(() => {
     setPhase("debating");
@@ -631,6 +631,32 @@ export function DebatelyApp() {
   }, [isTimedDebate]);
 
   const handleNew = useCallback(() => {
+    const opponentHasReplied =
+      phase === "debating" &&
+      history.some((r) => r.opponentMove && r.opponentMove.trim().length > 0);
+
+    if (opponentHasReplied && !isAIThinking && launchCountdown === null) {
+      if (
+        !window.confirm(
+          "Start a new debate? The current one will end now — Debately wins by surrender.",
+        )
+      ) {
+        return;
+      }
+      runConcede();
+      return;
+    }
+
+    if (phase === "debating" && history.length > 0) {
+      if (
+        !window.confirm(
+          "Start a new debate? Your current progress will be lost.",
+        )
+      ) {
+        return;
+      }
+    }
+
     clearDebatelySession();
     setPhase("setup");
     setHistory([]);
@@ -645,7 +671,14 @@ export function DebatelyApp() {
     setThinkingStage(null);
     skipScheduled.current = false;
     setLaunchCountdown(null);
-  }, [turnTimerSeconds]);
+  }, [
+    phase,
+    history,
+    isAIThinking,
+    launchCountdown,
+    runConcede,
+    turnTimerSeconds,
+  ]);
 
   if (!sessionReady) {
     return (
