@@ -65,7 +65,8 @@ services:
       GEMINI_USE_VERTEX: "true"
       GEMINI_VERTEX_PROJECT: REDACTED-PROJECT-ID
       GEMINI_VERTEX_LOCATION: us-central1
-      MODELS: gemini-2.5-flash,gemini-1.5-flash
+      # Only models that the project actually has access to.
+      MODELS: gemini-2.5-flash
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/vertex-sa.json
       GEMINI_SEARCH_TOOL: googleSearch
     volumes:

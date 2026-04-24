@@ -7,7 +7,11 @@
  *   or
  *   GEMINI_USE_VERTEX=true + GOOGLE_APPLICATION_CREDENTIALS + GEMINI_VERTEX_PROJECT
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+
+// Small pause between AI calls to spread quota usage.
+const COOLDOWN_MS = 4_000;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 import {
   isFactcheckFallback,
   parseFactcheckJson,
@@ -37,6 +41,10 @@ const PLAYER_MOVE_1 =
 
 // Generous timeouts — AI calls can take 15–30 s under load.
 const TIMEOUT_MS = 60_000;
+
+afterEach(async () => {
+  await sleep(COOLDOWN_MS);
+});
 
 describe("AI: opponent response (Round 1)", { timeout: TIMEOUT_MS }, () => {
   it("returns non-empty text that is not the failure fallback", async () => {

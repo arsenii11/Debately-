@@ -11,15 +11,13 @@ export default defineConfig({
     environment: "node",
     include: ["lib/**/*.integration.test.ts"],
     // Each AI call can take 15–60 s; allow ample time per suite.
-    testTimeout: 90_000,
+    testTimeout: 120_000,
     hookTimeout: 30_000,
-    // Run integration tests sequentially to avoid hammering the API.
+    // Run integration tests sequentially to avoid hammering the API quota.
     pool: "forks",
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    fileParallelism: false,
+    // Retry once on rate-limit / transient AI failures.
+    retry: 2,
     reporters: ["verbose"],
   },
 });
