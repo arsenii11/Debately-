@@ -57,11 +57,11 @@ export function ChatArea({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-zinc-800 bg-zinc-900/40 px-4 py-3 text-center">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+      <div className="border-b border-zinc-800 bg-zinc-900/40 px-4 py-4 text-center sm:py-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
           Topic
         </p>
-        <p className="mt-1 text-sm font-medium leading-snug text-zinc-200">
+        <p className="mx-auto mt-1.5 max-w-3xl text-lg font-semibold leading-snug text-zinc-100 sm:text-xl">
           {topic}
         </p>
       </div>
@@ -90,7 +90,7 @@ export function ChatArea({
               <section key={`${round.round}-${idx}`} className="flex flex-col gap-4">
                 <div className="relative py-2 text-center">
                   <div className="absolute inset-x-0 top-1/2 h-px bg-zinc-800" />
-                  <span className="relative inline-block rounded-full border border-zinc-700 bg-zinc-950 px-4 py-1 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
+                  <span className="relative inline-block rounded-full border border-zinc-700 bg-zinc-950 px-5 py-1.5 text-sm font-bold uppercase tracking-[0.16em] text-zinc-300">
                     Round {round.round}
                   </span>
                 </div>
@@ -165,7 +165,7 @@ export function ChatArea({
           ) : null}
 
           {history.length === 0 && (
-            <p className="py-12 text-center text-sm text-zinc-500">
+            <p className="py-12 text-center text-base text-zinc-400 sm:text-lg">
               Round {currentRound} — type your opening argument below.
             </p>
           )}

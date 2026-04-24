@@ -122,8 +122,10 @@ export function DebatelyApp() {
     if (!window.matchMedia("(max-width: 640px)").matches) return;
     const el = lastOpponentAnchorRef.current;
     if (!el) return;
-    const go = () =>
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    // `block: "end"` keeps the AI bubble pinned just above the input bar
+    // (which itself docks to the top of the on-screen keyboard via the
+    // viewport meta `interactive-widget=resizes-content`).
+    const go = () => el.scrollIntoView({ block: "end", behavior: "smooth" });
     go();
     requestAnimationFrame(go);
     window.setTimeout(go, 120);
@@ -139,7 +141,9 @@ export function DebatelyApp() {
         lastH = vv.height;
         return;
       }
-      if (lastH - vv.height > 72) {
+      // Keyboard opened (viewport shrunk) OR closed (viewport grew): in both
+      // cases re-pin the last opponent bubble so it stays visible.
+      if (Math.abs(lastH - vv.height) > 72) {
         scrollLastOpponentIntoViewMobile();
       }
       lastH = vv.height;

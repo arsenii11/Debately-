@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
@@ -16,6 +16,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Debately Solo",
   description: "Debate an AI opponent with a neutral Judge",
+};
+
+// `interactive-widget=resizes-content` makes the visual viewport shrink when
+// the on-screen keyboard opens, so a bottom-anchored input docks to the top
+// of the keyboard instead of being pushed off-screen.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
