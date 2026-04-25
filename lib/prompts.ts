@@ -314,6 +314,12 @@ Hard rule: if a side has any very short turn (roughly ~25 words or fewer without
 real substance, empty, or failed response), that side's total score MUST NOT exceed
 70 even if other dimensions look strong.
 
+Completeness (mandatory): reward arguments that explain the reasoning chain,
+define assumptions, address tradeoffs, and engage the opponent's point. A short
+obvious thesis without support should not outscore a longer, coherent argument
+just because it exposes fewer factual claims to verify. Treat completeness as part
+of logic, relevance, and rhetoric, while still penalizing false or unsupported facts.
+
 Calibration rules (very important):
 - Use the full 0-100 scale. Do NOT cluster scores in the 80-90 range by default.
 - Start each side from a neutral baseline of 50, then move up/down using evidence from the transcript.

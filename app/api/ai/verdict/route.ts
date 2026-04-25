@@ -13,6 +13,7 @@ import {
   VERDICT_PARSE_FALLBACK,
 } from "@/lib/verdictParse";
 import {
+  argumentCompletenessScoreBonuses,
   shortAnswerScoreCeilings,
   shortAnswerScorePenalties,
 } from "@/lib/verdictPenalties";
@@ -163,6 +164,7 @@ CRITICAL: best_arg_player and best_arg_opponent must be non-empty specific one-s
     }
 
     const pen = shortAnswerScorePenalties(history);
+    const completenessBonus = argumentCompletenessScoreBonuses(history);
     const ceil = shortAnswerScoreCeilings(history);
     const bestArgPlayer =
       parsedVerdict.best_arg_player?.trim() &&
@@ -180,12 +182,16 @@ CRITICAL: best_arg_player and best_arg_opponent must be non-empty specific one-s
       score_player: Math.max(0, parsedVerdict.score_player - pen.player),
       score_opponent: Math.max(0, parsedVerdict.score_opponent - pen.opponent),
     };
+    const afterCompletenessBonus = {
+      score_player: Math.min(100, afterPen.score_player + completenessBonus.player),
+      score_opponent: Math.min(100, afterPen.score_opponent + completenessBonus.opponent),
+    };
     let verdict = {
       ...parsedVerdict,
       best_arg_player: bestArgPlayer,
       best_arg_opponent: bestArgDebately,
-      score_player: Math.min(ceil.playerMax, afterPen.score_player),
-      score_opponent: Math.min(ceil.opponentMax, afterPen.score_opponent),
+      score_player: Math.min(ceil.playerMax, afterCompletenessBonus.score_player),
+      score_opponent: Math.min(ceil.opponentMax, afterCompletenessBonus.score_opponent),
     };
 
     if (playerConceded && !isVerdictFallback(parsedVerdict)) {
@@ -217,14 +223,33 @@ CRITICAL: best_arg_player and best_arg_opponent must be non-empty specific one-s
     if (pen.player > 0 || pen.opponent > 0) {
       debatelyLog("verdict", "warn", "short-answer score penalties applied", {
         pen,
+        completenessBonus,
         before: [parsedVerdict.score_player, parsedVerdict.score_opponent],
         afterPen: [afterPen.score_player, afterPen.score_opponent],
+        afterCompletenessBonus: [
+          afterCompletenessBonus.score_player,
+          afterCompletenessBonus.score_opponent,
+        ],
+      });
+    }
+    if (completenessBonus.player > 0 || completenessBonus.opponent > 0) {
+      debatelyLog("verdict", "info", "argument completeness bonuses applied", {
+        completenessBonus,
+        afterPen: [afterPen.score_player, afterPen.score_opponent],
+        afterCompletenessBonus: [
+          afterCompletenessBonus.score_player,
+          afterCompletenessBonus.score_opponent,
+        ],
       });
     }
     if (ceil.playerMax < 100 || ceil.opponentMax < 100) {
       debatelyLog("verdict", "warn", "short-answer score ceiling applied", {
         ceil,
         afterPen: [afterPen.score_player, afterPen.score_opponent],
+        afterCompletenessBonus: [
+          afterCompletenessBonus.score_player,
+          afterCompletenessBonus.score_opponent,
+        ],
         final: [verdict.score_player, verdict.score_opponent],
       });
     }

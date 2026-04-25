@@ -7,6 +7,7 @@ const OPPONENT_FAILURE_SUBSTR = "AI opponent failed to respond";
 /** If any move is this short, that side's final score cannot exceed this. */
 const SHORT_MOVE_MAX_WORDS = 25;
 export const SHORT_ANSWER_SCORE_CEILING = 70;
+export const COMPLETENESS_SCORE_BONUS_CAP = 10;
 
 function penaltyForMove(text: string): number {
   const t = text.trim();
@@ -19,6 +20,18 @@ function penaltyForMove(text: string): number {
   if (w <= 20) return 4;
   if (w <= 35) return 2;
   return 0;
+}
+
+function completenessBonusForMove(text: string): number {
+  const t = text.trim();
+  if (!t) return 0;
+  if (t === SURRENDER_PLAYER_MOVE) return 0;
+  if (t.includes(OPPONENT_FAILURE_SUBSTR)) return 0;
+  const w = countWords(t);
+  if (w < 40) return 0;
+  if (w < 70) return 2;
+  if (w < 110) return 4;
+  return 6;
 }
 
 function moveCountsAsShortForCeiling(text: string): boolean {
@@ -60,5 +73,22 @@ export function shortAnswerScorePenalties(history: RoundData[]): {
   return {
     player: Math.min(40, player),
     opponent: Math.min(40, opponent),
+  };
+}
+
+/** Reward developed turns so terse slogans are not the optimal scoring strategy. */
+export function argumentCompletenessScoreBonuses(history: RoundData[]): {
+  player: number;
+  opponent: number;
+} {
+  let player = 0;
+  let opponent = 0;
+  for (const r of history) {
+    player += completenessBonusForMove(r.playerMove);
+    opponent += completenessBonusForMove(r.opponentMove ?? "");
+  }
+  return {
+    player: Math.min(COMPLETENESS_SCORE_BONUS_CAP, player),
+    opponent: Math.min(COMPLETENESS_SCORE_BONUS_CAP, opponent),
   };
 }
