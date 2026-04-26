@@ -153,6 +153,63 @@ function LiveDebate(props: LiveStateProps) {
   );
 }
 
+function ReadOnlyDebate({
+  session,
+  perspectiveSide,
+  playerName,
+  opponentName,
+  bannerTitle,
+  bannerSubtitle,
+}: {
+  session: PublicSession;
+  perspectiveSide: Side;
+  playerName: string;
+  opponentName: string;
+  bannerTitle: string;
+  bannerSubtitle: string;
+}) {
+  const opponentSide: Side = perspectiveSide === "FOR" ? "AGAINST" : "FOR";
+  const history = viewMultiplayerRoundsFromSide(session.history, perspectiveSide);
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2 text-xs text-zinc-400">
+        <Link
+          href="/"
+          className="rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
+        >
+          ← Home
+        </Link>
+        <div className="flex items-center gap-3">
+          <span>
+            Round {session.currentRound}/{session.settings.turnRounds}
+          </span>
+          <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300">
+            Read-only
+          </span>
+        </div>
+      </div>
+      <div className="border-b border-indigo-500/20 bg-indigo-950/20 px-4 py-3 text-center">
+        <p className="text-sm font-semibold text-indigo-200">{bannerTitle}</p>
+        <p className="mt-1 text-xs text-zinc-400">{bannerSubtitle}</p>
+      </div>
+      <ChatArea
+        topic={session.settings.topic}
+        playerName={playerName}
+        opponentName={opponentName}
+        playerSide={perspectiveSide}
+        opponentSide={opponentSide}
+        roundFirstSide="FOR"
+        history={history}
+        currentRound={session.currentRound}
+        thinkingStage="verdict"
+        isAIThinking
+        thinkingLabel="Judge is preparing the final verdict…"
+      />
+    </div>
+  );
+}
+
 export function MultiplayerApp({ sessionId }: Props) {
   const router = useRouter();
   const [session, setSession] = useState<PublicSession | null>(null);
@@ -547,15 +604,26 @@ export function MultiplayerApp({ sessionId }: Props) {
   }
 
   if (session.state === "finished") {
+    const forPlayer = session.players.find((p) => p.side === "FOR");
+    const againstPlayer = session.players.find((p) => p.side === "AGAINST");
+    const perspectiveSide = mySide ?? "FOR";
+    const readOnlyPlayerName =
+      perspectiveSide === "FOR"
+        ? (forPlayer?.nickname ?? "FOR")
+        : (againstPlayer?.nickname ?? "AGAINST");
+    const readOnlyOpponentName =
+      perspectiveSide === "FOR"
+        ? (againstPlayer?.nickname ?? "AGAINST")
+        : (forPlayer?.nickname ?? "FOR");
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-3 p-8 text-center">
-        <p className="text-base font-semibold text-zinc-200">
-          Debate finished. Waiting for the judge verdict…
-        </p>
-        <p className="text-xs text-zinc-500">
-          The AI is scoring the match. This usually takes a few seconds.
-        </p>
-      </div>
+      <ReadOnlyDebate
+        session={session}
+        perspectiveSide={perspectiveSide}
+        playerName={readOnlyPlayerName}
+        opponentName={readOnlyOpponentName}
+        bannerTitle="Debate finished. Waiting for the judge verdict…"
+        bannerSubtitle="The full transcript stays visible while the AI scores the match."
+      />
     );
   }
 
