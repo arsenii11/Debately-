@@ -112,6 +112,9 @@ export async function runVerdictForSession(args: {
       history,
       skippedTurns,
       playerConceded,
+      playerName: anchor.nickname || `Player ${anchor.slot}`,
+      opponentName: other.nickname || `Player ${other.slot}`,
+      mode: "multiplayer",
     });
     applyVerdict({ sessionId: args.sessionId, verdict });
   } catch (err) {

@@ -25,6 +25,9 @@ export type VerdictArgs = {
   history: RoundData[];
   skippedTurns: number;
   playerConceded?: boolean;
+  playerName?: string;
+  opponentName?: string;
+  mode?: "solo" | "multiplayer";
 };
 
 function fallbackBestArgFromHistory(
@@ -61,6 +64,9 @@ export async function runVerdict(args: VerdictArgs): Promise<Verdict> {
     history,
     skippedTurns,
     playerConceded,
+    playerName,
+    opponentName,
+    mode,
   } = args;
   const conceded = playerConceded === true;
 
@@ -71,6 +77,9 @@ export async function runVerdict(args: VerdictArgs): Promise<Verdict> {
     history,
     skippedTurns,
     playerConceded: conceded,
+    playerName,
+    opponentName,
+    mode,
   });
 
   const VERDICT_TOKENS_FIRST = 4096;

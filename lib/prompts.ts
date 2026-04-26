@@ -327,7 +327,7 @@ Score each side 0-100 based on:
 Penalize: -5 points per skipped turn (apply to the side that skipped: player skipped turns reduce player score).
 
 Short answers (mandatory): penalize each side for low-effort turns. Count words in
-each player move and each Debately move. Very short replies without real
+each side's moves. Very short replies without real
 argumentation must lower that side's scores and their rhetoric/relevance
 subscores. Rough guide:
 - ~1-5 words or empty: heavy penalty
@@ -361,6 +361,14 @@ Calibration rules (very important):
   quality normally, but summary and best-argument lines MUST be light and funny.
   Tease weak logic, praise ridiculous-but-effective reasoning. Do NOT write a
   dry policy memo. Do NOT moralize. Match the energy of the debate.
+- MULTIPLAYER COMEDY VERDICT: when this is a human-vs-human multiplayer debate
+  and the topic is playful/crude/absurd, write in English by default and make
+  the verdict feel like a hype host calling the match. Name the winner directly:
+  "[Name] absolutely cooked / tore it up / owned this round because..." Then
+  name the loser and roast the weak arguments lightly: "[Name] got cooked here;
+  the problem was..." Keep it funny, not hateful. No slurs, no harassment, no
+  real-world insults beyond playful debate trash-talk. The loser is not a bad
+  person; their argument just got bodied.
 
 You do NOT judge who has the "correct" political position.
 You judge argumentation QUALITY.
@@ -381,11 +389,13 @@ function formatRoundForVerdict(
   r: RoundData,
   playerSide: Side,
   opponentSide: Side,
+  playerLabel = "Player",
+  opponentLabel = "Debately",
 ): string {
   return `Round ${r.round}:
-  Player (${playerSide}): ${JSON.stringify(r.playerMove)}
+  ${playerLabel} (${playerSide}): ${JSON.stringify(r.playerMove)}
   Judge factcheck: ${formatFactcheckLine(r.aiFactcheckPlayer)}
-  Debately (${opponentSide}): ${JSON.stringify(r.opponentMove ?? "")}
+  ${opponentLabel} (${opponentSide}): ${JSON.stringify(r.opponentMove ?? "")}
   Judge factcheck: ${formatFactcheckLine(r.aiFactcheckOpponent)}`;
 }
 
@@ -397,10 +407,24 @@ export function judgeVerdictUserPrompt(params: {
   skippedTurns: number;
   /** Player tapped concede — debate ended before all rounds. */
   playerConceded?: boolean;
+  playerName?: string;
+  opponentName?: string;
+  mode?: "solo" | "multiplayer";
 }): string {
   const today = new Date().toISOString().slice(0, 10);
+  const playerLabel = params.playerName?.trim() || "Player";
+  const opponentLabel = params.opponentName?.trim() || "Debately";
+  const mode = params.mode ?? "solo";
   const full = params.history
-    .map((r) => formatRoundForVerdict(r, params.playerSide, params.opponentSide))
+    .map((r) =>
+      formatRoundForVerdict(
+        r,
+        params.playerSide,
+        params.opponentSide,
+        playerLabel,
+        opponentLabel,
+      ),
+    )
     .join("\n\n");
 
   const concedeBlock =
@@ -408,28 +432,30 @@ export function judgeVerdictUserPrompt(params: {
       ? `
 
 SPECIAL CASE — PLAYER CONCEDED (surrender):
-The player voluntarily ended the debate early. The final round includes this exact player line: ${JSON.stringify(SURRENDER_PLAYER_MOVE)}.
-- Debately wins the match for final scoring (forfeit). score_opponent MUST be greater than score_player by at least 15 points unless prior rounds are empty.
+${playerLabel} voluntarily ended the debate early. The final round includes this exact line: ${JSON.stringify(SURRENDER_PLAYER_MOVE)}.
+- ${opponentLabel} wins the match for final scoring (forfeit). score_opponent MUST be greater than score_player by at least 15 points unless prior rounds are empty.
 - score_player should be very low (typically 5–30) reflecting an unfinished/forfeited end; still judge earlier rounds briefly in summary if any exist.
-- score_opponent should reflect how well Debately argued in completed rounds (typically 55–90).
-- summary MUST state clearly that the player conceded / surrendered.
+- score_opponent should reflect how well ${opponentLabel} argued in completed rounds (typically 55–90).
+- summary MUST state clearly that ${playerLabel} conceded / surrendered.
 `
       : "";
 
   return `Topic: "${params.topic}"
 Current date (UTC): ${today}
-Player side: ${params.playerSide}
-Debately side: ${params.opponentSide}
+Mode: ${mode === "multiplayer" ? "human-vs-human multiplayer" : "solo vs Debately AI"}
+Side A: ${playerLabel} (${params.playerSide})
+Side B: ${opponentLabel} (${params.opponentSide})
 Skipped turns (player timed out): ${params.skippedTurns} (−5 points per skip to player score)
 Tone: If the topic is playful/crude/absurd/taste-based, the summary and
 best-argument lines MUST be funny and match the debate's energy. No dry
 summaries, no moralizing. Score normally, roast entertainingly.
+${mode === "multiplayer" ? `Multiplayer tone rule: never call either side "Debately" unless that is literally their nickname. Use the two human names above. If the topic is funny/crude/absurd, write the verdict text in English by default and make it sound like a hype commentator: winner cooked, loser got cooked, with specific argument examples.` : ""}
 
 Full transcript:
 ${full}
 ${concedeBlock}
 
-Return JSON (text fields in the transcript's dominant language).
+Return JSON (text fields in the transcript's dominant language; for funny/crude/absurd multiplayer debates, English by default).
 IMPORTANT: score_player and score_opponent will be recomputed server-side from
 the breakdown (factual×0.40 + logic×0.25 + relevance×0.20 + rhetoric×0.15),
 so focus your effort on the breakdown subscores — they drive the final result.
