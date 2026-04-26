@@ -43,7 +43,8 @@ type Props = {
   side: Side;
   reactions: SpecLike[];
   readOnly?: boolean;
-  onUpdate?: (next: SpecLike[]) => void;
+  /** Called after a successful react; `next` omitted if the response had no likes array. */
+  onUpdate?: (next?: SpecLike[]) => void;
   align?: "start" | "end";
 };
 
