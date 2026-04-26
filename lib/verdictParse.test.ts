@@ -81,19 +81,26 @@ describe("parseVerdictJson — breakdown normalisation", () => {
     expect(v.breakdown.rhetoric[1]).toBeLessThanOrEqual(100);
   });
 
-  it("returns fallback when a breakdown field is missing", () => {
+  it("synthesizes breakdown from scores when a breakdown field is missing", () => {
     const obj = JSON.parse(makeVerdictJson()) as Record<string, unknown>;
     const bd = obj.breakdown as Record<string, unknown>;
     delete bd.logic;
     const v = parseVerdictJson(JSON.stringify(obj));
-    expect(isVerdictFallback(v)).toBe(true);
+    expect(isVerdictFallback(v)).toBe(false);
+    expect(v.score_player).toBe(67);
+    expect(v.score_opponent).toBe(58);
+    expect(v.breakdown.factual).toEqual([67, 58]);
+    expect(v.breakdown.logic).toEqual([67, 58]);
+    expect(v.summary).toContain("Player argued");
   });
 
-  it("returns fallback when breakdown pair has only one element", () => {
+  it("synthesizes breakdown from scores when a breakdown pair has only one element", () => {
     const obj = JSON.parse(makeVerdictJson()) as Record<string, unknown>;
     (obj.breakdown as Record<string, unknown>).factual = [72];
     const v = parseVerdictJson(JSON.stringify(obj));
-    expect(isVerdictFallback(v)).toBe(true);
+    expect(isVerdictFallback(v)).toBe(false);
+    expect(v.breakdown.factual).toEqual([67, 58]);
+    expect(v.breakdown.relevance).toEqual([67, 58]);
   });
 
   it("recovers complete verdict text when breakdown is malformed", () => {
