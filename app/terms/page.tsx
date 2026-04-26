@@ -20,7 +20,7 @@ export default function TermsPage() {
         Terms of Service
       </h1>
       <p className="mb-10 text-sm text-zinc-500">
-        Effective date: April 23, 2026 · Bluume, Inc
+        Effective date: April 26, 2026 · Bluume, Inc
       </p>
 
       <section className="flex flex-col gap-8 text-[15px] leading-relaxed">
@@ -54,10 +54,12 @@ export default function TermsPage() {
           </h2>
           <p>
             Debately is an AI-powered debate practice tool that lets you argue a position
-            against an AI opponent. A neutral AI judge evaluates each argument and provides a
-            verdict. The Service is provided for entertainment and educational purposes only.
-            Nothing in Debately constitutes legal, medical, financial, or professional advice
-            of any kind.
+            against an AI opponent or, in multiplayer link mode, against another human player.
+            A neutral AI judge may evaluate arguments, factcheck moves, provide optional hints,
+            and generate a verdict. Debate School is currently a preview explaining why debate
+            practice matters; full lessons and guided drills are coming later. The Service is
+            provided for entertainment and educational purposes only. Nothing in Debately
+            constitutes legal, medical, financial, or professional advice of any kind.
           </p>
         </div>
 
@@ -78,6 +80,10 @@ export default function TermsPage() {
             <li>
               use automated scripts or bots to submit requests, which may harm service
               availability for other users;
+            </li>
+            <li>
+              share multiplayer links for harassment, spam, impersonation, or other abusive
+              behavior;
             </li>
             <li>impersonate any person or entity.</li>
           </ul>
@@ -108,7 +114,9 @@ export default function TermsPage() {
             All software, design, and branding of the Service are owned by or licensed to
             Bluume. You retain ownership of any original text you submit. By submitting content
             to the Service, you grant Bluume a limited, non-exclusive, royalty-free license to
-            process that content solely to provide the Service to you.
+            process and temporarily store that content solely to provide the Service to you,
+            including multiplayer synchronization, resume-by-link behavior, AI processing, and
+            verdict generation.
           </p>
         </div>
 
@@ -145,9 +153,11 @@ export default function TermsPage() {
           </h2>
           <p>
             The Service relies on Google Cloud Vertex AI to power AI responses. Your debate
-            content is transmitted to Google's servers for processing. Google's terms and
-            privacy policies apply to such processing. We are not responsible for Google's
-            practices or the content of any third-party services linked from Debately.
+            content may be transmitted to Google's servers for processing. Multiplayer sessions
+            also rely on temporary in-memory and JSON snapshot storage in our server environment
+            so shared links and live updates can work. Google's terms and privacy policies apply
+            to AI processing. We are not responsible for Google's practices or the content of
+            any third-party services linked from Debately.
           </p>
         </div>
 

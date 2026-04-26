@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         Privacy Policy
       </h1>
       <p className="mb-10 text-sm text-zinc-500">
-        Effective date: April 23, 2026 · Bluume, Inc
+        Effective date: April 26, 2026 · Bluume, Inc
       </p>
 
       <section className="flex flex-col gap-8 text-[15px] leading-relaxed">
@@ -59,11 +59,17 @@ export default function PrivacyPage() {
               first-party or third-party.
             </li>
             <li>
-              <strong className="text-zinc-200">No server-side storage of your content.</strong>{" "}
-              Your nickname, debate topic, and argument text are never written to a database.
-              They exist only in your browser's{" "}
+              <strong className="text-zinc-200">Solo debates stay local except for AI processing.</strong>{" "}
+              Your solo nickname, topic, and debate state are stored in your browser's{" "}
               <code className="rounded bg-zinc-800 px-1 py-0.5 text-xs">sessionStorage</code>,
-              which is automatically cleared when you close the tab or the browser session ends.
+              which is cleared when the browser session ends.
+            </li>
+            <li>
+              <strong className="text-zinc-200">Multiplayer link sessions require temporary server storage.</strong>{" "}
+              To let two players share a lobby, reconnect, and receive live updates, we store
+              the session state in memory and periodically write a JSON snapshot to disk. This
+              can include nicknames, topics, arguments, factchecks, verdicts, and anonymous
+              player-token hashes. Sessions expire automatically, currently after about 12 hours.
             </li>
           </ul>
         </div>
@@ -73,11 +79,12 @@ export default function PrivacyPage() {
             3. How your debate content is processed
           </h2>
           <p className="mb-3">
-            When you submit a debate argument, it is sent over HTTPS to our API server, which
-            forwards it to{" "}
+            When you submit a debate argument, it is sent over HTTPS to our API server. For
+            AI-powered features, the server forwards relevant content to{" "}
             <strong className="text-zinc-200">Google Cloud Vertex AI (Gemini)</strong> to
-            generate the AI opponent's response and the judge's factcheck. This is a transient
-            processing step — we do not retain your debate text in any database.
+            generate the AI opponent's response, judge factcheck, verdict, or optional hint.
+            Solo debates use this as a transient processing step. Multiplayer sessions are also
+            temporarily stored as described above so the shared link can work.
           </p>
           <p>
             Your content may appear briefly in our server process logs (Docker container
@@ -130,8 +137,8 @@ export default function PrivacyPage() {
           <ul className="flex list-disc flex-col gap-2 pl-5">
             <li>
               <strong className="text-zinc-200">Contractual necessity</strong> — transmitting
-              your debate arguments to Google Vertex AI is necessary to deliver the core
-              functionality of the Service.
+              your debate arguments to Google Vertex AI and temporarily storing multiplayer
+              session state are necessary to deliver the core functionality of the Service.
             </li>
             <li>
               <strong className="text-zinc-200">Legitimate interests</strong> — anonymous
@@ -147,9 +154,10 @@ export default function PrivacyPage() {
           </h2>
           <p className="mb-3">
             Depending on where you live, you may have rights including access, rectification,
-            erasure, restriction, portability, and objection. Because we do not store personal
-            data on our servers, most of these rights are satisfied by default — there is
-            nothing to access, correct, or delete on our end.
+            erasure, restriction, portability, and objection. We do not run user accounts, so
+            most solo usage has no server-side profile attached to you. Multiplayer sessions are
+            anonymous and short-lived; if you contact us about a specific session, include the
+            session link so we can assess whether any active temporary record exists.
           </p>
           <p>
             If you have concerns, email us at{" "}

@@ -1151,7 +1151,7 @@ export function SetupScreen({
             </p>
           </div>
 
-          <div className="mt-5 flex flex-col gap-5">
+          <div className="mt-5 flex max-w-2xl flex-col gap-5">
             <div className="flex flex-col gap-2">
               <label className="text-base font-semibold text-zinc-100 sm:text-lg">
                 Nickname
@@ -1381,15 +1381,15 @@ export function SetupScreen({
                     Debate School
                   </h2>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                    Guided practice for claims, evidence, rebuttals, and calm
-                    pushback.
+                    Preview: why debate practice matters and which skills it
+                    builds. Full lessons are coming later.
                   </p>
                 </div>
                 <a
-                  href="#topic-picker"
+                  href="/debate-school"
                   className="inline-flex w-fit cursor-pointer items-center rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
                 >
-                  Start with a debate topic →
+                  Preview Debate School →
                 </a>
               </div>
             </section>
