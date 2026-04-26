@@ -56,7 +56,7 @@ function startedSession(): {
     update: {
       topic: "AI will improve education.",
       side: "FOR",
-      turnRounds: 2,
+      turnRounds: 3,
       turnTimerSeconds: 60,
     },
   });
@@ -90,7 +90,7 @@ describe("multiplayer store lifecycle", () => {
     const session = getSession(sessionId);
     expect(session?.state).toBe("live");
     expect(session?.settings.topic).toBe("AI will improve education.");
-    expect(session?.settings.turnRounds).toBe(2);
+    expect(session?.settings.turnRounds).toBe(3);
     expect(session?.players[0].side).toBe("FOR");
     expect(session?.players[1].side).toBe("AGAINST");
     expect(session?.history).toHaveLength(1);
@@ -120,8 +120,21 @@ describe("multiplayer store lifecycle", () => {
     expect(r.kind).toBe("ok");
     if (r.kind === "ok") expect(r.finished).toBe(false);
 
-    // Round 2 AGAINST → final
+    // Round 2 AGAINST
     r = applyMove({ sessionId, slot: "B", text: "AGAINST closes." });
+    expect(r.kind).toBe("ok");
+    if (r.kind === "ok") expect(r.finished).toBe(false);
+    session = getSession(sessionId)!;
+    expect(session.currentRound).toBe(3);
+    expect(session.currentSide).toBe("FOR");
+
+    // Round 3 FOR
+    r = applyMove({ sessionId, slot: "A", text: "FOR final push." });
+    expect(r.kind).toBe("ok");
+    if (r.kind === "ok") expect(r.finished).toBe(false);
+
+    // Round 3 AGAINST → final
+    r = applyMove({ sessionId, slot: "B", text: "AGAINST final answer." });
     expect(r.kind).toBe("ok");
     if (r.kind === "ok") expect(r.finished).toBe(true);
     session = getSession(sessionId)!;
