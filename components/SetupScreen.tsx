@@ -942,14 +942,21 @@ export function SetupScreen({
         >
           <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
-              Step 1 · Pick a topic
+              Solo · You vs AI · Step 1 · Pick a topic
             </span>
             <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
               Let&apos;s start a debate
             </h2>
             <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
-              Choose a fresh topic, set your side, and the Judge will fact-check
-              every move.
+              You debate the AI opponent; the Judge fact-checks every move and
+              scores the match. Want a real person instead? See{" "}
+              <a
+                href="#more-ways-to-play"
+                className="font-medium text-indigo-300 underline-offset-2 hover:underline"
+              >
+                Play with a friend
+              </a>{" "}
+              below.
             </p>
           </div>
 
@@ -1246,10 +1253,10 @@ export function SetupScreen({
           onClick={onStart}
           className="cursor-pointer rounded-xl bg-indigo-600 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100 sm:text-lg"
         >
-          Start debate
+          Start debate vs AI →
         </button>
 
-        <div className="mt-2 flex flex-col gap-3">
+        <div id="more-ways-to-play" className="mt-2 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <span className="h-px flex-1 bg-zinc-800" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">

@@ -38,6 +38,35 @@ function buildPlayerInsight(verdict: Verdict): string {
   return `Your best dimension today: ${insightLabels[best.key]}. Try focusing on ${insightLabels[weakest.key]} next time.`;
 }
 
+function buildComebackOutro(verdict: Verdict): {
+  title: string;
+  hint: string;
+} {
+  const deficits = rows
+    .map(({ key }) => ({
+      key,
+      delta: verdict.breakdown[key][1] - verdict.breakdown[key][0],
+    }))
+    .filter((d) => d.delta > 0)
+    .sort((a, b) => b.delta - a.delta);
+
+  if (deficits.length === 0) {
+    return {
+      title: "That was razor-close.",
+      hint: "One sharper example in your next round can swing the verdict.",
+    };
+  }
+
+  const primary = insightLabels[deficits[0].key];
+  const secondary = deficits[1] ? insightLabels[deficits[1].key] : null;
+  return {
+    title: "You almost had it.",
+    hint: secondary
+      ? `Push ${primary} and ${secondary} a bit harder next round — you can absolutely take it.`
+      : `Push ${primary} a bit harder next round — you can absolutely take it.`,
+  };
+}
+
 function CrownIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -73,6 +102,7 @@ export function VerdictCard({
         ? opponentLabel
         : null;
   const playerInsight = buildPlayerInsight(verdict);
+  const comeback = buildComebackOutro(verdict);
 
   return (
     <div className="mx-auto w-full max-w-[460px] px-2">
@@ -207,6 +237,20 @@ export function VerdictCard({
             {playerInsight}
           </p>
         </div>
+
+        {winner === "opponent" ? (
+          <div className="mt-4 rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-4">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-300">
+              Comeback angle
+            </p>
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-emerald-100">
+              {comeback.title}
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-emerald-200/90">
+              {comeback.hint}
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-3">
