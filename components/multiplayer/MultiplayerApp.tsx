@@ -110,8 +110,10 @@ function LiveDebate(props: LiveStateProps) {
       <ChatArea
         topic={session.settings.topic}
         playerName={myNickname}
+        opponentName={opponentNickname}
         playerSide={mySide}
         opponentSide={opponentSide}
+        roundFirstSide="FOR"
         history={history}
         currentRound={session.currentRound}
         thinkingStage={thinkingStage}
@@ -142,6 +144,7 @@ export function MultiplayerApp({ sessionId }: Props) {
   const [shareUrl, setShareUrl] = useState("");
   const [myNickname, setMyNicknameState] = useState("");
   const [hintInflight, setHintInflight] = useState(false);
+  const [tokenRevision, setTokenRevision] = useState(0);
   const inflightSubmitRef = useRef(false);
 
   useEffect(() => {
@@ -173,7 +176,7 @@ export function MultiplayerApp({ sessionId }: Props) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load session.");
     }
-  }, [sessionId]);
+  }, [sessionId, tokenRevision]);
 
   useEffect(() => {
     void refreshSession();
@@ -191,6 +194,9 @@ export function MultiplayerApp({ sessionId }: Props) {
     es.addEventListener("snapshot", (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data) as PublicSession;
+        // A tokenless stream can still deliver one stale "guest" snapshot right
+        // after a join. Ignore it once this browser owns a player token.
+        if (getPlayerToken(sessionId) && data.yourSlot === null) return;
         setSession(data);
         setError(null);
       } catch {
@@ -203,7 +209,7 @@ export function MultiplayerApp({ sessionId }: Props) {
     return () => {
       es.close();
     };
-  }, [sessionId]);
+  }, [sessionId, tokenRevision]);
 
   // Polling fallback every 5s.
   useEffect(() => {
@@ -242,8 +248,10 @@ export function MultiplayerApp({ sessionId }: Props) {
         };
         if (data.playerToken) {
           setPlayerToken(sessionId, data.playerToken);
+          setTokenRevision((v) => v + 1);
         } else if (existingToken) {
           setPlayerToken(sessionId, existingToken);
+          setTokenRevision((v) => v + 1);
         }
         persistNickname(nickname);
         setMyNicknameState(nickname);
@@ -447,7 +455,7 @@ export function MultiplayerApp({ sessionId }: Props) {
       <LobbyScreen
         session={session}
         mySlot={mySlot}
-        myNickname={myName}
+        myNickname={mySlot ? myName : myNickname}
         onUpdate={updateLobby}
         onJoin={join}
         busy={busy}

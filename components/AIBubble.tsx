@@ -7,6 +7,8 @@ type Props = {
   text: string | null;
   thinking?: boolean;
   label?: string;
+  opponentName?: string;
+  avatarLabel?: string;
 };
 
 export function AIBubble({
@@ -14,11 +16,13 @@ export function AIBubble({
   text,
   thinking,
   label,
+  opponentName = "Debately",
+  avatarLabel = "AI",
 }: Props) {
   return (
     <div className="flex w-full max-w-[min(100%,28rem)] flex-row-reverse items-end gap-2 self-end">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-600 to-pink-600 text-xs font-bold text-white">
-        AI
+        {avatarLabel}
       </div>
       <div className="min-w-0 flex-1 text-right">
         <div className="mb-1 flex items-center justify-end gap-2">
@@ -31,7 +35,9 @@ export function AIBubble({
           >
             {opponentSide}
           </span>
-          <span className="text-sm font-semibold text-zinc-200">Debately</span>
+          <span className="text-sm font-semibold text-zinc-200">
+            {opponentName}
+          </span>
         </div>
         <div
           className={`rounded-[14px_3px_14px_14px] border px-4 py-3 text-left text-sm leading-relaxed text-zinc-100 ${

@@ -941,34 +941,20 @@ export function SetupScreen({
             id="topic-picker"
             className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6"
           >
-          <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
-              Solo · You vs AI · Step 1 · Pick a topic
-            </span>
-            <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl">
-              What do you want to debate?
-            </h2>
-            <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
-              You debate the AI opponent; the Judge fact-checks every move and
-              scores the match. Want a real person instead? See{" "}
-              <a
-                href="#more-ways-to-play"
-                className="font-medium text-indigo-300 underline-offset-2 hover:underline"
-              >
-                Play with a friend
-              </a>{" "}
-              below.
-            </p>
-          </div>
+            <div className="border-b border-zinc-800/80 pb-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
+                You vs AI
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl">
+                What do you want to debate?
+              </h2>
+            </div>
 
           <div className="mt-5 flex flex-col gap-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-base font-semibold text-zinc-100 sm:text-lg">
                   Pick a topic
-                </p>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Fresh topics every day — or let Debately pick for you.
                 </p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
@@ -1022,9 +1008,6 @@ export function SetupScreen({
                       <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
                         Topic of the Day
                       </span>
-                      <span className="text-xs text-zinc-500">
-                        Daily shared pick
-                      </span>
                     </div>
                     <p className="mt-3 text-base font-medium leading-snug text-zinc-100">
                       {topicOfTheDay}
@@ -1076,16 +1059,10 @@ export function SetupScreen({
           </section>
 
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
-            <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
-                Step 2 · Take a side
-              </span>
+            <div className="border-b border-zinc-800/80 pb-4">
               <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl xl:text-2xl">
-                Write your statement, pick FOR or AGAINST
+                Your position
               </h2>
-              <p className="text-sm leading-relaxed text-zinc-400">
-                You can refine the topic above into your own words.
-              </p>
             </div>
 
             <div className="mt-5 flex flex-col gap-5">
@@ -1103,7 +1080,7 @@ export function SetupScreen({
                 />
                 <div className="flex items-center justify-between gap-3 text-xs">
                   <span className="text-zinc-500">
-                    Or write your own statement.
+                    Optional: refine the selected topic.
                   </span>
                   <span className="text-zinc-600">{topic.length}/200</span>
                 </div>
@@ -1139,16 +1116,10 @@ export function SetupScreen({
         </div>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
-          <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
-              Step 3 · Set the match
-            </span>
+          <div className="border-b border-zinc-800/80 pb-4">
             <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
               Your nickname and pacing
             </h2>
-            <p className="text-sm leading-relaxed text-zinc-400">
-              How many rounds and how much time per turn.
-            </p>
           </div>
 
           <div className="mt-5 flex max-w-2xl flex-col gap-5">
@@ -1221,9 +1192,7 @@ export function SetupScreen({
                     <span>{formatTimer(MAX_TURN_TIMER_SECONDS)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <p className="text-xs text-zinc-500">
-                      You can pause at any time.
-                    </p>
+                    <span />
                     <button
                       type="button"
                       onClick={() => setTimedMode(false)}
@@ -1261,13 +1230,7 @@ export function SetupScreen({
         </button>
 
         <div id="more-ways-to-play" className="mt-2 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <span className="h-px flex-1 bg-zinc-800" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              More ways to play
-            </span>
-            <span className="h-px flex-1 bg-zinc-800" />
-          </div>
+          <div className="h-px bg-zinc-800" />
           <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
             <PlayWithFriendPod nickname={nickname} />
 
@@ -1282,9 +1245,6 @@ export function SetupScreen({
                   <span>
                     <span className="block text-base font-semibold text-zinc-100 sm:text-lg">
                       Your progress
-                    </span>
-                    <span className="mt-1 block text-sm text-zinc-400">
-                      Local stats from your recent debates.
                     </span>
                   </span>
                   <span className="flex items-center gap-3">
@@ -1381,8 +1341,7 @@ export function SetupScreen({
                     Debate School
                   </h2>
                   <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                    Preview: why debate practice matters and which skills it
-                    builds. Full lessons are coming later.
+                    Preview: why debate practice matters. Lessons coming later.
                   </p>
                 </div>
                 <a

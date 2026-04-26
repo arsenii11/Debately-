@@ -51,37 +51,47 @@ export default function DebateSchoolPage() {
         ← Back to Debately
       </Link>
 
-      <section className="rounded-3xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-2xl shadow-black/20 sm:p-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-fuchsia-400/90">
-          Debate School preview · Lessons coming soon
-        </p>
-        <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-zinc-50 sm:text-5xl">
-          Why debate is worth practicing.
-        </h1>
-        <p className="mt-5 max-w-3xl text-base leading-relaxed text-zinc-400 sm:text-lg">
-          This is not the full Debate School yet. It is a short preview of the
-          argument behind it: debate practice matters because it trains you to
-          turn a raw opinion into a clear claim, support it, survive pushback,
-          and improve from feedback.
-        </p>
-        <div className="mt-5 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm leading-relaxed text-amber-100/90">
-          Full guided lessons, drills, and progress paths are coming later. For
-          now, use Debately as the practice loop: argue, get judged, then run it
-          back with one sharper focus.
+      <section className="overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900/50 shadow-2xl shadow-black/20 lg:grid lg:grid-cols-[1fr_0.9fr]">
+        <div className="p-6 sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-fuchsia-400/90">
+            Debate School preview · Lessons coming soon
+          </p>
+          <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-zinc-50 sm:text-5xl">
+            Why debate is worth practicing.
+          </h1>
+          <p className="mt-5 max-w-3xl text-base leading-relaxed text-zinc-400 sm:text-lg">
+            This is not the full Debate School yet. It is a short preview of the
+            argument behind it: debate practice matters because it trains you to
+            turn a raw opinion into a clear claim, support it, survive pushback,
+            and improve from feedback.
+          </p>
+          <div className="mt-5 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm leading-relaxed text-amber-100/90">
+            Full guided lessons, drills, and progress paths are coming later.
+            For now, use Debately as the practice loop: argue, get judged, then
+            run it back with one sharper focus.
+          </div>
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link
+              href="/#topic-picker"
+              className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 transition-colors hover:bg-indigo-500"
+            >
+              Practice now →
+            </Link>
+            <a
+              href="#skills"
+              className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-5 py-3 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-900"
+            >
+              Preview the skills
+            </a>
+          </div>
         </div>
-        <div className="mt-7 flex flex-wrap gap-3">
-          <Link
-            href="/#topic-picker"
-            className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 transition-colors hover:bg-indigo-500"
-          >
-            Practice now →
-          </Link>
-          <a
-            href="#skills"
-            className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-5 py-3 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-900"
-          >
-            Preview the skills
-          </a>
+        <div className="relative min-h-[260px] border-t border-zinc-800 bg-zinc-950 lg:border-l lg:border-t-0">
+          <img
+            src="/debate-school/ancient-debate.png"
+            alt="Ancient public debate in a classical forum"
+            className="h-full min-h-[260px] w-full object-cover opacity-85"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/70 via-transparent to-transparent lg:bg-gradient-to-r lg:from-zinc-950/25 lg:to-transparent" />
         </div>
       </section>
 
@@ -115,6 +125,31 @@ export default function DebateSchoolPage() {
             and guided progress. This page is just the preview and rationale.
           </p>
         </div>
+      </section>
+
+      <section className="mt-6 grid gap-4 lg:grid-cols-2">
+        <figure className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40">
+          <img
+            src="/debate-school/presidential-debate.png"
+            alt="Modern debate stage with two speakers and a moderator"
+            className="aspect-[16/10] w-full object-cover opacity-90"
+          />
+          <figcaption className="p-4 text-sm leading-relaxed text-zinc-400">
+            Debate is old, but the skill is modern: explain your point, answer
+            pressure, and stay clear while someone disagrees.
+          </figcaption>
+        </figure>
+        <figure className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40">
+          <img
+            src="/debate-school/debate-infographic.png"
+            alt="Infographic-style illustration of political debate impact"
+            className="aspect-[16/10] w-full object-cover opacity-90"
+          />
+          <figcaption className="p-4 text-sm leading-relaxed text-zinc-400">
+            The full school will turn this into lessons. For now, this page is
+            the preview: why the practice matters and what it trains.
+          </figcaption>
+        </figure>
       </section>
 
       <section id="skills" className="mt-10">

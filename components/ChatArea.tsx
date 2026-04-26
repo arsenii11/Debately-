@@ -29,8 +29,10 @@ function lastOpponentAnchorIndex(
 type Props = {
   topic: string;
   playerName: string;
+  opponentName?: string;
   playerSide: Side;
   opponentSide: Side;
+  roundFirstSide?: Side;
   history: RoundData[];
   currentRound: number;
   thinkingStage: ThinkingStage;
@@ -42,8 +44,10 @@ type Props = {
 export function ChatArea({
   topic,
   playerName,
+  opponentName,
   playerSide,
   opponentSide,
+  roundFirstSide,
   history,
   currentRound,
   thinkingStage,
@@ -70,6 +74,9 @@ export function ChatArea({
         <div className="mx-auto flex max-w-3xl flex-col gap-6">
           {history.map((round, idx) => {
             const isLast = idx === history.length - 1;
+            const firstSide = roundFirstSide ?? playerSide;
+            const opponentInitial =
+              opponentName?.trim().charAt(0).toUpperCase() || "AI";
             const showFcPlayerThinking =
               isLast &&
               isAIThinking &&
@@ -86,15 +93,8 @@ export function ChatArea({
               thinkingStage === "fc_opponent" &&
               !round.aiFactcheckOpponent;
 
-            return (
-              <section key={`${round.round}-${idx}`} className="flex flex-col gap-4">
-                <div className="relative py-2 text-center">
-                  <div className="absolute inset-x-0 top-1/2 h-px bg-zinc-800" />
-                  <span className="relative inline-block rounded-full border border-zinc-700 bg-zinc-950 px-5 py-1.5 text-sm font-bold uppercase tracking-[0.16em] text-zinc-300">
-                    Round {round.round}
-                  </span>
-                </div>
-
+            const playerBlock = (
+              <>
                 {round.playerMove ? (
                   <PlayerBubble
                     name={playerName}
@@ -106,14 +106,17 @@ export function ChatArea({
                     }
                   />
                 ) : null}
-
                 {showFcPlayerThinking ? (
                   <ThinkingBanner label={thinkingLabel} />
                 ) : null}
                 {round.aiFactcheckPlayer ? (
                   <FactCheckCard variant="player" data={round.aiFactcheckPlayer} />
                 ) : null}
+              </>
+            );
 
+            const opponentBlock = (
+              <>
                 {round.opponentMove ? (
                   <div
                     ref={
@@ -123,7 +126,12 @@ export function ChatArea({
                     }
                     className="flex justify-end max-sm:scroll-mt-4"
                   >
-                    <AIBubble opponentSide={opponentSide} text={round.opponentMove} />
+                    <AIBubble
+                      opponentSide={opponentSide}
+                      opponentName={opponentName}
+                      avatarLabel={opponentName ? opponentInitial : "AI"}
+                      text={round.opponentMove}
+                    />
                   </div>
                 ) : showOppThinking ? (
                   <div
@@ -136,6 +144,8 @@ export function ChatArea({
                   >
                     <AIBubble
                       opponentSide={opponentSide}
+                      opponentName={opponentName}
+                      avatarLabel={opponentName ? opponentInitial : "AI"}
                       text={null}
                       thinking
                       label={thinkingLabel}
@@ -152,6 +162,20 @@ export function ChatArea({
                     data={round.aiFactcheckOpponent}
                   />
                 ) : null}
+              </>
+            );
+
+            return (
+              <section key={`${round.round}-${idx}`} className="flex flex-col gap-4">
+                <div className="relative py-2 text-center">
+                  <div className="absolute inset-x-0 top-1/2 h-px bg-zinc-800" />
+                  <span className="relative inline-block rounded-full border border-zinc-700 bg-zinc-950 px-5 py-1.5 text-sm font-bold uppercase tracking-[0.16em] text-zinc-300">
+                    Round {round.round}
+                  </span>
+                </div>
+
+                {firstSide === playerSide ? playerBlock : opponentBlock}
+                {firstSide === playerSide ? opponentBlock : playerBlock}
               </section>
             );
           })}

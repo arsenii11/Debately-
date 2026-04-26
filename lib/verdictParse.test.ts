@@ -95,6 +95,20 @@ describe("parseVerdictJson — breakdown normalisation", () => {
     const v = parseVerdictJson(JSON.stringify(obj));
     expect(isVerdictFallback(v)).toBe(true);
   });
+
+  it("recovers complete verdict text when breakdown is malformed", () => {
+    const raw =
+      '{"score_player":70,"score_opponent":63,\n' +
+      '"breakdown":{"factual":,"logic":,"relevance":,"rhetoric":},\n' +
+      '"summary":"Player had the clearer practical argument, while Debately recovered late.",\n' +
+      '"best_arg_player":"Painting with buttocks can leave the canvas visible from above.",\n' +
+      '"best_arg_opponent":"Eyes are above the chest, so breast painting could still be visible."}';
+    const v = parseVerdictJson(raw);
+    expect(isVerdictFallback(v)).toBe(false);
+    expect(v.summary).toContain("clearer practical argument");
+    expect(v.best_arg_player).toContain("buttocks");
+    expect(v.breakdown.factual).toEqual([70, 63]);
+  });
 });
 
 describe("parseVerdictJson — truncated/partial input", () => {

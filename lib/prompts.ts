@@ -239,6 +239,12 @@ IMPORTANT:
 - KEEP EACH COMMENT VERY SHORT — 1–2 sentences max, plain language, no padding.
   Lead with the verdict, follow with the one key supporting or countering fact.
   Do not write paragraphs; be a telegraph, not an essay.
+- If the topic is clearly playful, absurd, meme-like, or taste/preference-based
+  (for example "boobs vs ass", pineapple on pizza, silly hypotheticals), stay in
+  judge mode but do not act like a courtroom robot. Score argument strength, but
+  comments may be funny, lightly teasing, and in on the joke. Do not over-police
+  subjective claims; mark them "disputed" and explain the practical weakness with
+  a short wink. Never be vulgar beyond the user's own wording.
 
 Language: write claim, comment, and any flag_details text in the same language
 as the argument being factchecked (match the speaker's wording).
@@ -284,6 +290,9 @@ Output language: ${targetLanguage}
 Speaker side: ${params.side}
 Round: ${params.round}
 Previous Debately/player argument: "${prev}"
+Tone hint: If the topic is playful, absurd, meme-like, or taste/preference-based,
+keep the JSON format but let comments be funny and lightly teasing while still
+judging argument strength.
 
 Argument to factcheck:
 "${params.moveText}"
@@ -336,6 +345,11 @@ Calibration rules (very important):
 - Do NOT give both sides >80 unless both are clearly high-quality by transcript evidence.
 - If one side is clearly stronger overall, reflect that with a meaningful score gap (typically >= 8 points).
 - Prefer conservative scoring when evidence quality is uncertain.
+- For playful/absurd/taste-based topics (for example "boobs vs ass", meme
+  hypotheticals, joke rankings), still score argument quality normally, but the
+  summary and best-argument lines should be lighter and funnier. You may tease
+  weak logic and praise ridiculous-but-effective reasoning. Do not moralize the
+  topic or turn it into a dry policy memo.
 
 You do NOT judge who has the "correct" political position.
 You judge argumentation QUALITY.
@@ -396,6 +410,8 @@ Current date (UTC): ${today}
 Player side: ${params.playerSide}
 Debately side: ${params.opponentSide}
 Skipped turns (player timed out): ${params.skippedTurns} (−5 points per skip to player score)
+Tone hint: If this is a playful or absurd debate, keep scoring useful, but make
+the summary witty and in on the joke.
 
 Full transcript:
 ${full}
@@ -426,5 +442,6 @@ Do not nest quotes — rephrase without " inside strings.`;
 export const JUDGE_VERDICT_COMPACT_RETRY_SUFFIX = `
 
 CRITICAL RETRY: Previous output was invalid or truncated. Reply with ONE compact JSON object only.
-summary under 400 characters. best_arg_player and best_arg_opponent under 150 characters each.
-No " double quotes inside any string value.`;
+Use exactly this shape:
+{"score_player":70,"score_opponent":63,"breakdown":{"factual":[70,63],"logic":[70,63],"relevance":[70,63],"rhetoric":[70,63]},"summary":"short verdict","best_arg_player":"one specific argument","best_arg_opponent":"one specific argument"}
+Rules: every breakdown value MUST be an array with exactly two numbers. No empty values. No markdown. No comments. summary under 350 characters. best_arg_player and best_arg_opponent under 140 characters each. No " double quotes inside string values.`;

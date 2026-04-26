@@ -27,6 +27,20 @@ function normalizeBreakdown(
   return { factual, logic, relevance, rhetoric };
 }
 
+function breakdownFromScores(
+  scorePlayer: number,
+  scoreOpponent: number,
+): Verdict["breakdown"] {
+  const p = clampScore(scorePlayer);
+  const o = clampScore(scoreOpponent);
+  return {
+    factual: [p, o],
+    logic: [p, o],
+    relevance: [p, o],
+    rhetoric: [p, o],
+  };
+}
+
 export const VERDICT_PARSE_FALLBACK: Verdict = {
   score_player: 50,
   score_opponent: 50,
@@ -112,6 +126,28 @@ export function recoverVerdictFromPartialRaw(raw: string): Verdict | null {
   };
 }
 
+function recoverVerdictWithoutBreakdown(raw: string): Verdict | null {
+  const spM = /"score_player"\s*:\s*(-?\d+(?:\.\d+)?)/.exec(raw);
+  const soM = /"score_opponent"\s*:\s*(-?\d+(?:\.\d+)?)/.exec(raw);
+  if (!spM || !soM) return null;
+
+  const summary = extractJsonStringValue(raw, "summary");
+  const bestArgP = extractJsonStringValue(raw, "best_arg_player");
+  const bestArgO = extractJsonStringValue(raw, "best_arg_opponent");
+  if (!summary || !bestArgP || !bestArgO) return null;
+
+  const scorePlayer = clampScore(Number(spM[1]));
+  const scoreOpponent = clampScore(Number(soM[1]));
+  return {
+    score_player: scorePlayer,
+    score_opponent: scoreOpponent,
+    breakdown: breakdownFromScores(scorePlayer, scoreOpponent),
+    summary,
+    best_arg_player: bestArgP,
+    best_arg_opponent: bestArgO,
+  };
+}
+
 export function parseVerdictJson(raw: string): Verdict {
   const trimmed = raw
     .replace(/^```(?:json)?\s*/i, "")
@@ -130,12 +166,30 @@ export function parseVerdictJson(raw: string): Verdict {
       if (!Number.isFinite(sp) || !Number.isFinite(so) || typeof parsed.summary !== "string") {
         const partial = recoverVerdictFromPartialRaw(text);
         if (partial) return partial;
+        const scoreOnly = recoverVerdictWithoutBreakdown(text);
+        if (scoreOnly) return scoreOnly;
         continue;
       }
       const breakdown = normalizeBreakdown(parsed.breakdown);
       if (!breakdown) {
         const partial = recoverVerdictFromPartialRaw(text);
         if (partial) return partial;
+        const bestArgP =
+          typeof parsed.best_arg_player === "string" ? parsed.best_arg_player : null;
+        const bestArgO =
+          typeof parsed.best_arg_opponent === "string" ? parsed.best_arg_opponent : null;
+        if (bestArgP && bestArgO) {
+          const scorePlayer = clampScore(sp);
+          const scoreOpponent = clampScore(so);
+          return {
+            score_player: scorePlayer,
+            score_opponent: scoreOpponent,
+            breakdown: breakdownFromScores(scorePlayer, scoreOpponent),
+            summary: parsed.summary,
+            best_arg_player: bestArgP,
+            best_arg_opponent: bestArgO,
+          };
+        }
         continue;
       }
       return {
@@ -155,11 +209,15 @@ export function parseVerdictJson(raw: string): Verdict {
     } catch {
       const partial = recoverVerdictFromPartialRaw(text);
       if (partial) return partial;
+      const scoreOnly = recoverVerdictWithoutBreakdown(text);
+      if (scoreOnly) return scoreOnly;
     }
   }
 
   const recovered = recoverVerdictFromPartialRaw(trimmed);
   if (recovered) return recovered;
+  const scoreOnly = recoverVerdictWithoutBreakdown(trimmed);
+  if (scoreOnly) return scoreOnly;
 
   return VERDICT_PARSE_FALLBACK;
 }
