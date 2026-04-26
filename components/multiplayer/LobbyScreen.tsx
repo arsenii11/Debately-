@@ -286,44 +286,61 @@ export function LobbyScreen({
 
       {canEdit && (isHost || !myReady) ? (
         <>
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
-            <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
-              Topic proposal
-            </p>
-            <TopicPicker
-              selectedTopic={topic}
-              onTopic={(t) => {
-                setTopic(t);
-                void onUpdate({ topic: t });
-              }}
-            />
-            <div className="mt-4 space-y-2 border-t border-zinc-800 pt-4">
-              <label className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                Or type your own
-              </label>
-              <textarea
-                value={topic}
-                onChange={(e) => setTopic(e.target.value.slice(0, 280))}
-                onBlur={handleSetTopic}
-                rows={2}
-                placeholder="What should you debate?"
-                className="w-full resize-none rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none"
+          {isHost ? (
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
+              <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
+                Topic proposal
+              </p>
+              <TopicPicker
+                selectedTopic={topic}
+                onTopic={(t) => {
+                  setTopic(t);
+                  void onUpdate({ topic: t });
+                }}
               />
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] text-zinc-500">
-                  Either player can propose; the most recent topic wins.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSetTopic}
-                  disabled={busy}
-                  className="cursor-pointer rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:border-indigo-500 hover:text-white disabled:opacity-60"
-                >
-                  Save
-                </button>
+              <div className="mt-4 space-y-2 border-t border-zinc-800 pt-4">
+                <label className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                  Or type your own
+                </label>
+                <textarea
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value.slice(0, 280))}
+                  onBlur={handleSetTopic}
+                  rows={2}
+                  placeholder="What should you debate?"
+                  className="w-full resize-none rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none"
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[11px] text-zinc-500">
+                    You pick the topic; your opponent picks their side.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleSetTopic}
+                    disabled={busy}
+                    className="cursor-pointer rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:border-indigo-500 hover:text-white disabled:opacity-60"
+                  >
+                    Save
+                  </button>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          ) : (
+            opponentProposal?.topic ? (
+              <section className="rounded-2xl border border-zinc-700/50 bg-zinc-900/30 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  Topic proposed by host
+                </p>
+                <p className="mt-2 text-sm font-medium text-zinc-100">
+                  {opponentProposal.topic}
+                </p>
+              </section>
+            ) : (
+              <section className="rounded-2xl border border-dashed border-zinc-700/60 bg-zinc-900/20 p-4 text-center text-sm text-zinc-500">
+                Waiting for the host to pick a topic…
+              </section>
+            )
+          )}
 
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">

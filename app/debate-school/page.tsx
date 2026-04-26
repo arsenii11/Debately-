@@ -43,7 +43,7 @@ const practiceLoop = [
 
 export default function DebateSchoolPage() {
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-5xl px-5 py-12 text-zinc-300">
+    <main className="mx-auto min-h-dvh w-full max-w-5xl bg-zinc-950 px-5 py-12 text-zinc-300">
       <Link
         href="/"
         className="mb-10 inline-flex items-center gap-2 text-sm text-zinc-500 transition-colors hover:text-zinc-300"

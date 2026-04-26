@@ -1130,9 +1130,6 @@ export function SetupScreen({
                     <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
                       Coming soon
                     </span>
-                    <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                      Paid later
-                    </span>
                   </div>
                   <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
                     Debate School
