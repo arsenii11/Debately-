@@ -405,34 +405,6 @@ function getCategoryColor(id: string) {
   return CATEGORY_COLORS[id] ?? CATEGORY_FALLBACK_COLOR;
 }
 
-const LEARNING_IMPACT_CARDS = [
-  {
-    title: "Work",
-    text: "Explain decisions clearly in meetings, reviews, and interviews.",
-  },
-  {
-    title: "Conflict",
-    text: "Push back without getting vague, defensive, or personal.",
-  },
-  {
-    title: "Thinking",
-    text: "Spot weak assumptions before they become weak arguments.",
-  },
-] as const;
-
-const LEARNING_SKILL_BARS = [
-  { label: "Clarity", value: 86, color: "from-indigo-400 to-sky-300" },
-  { label: "Confidence", value: 74, color: "from-fuchsia-400 to-pink-300" },
-  { label: "Influence", value: 68, color: "from-amber-300 to-orange-300" },
-] as const;
-
-const LEARNING_STEPS = [
-  "Claim",
-  "Reason",
-  "Evidence",
-  "Rebuttal",
-] as const;
-
 const PROGRESS_SKILL_LABELS: Record<ProgressSkillKey, string> = {
   factual: "Evidence",
   logic: "Logic",
@@ -480,6 +452,7 @@ export function SetupScreen({
   const [topicCategories, setTopicCategories] = useState<TopicCategory[] | null>(null);
   const [activeTopicGroup, setActiveTopicGroup] = useState<string>("easy");
   const [loadingTopics, setLoadingTopics] = useState(true);
+  const [progressOpen, setProgressOpen] = useState(true);
   const [particleEmojis, setParticleEmojis] = useState<string[]>(() =>
     PARTICLES.map(initialParticleEmoji),
   );
@@ -889,31 +862,43 @@ export function SetupScreen({
           </p>
         </header>
 
+        <div className="grid gap-4 xl:grid-cols-2">
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
           <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-zinc-100">
+            <button
+              type="button"
+              onClick={() => setProgressOpen((v) => !v)}
+              className="flex w-full cursor-pointer flex-wrap items-start justify-between gap-3 text-left"
+              aria-expanded={progressOpen}
+            >
+              <span>
+                <span className="block text-sm font-semibold text-zinc-100">
                   Your progress
-                </p>
-                <p className="mt-1 text-sm text-zinc-400">
+                </span>
+                <span className="mt-1 block text-sm text-zinc-400">
                   Local stats from your recent debates.
-                </p>
-              </div>
-              <div className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-right">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                  Streak
-                </p>
-                <p className="mt-1 text-3xl font-semibold tabular-nums text-zinc-100">
-                  {progress?.streakDays ?? 0}
-                </p>
-                <p className="text-xs text-zinc-500">
-                  {(progress?.streakDays ?? 0) === 1 ? "day" : "days"}
-                </p>
-              </div>
-            </div>
+                </span>
+              </span>
+              <span className="flex items-center gap-3">
+                <span className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-right">
+                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                    Streak
+                  </span>
+                  <span className="mt-1 block text-3xl font-semibold tabular-nums text-zinc-100">
+                    {progress?.streakDays ?? 0}
+                  </span>
+                  <span className="block text-xs text-zinc-500">
+                    {(progress?.streakDays ?? 0) === 1 ? "day" : "days"}
+                  </span>
+                </span>
+                <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-400">
+                  {progressOpen ? "Hide" : "Show"}
+                </span>
+              </span>
+            </button>
 
-            <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr]">
+            {progressOpen ? (
+            <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr] xl:grid-cols-1 2xl:grid-cols-[0.9fr_1.1fr]">
               <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                   Today
@@ -963,116 +948,42 @@ export function SetupScreen({
                 </div>
               </div>
             </div>
+            ) : null}
           </div>
         </section>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
-                    Coming soon
-                  </span>
-                  <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                    Paid later
-                  </span>
-                </div>
-                <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
-                  Debate School
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                  A future guided mode for practicing claims, evidence, rebuttals,
-                  and calm pushback. The goal is simple: get better at defending
-                  an opinion when it actually matters.
-                </p>
+          <div className="flex h-full flex-col justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
+                  Coming soon
+                </span>
+                <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  Paid later
+                </span>
               </div>
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/45 px-4 py-3 text-right">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                  Planned
-                </p>
-                <p className="mt-1 text-2xl font-semibold text-zinc-100">12</p>
-                <p className="text-xs text-zinc-500">short lessons</p>
-              </div>
+              <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
+                Debate School
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
+                Guided practice for claims, evidence, rebuttals, and calm pushback.
+              </p>
             </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {LEARNING_IMPACT_CARDS.map((card) => (
-                <div
-                  key={card.title}
-                  className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
-                >
-                  <p className="text-sm font-semibold text-zinc-100">
-                    {card.title}
-                  </p>
-                  <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-                    {card.text}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-100">
-                      Practice profile
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Example of what guided lessons could track.
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[11px] font-semibold text-zinc-400">
-                    Preview
-                  </span>
-                </div>
-                <div className="mt-4 flex flex-col gap-3">
-                  {LEARNING_SKILL_BARS.map((bar) => (
-                    <div key={bar.label} className="flex flex-col gap-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-zinc-300">{bar.label}</span>
-                        <span className="font-mono text-zinc-500">{bar.value}%</span>
-                      </div>
-                      <div className="h-2.5 overflow-hidden rounded-full bg-zinc-800">
-                        <div
-                          className={`h-full rounded-full bg-gradient-to-r ${bar.color}`}
-                          style={{ width: `${bar.value}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                <p className="text-sm font-semibold text-zinc-100">
-                  The argument loop
-                </p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Build the muscle you use in real conversations.
-                </p>
-                <div className="mt-4 grid grid-cols-4 gap-2">
-                  {LEARNING_STEPS.map((step, idx) => (
-                    <div key={step} className="flex flex-col items-center gap-2">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 text-sm font-semibold text-zinc-200">
-                        {idx + 1}
-                      </div>
-                      <span className="text-center text-[11px] font-medium text-zinc-400">
-                        {step}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs leading-relaxed text-zinc-400">
-                  Learn the structure first, then practice it in live debates.
-                </div>
-              </div>
-            </div>
+            <a
+              href="#topic-picker"
+              className="inline-flex w-fit cursor-pointer items-center rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+            >
+              Start with a debate topic →
+            </a>
           </div>
         </section>
+        </div>
 
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
+        <section
+          id="topic-picker"
+          className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4"
+        >
           <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-3">
               <div>

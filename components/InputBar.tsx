@@ -45,6 +45,19 @@ type WritingHint = {
   insert: string;
 };
 
+function MicrophoneIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="-3 0 19 19"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M11.665 7.915v1.31a5.257 5.257 0 0 1-1.514 3.694 5.174 5.174 0 0 1-1.641 1.126 5.04 5.04 0 0 1-1.456.384v1.899h2.312a.554.554 0 0 1 0 1.108H3.634a.554.554 0 0 1 0-1.108h2.312v-1.899a5.045 5.045 0 0 1-1.456-.384 5.174 5.174 0 0 1-1.641-1.126 5.257 5.257 0 0 1-1.514-3.695v-1.31a.554.554 0 1 1 1.109 0v1.31a4.131 4.131 0 0 0 1.195 2.917 3.989 3.989 0 0 0 5.722 0 4.133 4.133 0 0 0 1.195-2.917v-1.31a.554.554 0 1 1 1.109 0zM3.77 10.37a2.875 2.875 0 0 1-.233-1.146V4.738A2.905 2.905 0 0 1 3.77 3.58a3 3 0 0 1 1.59-1.59 2.902 2.902 0 0 1 1.158-.233 2.865 2.865 0 0 1 1.152.233 2.977 2.977 0 0 1 1.793 2.748l-.012 4.487a2.958 2.958 0 0 1-.856 2.09 3.025 3.025 0 0 1-.937.634 2.865 2.865 0 0 1-1.152.233 2.905 2.905 0 0 1-1.158-.233A2.957 2.957 0 0 1 3.77 10.37z" />
+    </svg>
+  );
+}
+
 function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
   if (typeof window === "undefined") return null;
   const w = window as Window & {
@@ -160,10 +173,6 @@ export function InputBar({
     finalTranscriptRef.current = "";
     setVoiceError(null);
 
-    recognition.lang =
-      typeof navigator !== "undefined" && navigator.language
-        ? navigator.language
-        : "en-US";
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
@@ -228,16 +237,35 @@ export function InputBar({
       style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
     >
       <div className="mx-auto flex max-w-3xl flex-col gap-2">
-        <textarea
-          rows={3}
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value.slice(0, MAX))}
-          onFocus={onFocus}
-          onKeyDown={onKeyDown}
-          placeholder="Make your argument… (Enter to send, Shift+Enter for newline)"
-          className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
-        />
+        <div className="relative">
+          <textarea
+            rows={3}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value.slice(0, MAX))}
+            onFocus={onFocus}
+            onKeyDown={onKeyDown}
+            placeholder="Make your argument… (Enter to send, Shift+Enter for newline)"
+            className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 pr-14 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+          />
+          {voiceSupported ? (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={toggleVoiceInput}
+              aria-pressed={isListening}
+              aria-label={isListening ? "Stop voice input" : "Start voice input"}
+              title={isListening ? "Stop voice input" : "Start voice input"}
+              className={`absolute right-3 top-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900/50 disabled:text-zinc-600 disabled:hover:scale-100 ${
+                isListening
+                  ? "border-rose-400/70 bg-rose-500/15 text-rose-100 shadow-md shadow-rose-950/30"
+                  : "border-zinc-700 bg-zinc-950/70 text-zinc-300 hover:border-indigo-500/60 hover:bg-indigo-950/35 hover:text-indigo-100"
+              }`}
+            >
+              <MicrophoneIcon className="h-5 w-5" />
+            </button>
+          ) : null}
+        </div>
         {!disabled && writingHints.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-zinc-500">Try:</span>
@@ -257,7 +285,7 @@ export function InputBar({
           <p className="text-xs text-amber-300">{voiceError}</p>
         ) : isListening ? (
           <p className="text-xs text-indigo-300">
-            Listening... speak now, then tap Stop when done.
+            Listening... speak now, then tap the mic again when done.
           </p>
         ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -274,21 +302,6 @@ export function InputBar({
             ) : null}
           </div>
           <div className="flex items-center gap-3">
-            {voiceSupported ? (
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={toggleVoiceInput}
-                aria-pressed={isListening}
-                className={`cursor-pointer rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900/50 disabled:text-zinc-600 disabled:hover:scale-100 ${
-                  isListening
-                    ? "border-rose-400/70 bg-rose-500/15 text-rose-100 shadow-md shadow-rose-950/30"
-                    : "border-indigo-500/45 bg-indigo-950/35 text-indigo-200 hover:border-indigo-400 hover:bg-indigo-950/55 hover:text-indigo-100"
-                }`}
-              >
-                {isListening ? "Stop" : "Voice"}
-              </button>
-            ) : null}
             <span
               className={`text-xs font-mono tabular-nums ${
                 nearLimit ? "text-red-400" : "text-zinc-500"
