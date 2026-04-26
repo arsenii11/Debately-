@@ -11,7 +11,9 @@ process.env.MULTIPLAYER_SNAPSHOT_PATH = snapshotPath;
 import {
   applyConcede,
   applyMove,
+  applyLike,
   applyLobbyUpdate,
+  applyRemoveLike,
   createSessionWithHost,
   expireDeadlineIfDue,
   getSession,
@@ -41,6 +43,28 @@ it("createSessionWithHost allows empty nickname (set later in lobby)", () => {
   const { session, slot } = createSessionWithHost({ nickname: "" });
   const p = session.players.find((x) => x.slot === slot);
   expect(p?.nickname).toBe("");
+});
+
+it("applyRemoveLike removes a spectator reaction", () => {
+  const { sessionId } = startedSession();
+  const add = applyLike({
+    sessionId,
+    name: "Spec",
+    round: 1,
+    side: "FOR",
+    kind: "like",
+  });
+  expect(add.kind).toBe("ok");
+  expect(getSession(sessionId)?.likes.length).toBe(1);
+  const rem = applyRemoveLike({
+    sessionId,
+    name: "Spec",
+    round: 1,
+    side: "FOR",
+    kind: "like",
+  });
+  expect(rem.kind).toBe("ok");
+  expect(getSession(sessionId)?.likes.length).toBe(0);
 });
 
 function startedSession(): {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { applyLike } from "@/lib/multiplayer/store";
+import { applyLike, applyRemoveLike } from "@/lib/multiplayer/store";
 import { jsonError, publicViewForRequest } from "@/lib/multiplayer/apiHelpers";
 import {
   SPEC_REACTION_KINDS,
@@ -11,7 +11,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
-type Body = { name?: string; round?: number; side?: string; kind?: string };
+type Body = {
+  name?: string;
+  round?: number;
+  side?: string;
+  kind?: string;
+  remove?: boolean;
+};
 
 export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
@@ -46,7 +52,10 @@ export async function POST(request: Request, { params }: Params) {
     );
   }
 
-  const result = applyLike({ sessionId: id, name, round, side, kind });
+  const remove = body.remove === true;
+  const result = remove
+    ? applyRemoveLike({ sessionId: id, name, round, side, kind })
+    : applyLike({ sessionId: id, name, round, side, kind });
   if (result.kind === "error") return jsonError(result.reason, 400);
 
   return NextResponse.json({ session: publicViewForRequest(result.session, request) });

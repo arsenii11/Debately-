@@ -633,6 +633,44 @@ export function recordLike(
   };
 }
 
+export function removeLike(
+  session: MultiplayerSession,
+  args: {
+    name: string;
+    round: number;
+    side: Side;
+    kind?: SpecReactionKind;
+    now: number;
+  },
+): RecordLikeResult {
+  const name = args.name.trim().slice(0, MAX_SPEC_NAME_LENGTH);
+  if (!name) return { kind: "error", reason: "Name is required." };
+  const kind = normalizeReactionKind(args.kind);
+  if (args.round < 1 || args.round > session.history.length) {
+    return { kind: "error", reason: "Invalid round." };
+  }
+  const roundData = session.history[args.round - 1];
+  if (!roundData) return { kind: "error", reason: "Round not found." };
+
+  let removed = false;
+  const next = session.likes.filter((l) => {
+    const match =
+      l.name.toLowerCase() === name.toLowerCase() &&
+      l.round === args.round &&
+      l.side === args.side &&
+      normalizeReactionKind(l.kind) === kind;
+    if (match) removed = true;
+    return !match;
+  });
+  if (!removed) {
+    return { kind: "error", reason: "You do not have this reaction here." };
+  }
+  return {
+    kind: "ok",
+    session: bumpRevision({ ...session, likes: next }, args.now),
+  };
+}
+
 /** RoundData-shaped view of the multiplayer history from the perspective of `mySide`. */
 export function viewHistoryFromSide(
   history: MultiplayerRound[],

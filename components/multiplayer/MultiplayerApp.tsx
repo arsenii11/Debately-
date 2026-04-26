@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -24,6 +25,16 @@ import {
   setPlayerToken,
 } from "@/lib/multiplayer/clientAuth";
 import { SpectatorReactions } from "@/components/multiplayer/SpectatorReactions";
+import { SpectatorEntryName } from "@/components/multiplayer/SpectatorEntryName";
+import { SpectatorAudienceBar } from "@/components/multiplayer/SpectatorAudienceBar";
+import {
+  clearSpectatorDisplayName,
+  getSpectatorDisplayName,
+} from "@/lib/multiplayer/spectatorNameStorage";
+import {
+  verdictForDebatePlayer,
+  verdictInForAgainstOrder,
+} from "@/lib/multiplayer/verdictPerspective";
 import type { PublicSession, SlotId } from "@/lib/multiplayer/types";
 import type { Side, ThinkingStage } from "@/lib/types";
 import {
@@ -256,31 +267,62 @@ function SpectatorView({
   currentTurnNick,
   refreshSession,
 }: SpectatorViewProps) {
+  const [viewerName, setViewerName] = useState("");
+
+  useLayoutEffect(() => {
+    setViewerName(getSpectatorDisplayName());
+  }, []);
+
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-x-hidden">
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-zinc-800 bg-zinc-950/85 px-3 py-2 text-xs text-zinc-400 sm:px-4">
-        <Link
-          href="/"
-          className="shrink-0 rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
-        >
-          ← Home
-        </Link>
-        <div className="flex min-w-0 flex-col items-end gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2">
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            <span className="rounded-full border border-fuchsia-500/40 bg-fuchsia-950/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
-              Spectator
-            </span>
-            <span className="whitespace-nowrap">
-              Round {session.currentRound}/{session.settings.turnRounds}
+      <div className="shrink-0 border-b border-zinc-800 bg-zinc-950/90">
+        <div className="flex min-w-0 items-stretch justify-between gap-2 px-3 py-2 sm:px-4">
+          <Link
+            href="/"
+            className="shrink-0 self-center rounded-md px-2 py-1 text-xs font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
+          >
+            ← Home
+          </Link>
+          <div className="flex min-w-0 flex-1 flex-col items-end gap-1 sm:flex sm:flex-1 sm:flex-row sm:items-center sm:justify-end sm:gap-2">
+            <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-2 sm:w-auto">
+              <span className="rounded-full border border-fuchsia-500/40 bg-fuchsia-950/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
+                Spectator
+              </span>
+              <span className="whitespace-nowrap text-xs text-zinc-400">
+                Round {session.currentRound}/{session.settings.turnRounds}
+              </span>
+            </div>
+            <span
+              className="max-w-full truncate rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-center text-[10px] font-bold uppercase tracking-wide text-zinc-300 sm:max-w-[12rem]"
+              title={`${forNick} vs ${againstNick}`}
+            >
+              {forNick} vs {againstNick}
             </span>
           </div>
-          <span
-            className="max-w-[min(100%,18rem)] truncate rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-center text-[10px] font-bold uppercase tracking-wide text-zinc-300"
-            title={`${forNick} vs ${againstNick}`}
-          >
-            {forNick} vs {againstNick}
-          </span>
+          {viewerName ? (
+            <div className="hidden w-44 max-w-[40vw] shrink-0 pl-1 lg:block">
+              <SpectatorAudienceBar
+                me={viewerName}
+                likes={session.likes ?? []}
+              />
+            </div>
+          ) : null}
         </div>
+
+        {!viewerName ? (
+          <div className="border-t border-amber-500/25 bg-amber-950/20 px-4 py-4 sm:px-5">
+            <SpectatorEntryName onSaved={setViewerName} />
+          </div>
+        ) : null}
+
+        {viewerName ? (
+          <div className="border-t border-zinc-800/80 px-3 py-1.5 lg:hidden">
+            <p className="text-center text-[11px] text-zinc-500">
+              Watching as{" "}
+              <span className="font-medium text-zinc-300">{viewerName}</span>
+            </p>
+          </div>
+        ) : null}
       </div>
 
       {session.state === "live" ? (
@@ -319,12 +361,32 @@ function SpectatorView({
               void refreshSession();
             }}
             align={side === "FOR" ? "start" : "end"}
+            viewerName={viewerName}
           />
         )}
       />
 
-      <div className="shrink-0 border-t border-zinc-800 bg-zinc-950/80 px-4 py-2 text-center text-[11px] text-zinc-500">
-        Spectator · react under each argument · name required once
+      <div className="shrink-0 space-y-1.5 border-t border-zinc-800 bg-zinc-950/80 px-4 py-2 text-center text-[11px] text-zinc-500">
+        {viewerName ? (
+          <>
+            <p>
+              Hover a reaction to see who chose it · click yours again to
+              remove
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                clearSpectatorDisplayName();
+                setViewerName("");
+              }}
+              className="cursor-pointer text-zinc-500 underline decoration-zinc-600 underline-offset-2 hover:text-zinc-400"
+            >
+              Change display name
+            </button>
+          </>
+        ) : (
+          <p>Set your name above to react · hover shows who reacted</p>
+        )}
       </div>
     </div>
   );
@@ -671,7 +733,7 @@ export function MultiplayerApp({ sessionId }: Props) {
           Spectator · match result
         </p>
         <VerdictCard
-          verdict={session.verdict}
+          verdict={verdictInForAgainstOrder(session.verdict, session)}
           playerName={forPlayer?.nickname ?? "FOR"}
           opponentName={againstPlayer?.nickname ?? "AGAINST"}
           newDebateLabel="Back home"
@@ -686,35 +748,7 @@ export function MultiplayerApp({ sessionId }: Props) {
     return (
       <div className="mx-auto flex w-full flex-col items-center gap-4 p-6">
         <VerdictCard
-          verdict={
-            mySide === session.players[0].side
-              ? session.verdict
-              : {
-                  ...session.verdict,
-                  score_player: session.verdict.score_opponent,
-                  score_opponent: session.verdict.score_player,
-                  best_arg_player: session.verdict.best_arg_opponent,
-                  best_arg_opponent: session.verdict.best_arg_player,
-                  breakdown: {
-                    factual: [
-                      session.verdict.breakdown.factual[1],
-                      session.verdict.breakdown.factual[0],
-                    ],
-                    logic: [
-                      session.verdict.breakdown.logic[1],
-                      session.verdict.breakdown.logic[0],
-                    ],
-                    relevance: [
-                      session.verdict.breakdown.relevance[1],
-                      session.verdict.breakdown.relevance[0],
-                    ],
-                    rhetoric: [
-                      session.verdict.breakdown.rhetoric[1],
-                      session.verdict.breakdown.rhetoric[0],
-                    ],
-                  },
-                }
-          }
+          verdict={verdictForDebatePlayer(session.verdict, session, mySide)}
           playerName={myName}
           opponentName={opponentName}
           newDebateLabel="Back home"

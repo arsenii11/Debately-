@@ -15,6 +15,7 @@ import {
   recordMove,
   recordConcede,
   recordLike,
+  removeLike,
   consumeHint,
   setVerdict,
   touchPresence,
@@ -467,6 +468,21 @@ export function applyLike(args: {
   const session = state.sessions.get(args.sessionId);
   if (!session) return { kind: "error", reason: "Session not found." };
   const result = recordLike(session, { ...args, now: Date.now() });
+  if (result.kind === "error") return result;
+  return { kind: "ok", session: commit(state, result.session) };
+}
+
+export function applyRemoveLike(args: {
+  sessionId: string;
+  name: string;
+  round: number;
+  side: Side;
+  kind?: SpecReactionKind;
+}): ApplyLikeResult {
+  const state = ensureStore();
+  const session = state.sessions.get(args.sessionId);
+  if (!session) return { kind: "error", reason: "Session not found." };
+  const result = removeLike(session, { ...args, now: Date.now() });
   if (result.kind === "error") return result;
   return { kind: "ok", session: commit(state, result.session) };
 }

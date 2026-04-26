@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { verdictInForAgainstOrder } from "@/lib/multiplayer/verdictPerspective";
 import type { PublicSession } from "@/lib/multiplayer/types";
 import type { Verdict } from "@/lib/types";
 
@@ -92,11 +93,12 @@ export function ResultPageClient({ sessionId }: { sessionId: string }) {
     );
   }
 
-  const verdict = session.verdict;
   const forPlayer = session.players.find((p) => p.side === "FOR");
   const againstPlayer = session.players.find((p) => p.side === "AGAINST");
   const forNick = forPlayer?.nickname ?? "FOR";
   const againstNick = againstPlayer?.nickname ?? "AGAINST";
+
+  const verdict = verdictInForAgainstOrder(session.verdict, session);
 
   const winner =
     verdict.score_player === verdict.score_opponent
