@@ -107,6 +107,25 @@ function LiveDebate(props: LiveStateProps) {
           )}
         </div>
       </div>
+      {isMyTurn ? (
+        <div className="flex items-center justify-center gap-2 border-b border-emerald-500/20 bg-emerald-950/25 px-4 py-2">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+          </span>
+          <span className="text-sm font-semibold text-emerald-300">Your turn — write your argument</span>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-4 py-2">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-zinc-500 opacity-50" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-zinc-500" />
+          </span>
+          <span className="text-sm text-zinc-400">
+            Waiting for <span className="font-semibold text-zinc-200">{opponentNickname}</span> to argue…
+          </span>
+        </div>
+      )}
       <ChatArea
         topic={session.settings.topic}
         playerName={myNickname}
