@@ -484,6 +484,26 @@ export function MultiplayerApp({ sessionId }: Props) {
     );
   }
 
+  if (session.state === "finished" && session.verdict && !mySide) {
+    // Spectator verdict — always from FOR perspective.
+    const forPlayer = session.players.find((p) => p.side === "FOR");
+    const againstPlayer = session.players.find((p) => p.side === "AGAINST");
+    return (
+      <div className="mx-auto flex w-full flex-col items-center gap-4 p-6">
+        <p className="rounded-full border border-fuchsia-500/40 bg-fuchsia-950/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-fuchsia-300">
+          Spectator · match result
+        </p>
+        <VerdictCard
+          verdict={session.verdict}
+          playerName={forPlayer?.nickname ?? "FOR"}
+          opponentName={againstPlayer?.nickname ?? "AGAINST"}
+          newDebateLabel="Back home"
+          onNewDebate={() => router.push("/")}
+        />
+      </div>
+    );
+  }
+
   if (session.state === "finished" && session.verdict) {
     return (
       <div className="mx-auto flex w-full flex-col items-center gap-4 p-6">
@@ -540,14 +560,57 @@ export function MultiplayerApp({ sessionId }: Props) {
   }
 
   if (!mySide) {
+    // Spectator view — render from FOR side's perspective.
+    const forPlayer = session.players.find((p) => p.side === "FOR");
+    const againstPlayer = session.players.find((p) => p.side === "AGAINST");
+    const spectatorHistory = viewMultiplayerRoundsFromSide(session.history, "FOR");
+    const currentTurnNick =
+      session.currentSide === "FOR"
+        ? (forPlayer?.nickname ?? "FOR player")
+        : (againstPlayer?.nickname ?? "AGAINST player");
     return (
-      <div className="mx-auto flex max-w-md flex-col items-center gap-3 p-8 text-center">
-        <p className="text-base font-semibold text-zinc-200">
-          The match has started, but you are watching as a guest.
-        </p>
-        <p className="text-xs text-zinc-500">
-          Open the lobby link from a fresh browser to be assigned a slot.
-        </p>
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2 text-xs text-zinc-400">
+          <Link href="/" className="rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white">
+            ← Home
+          </Link>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full border border-fuchsia-500/40 bg-fuchsia-950/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
+              Spectator
+            </span>
+            <span>Round {session.currentRound}/{session.settings.turnRounds}</span>
+            <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300">
+              {forPlayer?.nickname ?? "?"} vs {againstPlayer?.nickname ?? "?"}
+            </span>
+          </div>
+        </div>
+        {session.state === "live" ? (
+          <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-4 py-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-400" />
+            </span>
+            <span className="text-sm text-zinc-400">
+              <span className="font-semibold text-zinc-200">{currentTurnNick}</span> is arguing…
+            </span>
+          </div>
+        ) : null}
+        <ChatArea
+          topic={session.settings.topic}
+          playerName={forPlayer?.nickname ?? "FOR"}
+          opponentName={againstPlayer?.nickname ?? "AGAINST"}
+          playerSide="FOR"
+          opponentSide="AGAINST"
+          roundFirstSide="FOR"
+          history={spectatorHistory}
+          currentRound={session.currentRound}
+          thinkingStage={null}
+          isAIThinking={false}
+          thinkingLabel=""
+        />
+        <div className="border-t border-zinc-800 bg-zinc-950/80 px-4 py-3 text-center text-xs text-zinc-500">
+          You are watching as a spectator · no input allowed
+        </div>
       </div>
     );
   }
