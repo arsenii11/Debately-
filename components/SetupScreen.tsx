@@ -728,29 +728,64 @@ export function SetupScreen({
   }, []);
 
   useEffect(() => {
+    const CACHE_KEY = "debately-topics-v1";
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    function parseCategories(data: unknown): TopicCategory[] | null {
+      if (
+        data &&
+        typeof data === "object" &&
+        "categories" in data &&
+        Array.isArray((data as { categories: unknown }).categories)
+      ) {
+        const cats = (data as { categories: TopicCategory[] }).categories.filter(
+          (c) =>
+            c &&
+            typeof c.id === "string" &&
+            typeof c.label === "string" &&
+            Array.isArray(c.topics) &&
+            c.topics.length > 0,
+        );
+        return cats.length > 0 ? cats : null;
+      }
+      return null;
+    }
+
     let cancelled = false;
-    setLoadingTopics(true);
+    let hadCache = false;
+
+    // Show cached topics instantly so the UI isn't empty on repeat visits.
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const stored = JSON.parse(raw) as { date: string; categories: TopicCategory[] };
+        if (stored.date === todayStr && Array.isArray(stored.categories)) {
+          const cats = parseCategories({ categories: stored.categories });
+          if (cats) {
+            setTopicCategories(cats);
+            setActiveTopicGroup(cats[0].id);
+            setLoadingTopics(false);
+            hadCache = true;
+          }
+        }
+      }
+    } catch {
+      /* corrupt cache — ignore */
+    }
+
+    if (!hadCache) setLoadingTopics(true);
     fetch("/api/ai/topics")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: unknown) => {
         if (cancelled) return;
-        if (
-          data &&
-          typeof data === "object" &&
-          "categories" in data &&
-          Array.isArray((data as { categories: unknown }).categories)
-        ) {
-          const categories = (data as { categories: TopicCategory[] }).categories.filter(
-            (c) =>
-              c &&
-              typeof c.id === "string" &&
-              typeof c.label === "string" &&
-              Array.isArray(c.topics) &&
-              c.topics.length > 0,
-          );
-          if (categories.length > 0) {
-            setTopicCategories(categories);
-            setActiveTopicGroup(categories[0].id);
+        const cats = parseCategories(data);
+        if (cats) {
+          setTopicCategories(cats);
+          setActiveTopicGroup((prev) => prev ?? cats[0].id);
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ date: todayStr, categories: cats }));
+          } catch {
+            /* storage full — ignore */
           }
         }
       })
@@ -766,7 +801,7 @@ export function SetupScreen({
   }, []);
 
   return (
-    <div className="relative z-20 mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12 lg:max-w-5xl xl:max-w-6xl">
+    <div className="relative z-20 mx-auto flex w-full max-w-lg flex-col gap-8 overflow-x-hidden px-4 py-12 sm:max-w-xl md:max-w-2xl lg:max-w-5xl xl:max-w-6xl">
       {PARTICLES.map((p, i) => {
         const variance = particleVariance[i] ?? randomVariant();
         const isRocket =
@@ -936,7 +971,7 @@ export function SetupScreen({
           </p>
         </header>
 
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
           <section
             id="topic-picker"
             className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6"
@@ -951,8 +986,8 @@ export function SetupScreen({
             </div>
 
           <div className="mt-5 flex flex-col gap-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
                 <p className="text-base font-semibold text-zinc-100 sm:text-lg">
                   Pick a topic
                 </p>
@@ -983,7 +1018,7 @@ export function SetupScreen({
                     />
                   ))}
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2 min-[420px]:grid-cols-2">
                   {[1, 2, 3, 4].map((n) => (
                     <span
                       key={n}
@@ -1034,7 +1069,7 @@ export function SetupScreen({
                   })}
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2 min-[420px]:grid-cols-2">
                   {activeStarterTopics.map((starterTopic) => {
                     const selected = topic.trim() === starterTopic;
                     return (
@@ -1060,7 +1095,7 @@ export function SetupScreen({
 
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
             <div className="border-b border-zinc-800/80 pb-4">
-              <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl xl:text-2xl">
+              <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl lg:text-2xl">
                 Your position
               </h2>
             </div>
