@@ -490,7 +490,6 @@ export function SetupScreen({
   onStart,
 }: Props) {
   const canStart = nickname.trim().length > 0 && topic.trim().length > 0;
-  const [progressOpen, setProgressOpen] = useState(false);
   const [particleEmojis, setParticleEmojis] = useState<string[]>(() =>
     PARTICLES.map(initialParticleEmoji),
   );
@@ -1052,93 +1051,79 @@ export function SetupScreen({
 
             <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
               <div className="flex flex-col gap-4">
-                <button
-                  type="button"
-                  onClick={() => setProgressOpen((v) => !v)}
-                  className="flex w-full cursor-pointer flex-wrap items-start justify-between gap-3 text-left"
-                  aria-expanded={progressOpen}
-                >
-                  <span>
-                    <span className="block text-base font-semibold text-zinc-100 sm:text-lg">
-                      Your progress
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <h3 className="text-base font-semibold text-zinc-100 sm:text-lg">
+                    Your progress
+                  </h3>
+                  <span className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-right">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                      Streak
+                    </span>
+                    <span className="mt-1 block text-3xl font-semibold tabular-nums text-zinc-100">
+                      {progress?.streakDays ?? 0}
+                    </span>
+                    <span className="block text-xs text-zinc-500">
+                      {(progress?.streakDays ?? 0) === 1 ? "day" : "days"}
                     </span>
                   </span>
-                  <span className="flex items-center gap-3">
-                    <span className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-right">
-                      <span className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                        Streak
-                      </span>
-                      <span className="mt-1 block text-3xl font-semibold tabular-nums text-zinc-100">
-                        {progress?.streakDays ?? 0}
-                      </span>
-                      <span className="block text-xs text-zinc-500">
-                        {(progress?.streakDays ?? 0) === 1 ? "day" : "days"}
-                      </span>
-                    </span>
-                    <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-400">
-                      {progressOpen ? "Hide" : "Show"}
-                    </span>
-                  </span>
-                </button>
+                </div>
 
-                {progressOpen ? (
-                  <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr] xl:grid-cols-1 2xl:grid-cols-[0.9fr_1.1fr]">
-                    <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                        Today
-                      </p>
-                      <div className="mt-3 flex items-end gap-2">
-                        <span className="text-3xl font-semibold text-zinc-100">
-                          {progress?.debatesToday ?? 0}
-                        </span>
-                        <span className="pb-1 text-sm text-zinc-400">
-                          debates today
-                        </span>
-                      </div>
-                      <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-                        {progress?.graceAvailable === false
-                          ? "Grace day used. Play today to keep the streak."
-                          : "One missed day is allowed before the streak resets."}
-                      </p>
+                <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr] xl:grid-cols-1 2xl:grid-cols-[0.9fr_1.1fr]">
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      Today
+                    </p>
+                    <div className="mt-3 flex items-end gap-2">
+                      <span className="text-3xl font-semibold text-zinc-100">
+                        {progress?.debatesToday ?? 0}
+                      </span>
+                      <span className="pb-1 text-sm text-zinc-400">
+                        debates today
+                      </span>
                     </div>
+                    <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                      {progress?.graceAvailable === false
+                        ? "Grace day used. Play today to keep the streak."
+                        : "One missed day is allowed before the streak resets."}
+                    </p>
+                  </div>
 
-                    <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                          Skills
-                        </p>
-                        <span className="text-xs text-zinc-600">
-                          from your verdicts
-                        </span>
-                      </div>
-                      <div className="mt-3 grid gap-2">
-                        {(
-                          Object.keys(PROGRESS_SKILL_LABELS) as ProgressSkillKey[]
-                        ).map((key) => {
-                          const value = progressSkills?.[key] ?? 50;
-                          return (
-                            <div key={key} className="flex flex-col gap-1">
-                              <div className="flex justify-between text-xs">
-                                <span className="font-medium text-zinc-300">
-                                  {PROGRESS_SKILL_LABELS[key]}
-                                </span>
-                                <span className="font-mono text-zinc-500">
-                                  {value}%
-                                </span>
-                              </div>
-                              <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
-                                <div
-                                  className={`h-full rounded-full bg-gradient-to-r ${PROGRESS_SKILL_COLORS[key]}`}
-                                  style={{ width: `${value}%` }}
-                                />
-                              </div>
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        Skills
+                      </p>
+                      <span className="text-xs text-zinc-600">
+                        from your verdicts
+                      </span>
+                    </div>
+                    <div className="mt-3 grid gap-2">
+                      {(
+                        Object.keys(PROGRESS_SKILL_LABELS) as ProgressSkillKey[]
+                      ).map((key) => {
+                        const value = progressSkills?.[key] ?? 50;
+                        return (
+                          <div key={key} className="flex flex-col gap-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="font-medium text-zinc-300">
+                                {PROGRESS_SKILL_LABELS[key]}
+                              </span>
+                              <span className="font-mono text-zinc-500">
+                                {value}%
+                              </span>
                             </div>
-                          );
-                        })}
-                      </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+                              <div
+                                className={`h-full rounded-full bg-gradient-to-r ${PROGRESS_SKILL_COLORS[key]}`}
+                                style={{ width: `${value}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                ) : null}
+                </div>
               </div>
             </section>
 
