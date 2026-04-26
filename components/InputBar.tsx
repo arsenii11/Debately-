@@ -1,8 +1,103 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const MAX = 1500;
+
+type SpeechRecognitionResultItem = {
+  transcript: string;
+};
+
+type SpeechRecognitionResultLike = {
+  isFinal: boolean;
+  0: SpeechRecognitionResultItem;
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: {
+    length: number;
+    [index: number]: SpeechRecognitionResultLike;
+  };
+};
+
+type SpeechRecognitionErrorEventLike = {
+  error: string;
+};
+
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
+type WritingHint = {
+  label: string;
+  insert: string;
+};
+
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as Window & {
+    SpeechRecognition?: SpeechRecognitionCtor;
+    webkitSpeechRecognition?: SpeechRecognitionCtor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+function appendTranscript(base: string, transcript: string): string {
+  const trimmedTranscript = transcript.trim();
+  if (!trimmedTranscript) return base.slice(0, MAX);
+  const separator = base.trim().length > 0 && !/\s$/.test(base) ? " " : "";
+  return `${base}${separator}${trimmedTranscript}`.slice(0, MAX);
+}
+
+function appendHint(base: string, hint: string): string {
+  const separator = base.trim().length > 0 && !/\s$/.test(base) ? " " : "";
+  return `${base}${separator}${hint}`.slice(0, MAX);
+}
+
+function countWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function getWritingHints(text: string): WritingHint[] {
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+  const hints: WritingHint[] = [];
+
+  if (!trimmed) {
+    return [
+      { label: "State your position", insert: "I argue that " },
+      { label: "Add a reason", insert: "because " },
+      { label: "Give an example", insert: "For example, " },
+    ];
+  }
+
+  if (countWords(trimmed) < 25) {
+    hints.push({ label: "Make it fuller", insert: "because " });
+  }
+  if (!/\b(because|since|therefore|so|потому|поэтому|так как)\b/i.test(lower)) {
+    hints.push({ label: "Explain why", insert: "because " });
+  }
+  if (!/\b(for example|example|evidence|data|study|например|пример|данн)\b/i.test(lower)) {
+    hints.push({ label: "Add evidence", insert: "For example, " });
+  }
+  if (!/\b(however|but|although|tradeoff|risk|но|однако|зато|риск)\b/i.test(lower)) {
+    hints.push({ label: "Mention tradeoff", insert: "However, " });
+  }
+
+  return hints.slice(0, 3);
+}
 
 type Props = {
   value: string;
@@ -24,6 +119,21 @@ export function InputBar({
 }: Props) {
   const pct = (value.length / MAX) * 100;
   const nearLimit = pct > 90;
+  const writingHints = useMemo(() => getWritingHints(value), [value]);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const baseTextRef = useRef("");
+  const finalTranscriptRef = useRef("");
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setVoiceSupported(Boolean(getSpeechRecognitionCtor()));
+    return () => {
+      recognitionRef.current?.abort();
+      recognitionRef.current = null;
+    };
+  }, []);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -33,6 +143,83 @@ export function InputBar({
       }
     },
     [disabled, onSubmit, value],
+  );
+
+  const stopVoiceInput = useCallback(() => {
+    recognitionRef.current?.stop();
+  }, []);
+
+  const startVoiceInput = useCallback(() => {
+    const Recognition = getSpeechRecognitionCtor();
+    if (!Recognition || disabled) return;
+
+    recognitionRef.current?.abort();
+    const recognition = new Recognition();
+    recognitionRef.current = recognition;
+    baseTextRef.current = value;
+    finalTranscriptRef.current = "";
+    setVoiceError(null);
+
+    recognition.lang =
+      typeof navigator !== "undefined" && navigator.language
+        ? navigator.language
+        : "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        const transcript = result?.[0]?.transcript ?? "";
+        if (result?.isFinal) {
+          finalTranscriptRef.current = `${finalTranscriptRef.current} ${transcript}`.trim();
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      const transcript = `${finalTranscriptRef.current} ${interimTranscript}`.trim();
+      onChange(appendTranscript(baseTextRef.current, transcript));
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setVoiceError("Microphone access is blocked.");
+      } else if (event.error !== "no-speech") {
+        setVoiceError("Could not transcribe voice input.");
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      recognitionRef.current = null;
+      setIsListening(false);
+      setVoiceError("Could not start voice input.");
+    }
+  }, [disabled, onChange, value]);
+
+  const toggleVoiceInput = useCallback(() => {
+    if (isListening) {
+      stopVoiceInput();
+      return;
+    }
+    startVoiceInput();
+  }, [isListening, startVoiceInput, stopVoiceInput]);
+
+  const applyWritingHint = useCallback(
+    (hint: WritingHint) => {
+      onChange(appendHint(value, hint.insert));
+    },
+    [onChange, value],
   );
 
   return (
@@ -51,6 +238,28 @@ export function InputBar({
           placeholder="Make your argument… (Enter to send, Shift+Enter for newline)"
           className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
         />
+        {!disabled && writingHints.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-zinc-500">Try:</span>
+            {writingHints.map((hint) => (
+              <button
+                key={hint.label}
+                type="button"
+                onClick={() => applyWritingHint(hint)}
+                className="cursor-pointer rounded-full border border-zinc-700 bg-zinc-900/70 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-indigo-500/60 hover:bg-indigo-950/35 hover:text-indigo-100 active:scale-[0.98]"
+              >
+                {hint.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {voiceError ? (
+          <p className="text-xs text-amber-300">{voiceError}</p>
+        ) : isListening ? (
+          <p className="text-xs text-indigo-300">
+            Listening... speak now, then tap Stop when done.
+          </p>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {onSurrender ? (
@@ -65,6 +274,21 @@ export function InputBar({
             ) : null}
           </div>
           <div className="flex items-center gap-3">
+            {voiceSupported ? (
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={toggleVoiceInput}
+                aria-pressed={isListening}
+                className={`cursor-pointer rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900/50 disabled:text-zinc-600 disabled:hover:scale-100 ${
+                  isListening
+                    ? "border-rose-400/70 bg-rose-500/15 text-rose-100 shadow-md shadow-rose-950/30"
+                    : "border-indigo-500/45 bg-indigo-950/35 text-indigo-200 hover:border-indigo-400 hover:bg-indigo-950/55 hover:text-indigo-100"
+                }`}
+              >
+                {isListening ? "Stop" : "Voice"}
+              </button>
+            ) : null}
             <span
               className={`text-xs font-mono tabular-nums ${
                 nearLimit ? "text-red-400" : "text-zinc-500"

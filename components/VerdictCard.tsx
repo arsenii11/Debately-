@@ -16,6 +16,26 @@ const rows: { key: keyof Verdict["breakdown"]; label: string; weight: string }[]
     { key: "rhetoric", label: "Rhetoric", weight: "15%" },
   ];
 
+const insightLabels: Record<keyof Verdict["breakdown"], string> = {
+  factual: "Evidence",
+  logic: "Logic",
+  relevance: "Relevance",
+  rhetoric: "Rhetoric",
+};
+
+function buildPlayerInsight(verdict: Verdict): string {
+  const scores = rows.map(({ key }) => ({
+    key,
+    score: verdict.breakdown[key][0],
+  }));
+  const best = scores.reduce((a, b) => (b.score > a.score ? b : a));
+  const weakest = scores.reduce((a, b) => (b.score < a.score ? b : a));
+  if (best.key === weakest.key) {
+    return `Your debate profile is balanced today. Try adding one sharper example next time.`;
+  }
+  return `Your best dimension today: ${insightLabels[best.key]}. Try focusing on ${insightLabels[weakest.key]} next time.`;
+}
+
 function CrownIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -43,6 +63,7 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
       : winner === "opponent"
         ? "Debately"
         : null;
+  const playerInsight = buildPlayerInsight(verdict);
 
   return (
     <div className="mx-auto w-full max-w-[460px] px-2">
@@ -166,6 +187,15 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
           </p>
           <p className="mt-2 text-sm leading-relaxed text-zinc-300">
             {verdict.summary}
+          </p>
+        </div>
+
+        <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            Next focus
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+            {playerInsight}
           </p>
         </div>
 

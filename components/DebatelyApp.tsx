@@ -29,6 +29,11 @@ import {
   saveDebatelySession,
 } from "@/lib/debatelySession";
 import {
+  loadDebatelyProgress,
+  recordDebatelyVerdict,
+  type DebatelyProgress,
+} from "@/lib/localProgress";
+import {
   DEFAULT_TURN_ROUNDS,
   DEFAULT_TURN_TIMER_SECONDS,
   UNTIMED_TURN_TIMER_SECONDS,
@@ -91,11 +96,13 @@ export function DebatelyApp() {
   const [thinkingLabel, setThinkingLabel] = useState("");
   const [thinkingStage, setThinkingStage] = useState<ThinkingStage>(null);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const [progress, setProgress] = useState<DebatelyProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [skippedTurns, setSkippedTurns] = useState(0);
   const [launchCountdown, setLaunchCountdown] =
     useState<DebateCountdownStep | null>(null);
   const [debateEntered, setDebateEntered] = useState(false);
+  const [showAiInfo, setShowAiInfo] = useState(false);
 
   const skipScheduled = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -185,6 +192,7 @@ export function DebatelyApp() {
     setIsAIThinking(false);
     setThinkingStage(null);
     setThinkingLabel("");
+    setProgress(loadDebatelyProgress());
     skipScheduled.current = false;
     setSessionReady(true);
   }, []);
@@ -476,6 +484,9 @@ export function DebatelyApp() {
               skippedTurns: nextSkipCount,
             });
             setVerdict(vRes);
+            if (!isVerdictFallback(vRes)) {
+              setProgress(recordDebatelyVerdict(vRes));
+            }
           } catch (e) {
             console.error("[Debately] verdict API request failed", e);
             setVerdict(null);
@@ -580,6 +591,9 @@ export function DebatelyApp() {
           playerConceded: true,
         });
         setVerdict(vRes);
+        if (!isVerdictFallback(vRes)) {
+          setProgress(recordDebatelyVerdict(vRes));
+        }
       } catch (e) {
         console.error("[Debately] verdict (surrender) failed", e);
         setVerdict(null);
@@ -704,6 +718,7 @@ export function DebatelyApp() {
           onSide={setPlayerSide}
           onTurnRounds={setTurnRounds}
           onTurnTimerSeconds={setTurnTimerSeconds}
+          progress={progress}
           onStart={handleStart}
         />
       </div>
@@ -724,14 +739,19 @@ export function DebatelyApp() {
       <header className="sticky top-0 z-40 shrink-0 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/75">
         <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
           <div className="flex items-center justify-between gap-2 sm:contents">
-            <div className="flex shrink-0 items-center gap-2 sm:order-1">
+            <button
+              type="button"
+              onClick={handleNew}
+              className="flex shrink-0 cursor-pointer items-center gap-2 rounded-xl px-1.5 py-1 text-left transition-colors hover:bg-zinc-900/80 active:scale-[0.98] sm:order-1"
+              aria-label="Go to new debate setup"
+            >
               <span className="text-lg font-semibold tracking-tight">
                 Debately
               </span>
               <span className="rounded-md bg-fuchsia-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
                 Solo
               </span>
-            </div>
+            </button>
             <div className="flex flex-wrap items-center justify-end gap-3 sm:order-3">
               {phase === "debating" && (
                 <span className="text-sm text-zinc-400">
@@ -819,10 +839,16 @@ export function DebatelyApp() {
             <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
               vs
             </span>
-            <div className="flex min-w-0 max-w-[46%] items-center gap-2 sm:max-w-none">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-600 to-pink-600 text-[10px] font-bold text-white">
+            <div className="relative flex min-w-0 max-w-[46%] items-center gap-2 sm:max-w-none">
+              <button
+                type="button"
+                onClick={() => setShowAiInfo((v) => !v)}
+                className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-600 to-pink-600 text-[10px] font-bold text-white shadow-md shadow-fuchsia-950/30 transition-transform hover:scale-105 active:scale-95"
+                aria-expanded={showAiInfo}
+                aria-label="About Debately AI opponent"
+              >
                 AI
-              </div>
+              </button>
               <div className="min-w-0">
                 <p className="truncate text-xs font-semibold text-zinc-200 sm:text-sm">
                   Debately
@@ -837,6 +863,21 @@ export function DebatelyApp() {
                   {opponentSide}
                 </span>
               </div>
+              {showAiInfo ? (
+                <div className="absolute right-0 top-full z-50 mt-3 w-72 rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-left shadow-xl shadow-black/30 sm:right-auto sm:left-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                    AI opponent
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-zinc-200">
+                    Debately argues the opposite side. It is tuned to push back,
+                    not to act like a neutral assistant.
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                    Expect short rebuttals, pressure on weak assumptions, and a
+                    more online debate style while staying within basic boundaries.
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

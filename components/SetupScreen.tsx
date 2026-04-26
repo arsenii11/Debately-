@@ -13,6 +13,7 @@ import {
   type TurnRounds,
   type TurnTimerSeconds,
 } from "@/lib/types";
+import type { DebatelyProgress, ProgressSkillKey } from "@/lib/localProgress";
 
 type ParticleAnim =
   | "rocketBack"
@@ -404,6 +405,48 @@ function getCategoryColor(id: string) {
   return CATEGORY_COLORS[id] ?? CATEGORY_FALLBACK_COLOR;
 }
 
+const LEARNING_IMPACT_CARDS = [
+  {
+    title: "Work",
+    text: "Explain decisions clearly in meetings, reviews, and interviews.",
+  },
+  {
+    title: "Conflict",
+    text: "Push back without getting vague, defensive, or personal.",
+  },
+  {
+    title: "Thinking",
+    text: "Spot weak assumptions before they become weak arguments.",
+  },
+] as const;
+
+const LEARNING_SKILL_BARS = [
+  { label: "Clarity", value: 86, color: "from-indigo-400 to-sky-300" },
+  { label: "Confidence", value: 74, color: "from-fuchsia-400 to-pink-300" },
+  { label: "Influence", value: 68, color: "from-amber-300 to-orange-300" },
+] as const;
+
+const LEARNING_STEPS = [
+  "Claim",
+  "Reason",
+  "Evidence",
+  "Rebuttal",
+] as const;
+
+const PROGRESS_SKILL_LABELS: Record<ProgressSkillKey, string> = {
+  factual: "Evidence",
+  logic: "Logic",
+  relevance: "Relevance",
+  rhetoric: "Rhetoric",
+};
+
+const PROGRESS_SKILL_COLORS: Record<ProgressSkillKey, string> = {
+  factual: "from-emerald-400 to-teal-300",
+  logic: "from-indigo-400 to-sky-300",
+  relevance: "from-fuchsia-400 to-pink-300",
+  rhetoric: "from-amber-300 to-orange-300",
+};
+
 type Props = {
   nickname: string;
   topic: string;
@@ -415,6 +458,7 @@ type Props = {
   onSide: (s: Side) => void;
   onTurnRounds: (v: TurnRounds) => void;
   onTurnTimerSeconds: (s: TurnTimerSeconds) => void;
+  progress: DebatelyProgress | null;
   onStart: () => void;
 };
 
@@ -429,6 +473,7 @@ export function SetupScreen({
   onSide,
   onTurnRounds,
   onTurnTimerSeconds,
+  progress,
   onStart,
 }: Props) {
   const canStart = nickname.trim().length > 0 && topic.trim().length > 0;
@@ -454,6 +499,13 @@ export function SetupScreen({
     (topicCategories ?? []).find((g) => g.id === activeTopicGroup)?.topics ??
     (topicCategories ?? [])[0]?.topics ??
     [];
+  const topicOfTheDay =
+    (topicCategories ?? [])[0]?.topics?.[0] ?? activeStarterTopics[0] ?? "";
+  const newTopicsToday = Math.min(
+    3,
+    dedupeTopics((topicCategories ?? []).flatMap((g) => g.topics)).length,
+  );
+  const progressSkills = progress?.skills;
 
   const handleRandomTopic = useCallback(() => {
     const allTopics = dedupeTopics(
@@ -837,7 +889,190 @@ export function SetupScreen({
           </p>
         </header>
 
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/45 p-4 shadow-lg shadow-black/10">
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">
+                  Your progress
+                </p>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Local stats from your recent debates.
+                </p>
+              </div>
+              <div className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-right">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  Streak
+                </p>
+                <p className="mt-1 text-3xl font-semibold tabular-nums text-zinc-100">
+                  {progress?.streakDays ?? 0}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {(progress?.streakDays ?? 0) === 1 ? "day" : "days"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr]">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Today
+                </p>
+                <div className="mt-3 flex items-end gap-2">
+                  <span className="text-3xl font-semibold text-zinc-100">
+                    {progress?.debatesToday ?? 0}
+                  </span>
+                  <span className="pb-1 text-sm text-zinc-400">debates today</span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                  {progress?.graceAvailable === false
+                    ? "Grace day used. Play today to keep the streak."
+                    : "One missed day is allowed before the streak resets."}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Skills
+                  </p>
+                  <span className="text-xs text-zinc-600">from your verdicts</span>
+                </div>
+                <div className="mt-3 grid gap-2">
+                  {(Object.keys(PROGRESS_SKILL_LABELS) as ProgressSkillKey[]).map(
+                    (key) => {
+                      const value = progressSkills?.[key] ?? 50;
+                      return (
+                        <div key={key} className="flex flex-col gap-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="font-medium text-zinc-300">
+                              {PROGRESS_SKILL_LABELS[key]}
+                            </span>
+                            <span className="font-mono text-zinc-500">{value}%</span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+                            <div
+                              className={`h-full rounded-full bg-gradient-to-r ${PROGRESS_SKILL_COLORS[key]}`}
+                              style={{ width: `${value}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
+          <div className="flex flex-col gap-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
+                    Coming soon
+                  </span>
+                  <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                    Paid later
+                  </span>
+                </div>
+                <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
+                  Debate School
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
+                  A future guided mode for practicing claims, evidence, rebuttals,
+                  and calm pushback. The goal is simple: get better at defending
+                  an opinion when it actually matters.
+                </p>
+              </div>
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/45 px-4 py-3 text-right">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                  Planned
+                </p>
+                <p className="mt-1 text-2xl font-semibold text-zinc-100">12</p>
+                <p className="text-xs text-zinc-500">short lessons</p>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {LEARNING_IMPACT_CARDS.map((card) => (
+                <div
+                  key={card.title}
+                  className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4"
+                >
+                  <p className="text-sm font-semibold text-zinc-100">
+                    {card.title}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                    {card.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-zinc-100">
+                      Practice profile
+                    </p>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Example of what guided lessons could track.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[11px] font-semibold text-zinc-400">
+                    Preview
+                  </span>
+                </div>
+                <div className="mt-4 flex flex-col gap-3">
+                  {LEARNING_SKILL_BARS.map((bar) => (
+                    <div key={bar.label} className="flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-zinc-300">{bar.label}</span>
+                        <span className="font-mono text-zinc-500">{bar.value}%</span>
+                      </div>
+                      <div className="h-2.5 overflow-hidden rounded-full bg-zinc-800">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${bar.color}`}
+                          style={{ width: `${bar.value}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                <p className="text-sm font-semibold text-zinc-100">
+                  The argument loop
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Build the muscle you use in real conversations.
+                </p>
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  {LEARNING_STEPS.map((step, idx) => (
+                    <div key={step} className="flex flex-col items-center gap-2">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-900 text-sm font-semibold text-zinc-200">
+                        {idx + 1}
+                      </div>
+                      <span className="text-center text-[11px] font-medium text-zinc-400">
+                        {step}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs leading-relaxed text-zinc-400">
+                  Learn the structure first, then practice it in live debates.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -848,14 +1083,19 @@ export function SetupScreen({
                   Fresh topics every day — or let Debately pick for you.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleRandomTopic}
-                disabled={loadingTopics || !topicCategories}
-                className="shrink-0 cursor-pointer rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 transition-all hover:border-indigo-400 hover:bg-indigo-500/15 hover:text-indigo-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Random
-              </button>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                  {loadingTopics ? "Loading" : `${newTopicsToday} new today`}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRandomTopic}
+                  disabled={loadingTopics || !topicCategories}
+                  className="cursor-pointer rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 transition-all hover:border-indigo-400 hover:bg-indigo-500/15 hover:text-indigo-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Random
+                </button>
+              </div>
             </div>
 
             {loadingTopics ? (
@@ -880,6 +1120,30 @@ export function SetupScreen({
               </div>
             ) : (
               <>
+                {topicOfTheDay ? (
+                  <button
+                    type="button"
+                    onClick={() => onTopic(topicOfTheDay)}
+                    className={`cursor-pointer rounded-xl border p-4 text-left transition-all active:scale-[0.99] ${
+                      topic.trim() === topicOfTheDay
+                        ? "border-zinc-500 bg-zinc-800/70"
+                        : "border-zinc-700 bg-zinc-950/45 hover:border-zinc-500 hover:bg-zinc-900/70"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
+                        Topic of the Day
+                      </span>
+                      <span className="text-xs text-zinc-500">
+                        Daily shared pick
+                      </span>
+                    </div>
+                    <p className="mt-3 text-base font-medium leading-snug text-zinc-100">
+                      {topicOfTheDay}
+                    </p>
+                  </button>
+                ) : null}
+
                 <div className="flex flex-wrap gap-2.5">
                   {(topicCategories ?? []).map((group) => {
                     const colors = getCategoryColor(group.id);
