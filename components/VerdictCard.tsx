@@ -5,7 +5,9 @@ import type { Verdict } from "@/lib/types";
 type Props = {
   verdict: Verdict;
   playerName: string;
+  opponentName?: string;
   onNewDebate: () => void;
+  newDebateLabel?: string;
 };
 
 const rows: { key: keyof Verdict["breakdown"]; label: string; weight: string }[] =
@@ -49,7 +51,14 @@ function CrownIcon({ className }: { className?: string }) {
   );
 }
 
-export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
+export function VerdictCard({
+  verdict,
+  playerName,
+  opponentName,
+  onNewDebate,
+  newDebateLabel,
+}: Props) {
+  const opponentLabel = opponentName ?? "Debately";
   const winner =
     verdict.score_player === verdict.score_opponent
       ? null
@@ -61,7 +70,7 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
     winner === "player"
       ? playerName
       : winner === "opponent"
-        ? "Debately"
+        ? opponentLabel
         : null;
   const playerInsight = buildPlayerInsight(verdict);
 
@@ -141,7 +150,7 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
               {verdict.score_opponent}
             </p>
             <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Debately
+              {opponentLabel}
             </p>
             {winner === "opponent" && (
               <span className="mt-2 inline-block rounded-full border border-pink-400/50 bg-pink-500/25 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-pink-200">
@@ -210,7 +219,7 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
           </div>
           <div className="rounded-xl border border-pink-500/20 bg-pink-950/20 p-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-pink-400">
-              ★ Best arg — Debately
+              ★ Best arg — {opponentLabel}
             </p>
             <p className="mt-1 text-xs text-zinc-400">
               {verdict.best_arg_opponent}
@@ -223,7 +232,7 @@ export function VerdictCard({ verdict, playerName, onNewDebate }: Props) {
           onClick={onNewDebate}
           className="mt-8 w-full cursor-pointer rounded-xl border border-zinc-600 py-3 text-sm font-semibold text-zinc-200 transition-all hover:border-zinc-500 hover:bg-zinc-800/60 hover:text-white active:scale-[0.99]"
         >
-          New Debate
+          {newDebateLabel ?? "New Debate"}
         </button>
       </div>
     </div>

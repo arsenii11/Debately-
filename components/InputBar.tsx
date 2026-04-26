@@ -120,6 +120,10 @@ type Props = {
   onFocus?: () => void;
   /** End debate early; judge verdict with player conceding. */
   onSurrender?: () => void;
+  /** Multiplayer-only: request a one-shot AI hint for this turn. */
+  onRequestAIHint?: () => Promise<string | null> | string | null;
+  aiHintDisabled?: boolean;
+  aiHintBusy?: boolean;
 };
 
 export function InputBar({
@@ -129,6 +133,9 @@ export function InputBar({
   disabled,
   onFocus,
   onSurrender,
+  onRequestAIHint,
+  aiHintDisabled,
+  aiHintBusy,
 }: Props) {
   const pct = (value.length / MAX) * 100;
   const nearLimit = pct > 90;
@@ -139,6 +146,8 @@ export function InputBar({
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [aiHint, setAiHint] = useState<string | null>(null);
+  const [hintLoading, setHintLoading] = useState(false);
 
   useEffect(() => {
     setVoiceSupported(Boolean(getSpeechRecognitionCtor()));
@@ -231,6 +240,21 @@ export function InputBar({
     [onChange, value],
   );
 
+  const handleRequestHint = useCallback(async () => {
+    if (!onRequestAIHint || hintLoading) return;
+    setHintLoading(true);
+    try {
+      const result = await onRequestAIHint();
+      if (typeof result === "string" && result.trim()) {
+        setAiHint(result.trim());
+      }
+    } finally {
+      setHintLoading(false);
+    }
+  }, [hintLoading, onRequestAIHint]);
+
+  const dismissHint = useCallback(() => setAiHint(null), []);
+
   return (
     <div
       className="border-t border-zinc-800 bg-zinc-950/95 px-3 py-3 backdrop-blur sm:px-4"
@@ -279,6 +303,40 @@ export function InputBar({
                 {hint.label}
               </button>
             ))}
+            {onRequestAIHint ? (
+              <button
+                type="button"
+                onClick={handleRequestHint}
+                disabled={
+                  disabled ||
+                  hintLoading ||
+                  Boolean(aiHintBusy) ||
+                  Boolean(aiHintDisabled)
+                }
+                className="cursor-pointer rounded-full border border-indigo-500/50 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 transition-colors hover:border-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {hintLoading ? "Thinking…" : "AI hint"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {aiHint ? (
+          <div className="rounded-lg border border-indigo-500/40 bg-indigo-950/40 p-3 text-xs text-indigo-100">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-indigo-300">
+                AI hint
+              </span>
+              <button
+                type="button"
+                onClick={dismissHint}
+                className="cursor-pointer text-[10px] font-semibold text-indigo-300 hover:text-white"
+              >
+                Dismiss
+              </button>
+            </div>
+            <pre className="mt-2 whitespace-pre-wrap font-sans text-xs leading-relaxed">
+              {aiHint}
+            </pre>
           </div>
         ) : null}
         {voiceError ? (

@@ -190,3 +190,39 @@ docker compose up -d --build
 | `GEMINI_MODEL` | Необязательно, по умолчанию в коде `gemini-2.5-flash` |
 | `GEMINI_API_KEY_SECRET_RESOURCE` | Полный путь к секрету в GCP Secret Manager (без `GEMINI_API_KEY`) |
 | `NGINX_CONF` | Имя файла в каталоге `nginx/`, монтируемого как конфиг (по умолчанию `default.conf`; для HTTPS после выпуска сертификата — `default-https.conf`) |
+| `MULTIPLAYER_SNAPSHOT_PATH` | Путь до JSON-снапшота multiplayer-сессий. По умолчанию `/var/cache/debately/sessions.json` (том `cache-data` уже примонтирован в `docker-compose.yml`). |
+
+---
+
+## Multiplayer (`/play/<id>`): ограничения текущей реализации
+
+Фича «Play with a friend» хранит сессии **в памяти одного Node-процесса** (`Map<sessionId, MultiplayerSession>`) с периодическим JSON-снапшотом на диск (`MULTIPLAYER_SNAPSHOT_PATH`, по умолчанию том `/var/cache/debately`). Это даёт:
+
+- мгновенные обновления через **Server-Sent Events** (`/api/multiplayer/sessions/:id/stream`);
+- восстановление активных лобби/дебатов после перезапуска процесса (читается снапшот при старте);
+- TTL ~12 часов и LRU-вытеснение при превышении лимита сессий.
+
+### Что **не** работает «из коробки»
+
+- **Несколько инстансов / контейнеров `app`.** Каждый процесс держит собственный `Map`, и игроки, попавшие на разные реплики (через L4-балансировщик без sticky-сессий), не увидят ходов друг друга. Поэтому пока деплой сделан как **один контейнер `app`** за nginx (см. `docker-compose.yml`).
+- **Горизонтальное масштабирование** сейчас сводится к вертикальному (один Node-процесс, больше CPU/RAM).
+- **Снапшот на shared-volume** не решает проблему сам по себе: чтения отстают и нет согласованности, нужна общая шина событий.
+
+### Когда пора уезжать на Redis
+
+Если упираемся в одно из:
+
+- больше одной реплики `app` (HA, blue/green с активной парой, autoscaling);
+- более ~5 000 одновременных открытых лобби;
+- частые рестарты процесса с потерей последних 1–5 секунд (между снапшотами);
+- интерес к глобальной аналитике / метрикам поверх сессий.
+
+Тогда план миграции:
+
+1. Заменить `Map` на Redis: `HSET mp:session:<id>` + `EXPIRE` для TTL.
+2. Снять `EventEmitter` и подписку SSE на **Redis Pub/Sub** (`PUBLISH mp:change:<id> <revision>`), а внутри `/stream` слушать канал.
+3. Атомарность переходов состояний — через `WATCH/MULTI/EXEC` или Lua-скрипт (`recordMove`, `applyFactcheck`, `setVerdict`).
+4. Хранить только идемпотентные хэши токенов; токены никогда не уходят в Redis.
+5. Удалить логику JSON-снапшотов, оставить ENV-флаг для downgrade обратно на in-memory.
+
+Точка интеграции в коде: `lib/multiplayer/store.ts` (всё снаружи использует только её API). Контракт публичных функций (`createSessionWithHost`, `getSession`, `applyMove`, `subscribeToSession`, …) можно реализовать поверх Redis без изменения роутов и UI.

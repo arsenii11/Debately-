@@ -434,6 +434,84 @@ type Props = {
   onStart: () => void;
 };
 
+function PlayWithFriendPod({ nickname }: { nickname: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCreate = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const cleanedNickname = nickname.trim().slice(0, 32);
+      const res = await fetch("/api/multiplayer/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nickname: cleanedNickname }),
+      });
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || "Could not create lobby.");
+      }
+      const data = (await res.json()) as {
+        sessionId: string;
+        playerToken: string;
+      };
+      try {
+        const tokenMapRaw = window.localStorage.getItem("debately:mp:tokens");
+        const tokenMap = tokenMapRaw ? (JSON.parse(tokenMapRaw) as Record<string, string>) : {};
+        tokenMap[data.sessionId] = data.playerToken;
+        window.localStorage.setItem("debately:mp:tokens", JSON.stringify(tokenMap));
+        if (cleanedNickname) {
+          window.localStorage.setItem("debately:mp:nickname", cleanedNickname);
+        }
+      } catch {
+        /* ignore storage failures */
+      }
+      window.location.href = `/play/${data.sessionId}`;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create lobby.");
+      setBusy(false);
+    }
+  }, [nickname]);
+
+  return (
+    <section className="rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-4">
+      <div className="flex h-full flex-col justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-indigo-400/40 bg-indigo-500/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-200">
+              New
+            </span>
+            <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+              Multiplayer
+            </span>
+          </div>
+          <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
+            Play with a friend
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
+            Create a private lobby, share the link, and debate a real person.
+            The Judge fact-checks each move and scores the match.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={busy}
+            className="inline-flex w-fit cursor-pointer items-center rounded-xl border border-indigo-500/60 bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-100 transition-colors hover:border-indigo-400 hover:bg-indigo-500/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {busy ? "Creating lobby…" : "Create lobby link →"}
+          </button>
+          {error ? (
+            <p className="text-xs text-rose-300">{error}</p>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function SetupScreen({
   nickname,
   topic,
@@ -452,7 +530,7 @@ export function SetupScreen({
   const [topicCategories, setTopicCategories] = useState<TopicCategory[] | null>(null);
   const [activeTopicGroup, setActiveTopicGroup] = useState<string>("easy");
   const [loadingTopics, setLoadingTopics] = useState(true);
-  const [progressOpen, setProgressOpen] = useState(true);
+  const [progressOpen, setProgressOpen] = useState(false);
   const [particleEmojis, setParticleEmojis] = useState<string[]>(() =>
     PARTICLES.map(initialParticleEmoji),
   );
@@ -850,144 +928,35 @@ export function SetupScreen({
       })}
       <div className="relative z-30 flex flex-col gap-8">
         <header className="text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-100">
+          <h1 className="text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">
             Debately
           </h1>
           <p className="mt-1 text-sm font-medium uppercase tracking-widest text-fuchsia-400/90">
             Solo
           </p>
-          <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-            Start with a topic, pick your side, and jump in. The Judge factchecks
-            both sides and scores the debate.
-          </p>
         </header>
-
-        <div className="grid gap-4 xl:grid-cols-2">
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
-          <div className="flex flex-col gap-4">
-            <button
-              type="button"
-              onClick={() => setProgressOpen((v) => !v)}
-              className="flex w-full cursor-pointer flex-wrap items-start justify-between gap-3 text-left"
-              aria-expanded={progressOpen}
-            >
-              <span>
-                <span className="block text-sm font-semibold text-zinc-100">
-                  Your progress
-                </span>
-                <span className="mt-1 block text-sm text-zinc-400">
-                  Local stats from your recent debates.
-                </span>
-              </span>
-              <span className="flex items-center gap-3">
-                <span className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-right">
-                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                    Streak
-                  </span>
-                  <span className="mt-1 block text-3xl font-semibold tabular-nums text-zinc-100">
-                    {progress?.streakDays ?? 0}
-                  </span>
-                  <span className="block text-xs text-zinc-500">
-                    {(progress?.streakDays ?? 0) === 1 ? "day" : "days"}
-                  </span>
-                </span>
-                <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-400">
-                  {progressOpen ? "Hide" : "Show"}
-                </span>
-              </span>
-            </button>
-
-            {progressOpen ? (
-            <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr] xl:grid-cols-1 2xl:grid-cols-[0.9fr_1.1fr]">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                  Today
-                </p>
-                <div className="mt-3 flex items-end gap-2">
-                  <span className="text-3xl font-semibold text-zinc-100">
-                    {progress?.debatesToday ?? 0}
-                  </span>
-                  <span className="pb-1 text-sm text-zinc-400">debates today</span>
-                </div>
-                <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-                  {progress?.graceAvailable === false
-                    ? "Grace day used. Play today to keep the streak."
-                    : "One missed day is allowed before the streak resets."}
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Skills
-                  </p>
-                  <span className="text-xs text-zinc-600">from your verdicts</span>
-                </div>
-                <div className="mt-3 grid gap-2">
-                  {(Object.keys(PROGRESS_SKILL_LABELS) as ProgressSkillKey[]).map(
-                    (key) => {
-                      const value = progressSkills?.[key] ?? 50;
-                      return (
-                        <div key={key} className="flex flex-col gap-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="font-medium text-zinc-300">
-                              {PROGRESS_SKILL_LABELS[key]}
-                            </span>
-                            <span className="font-mono text-zinc-500">{value}%</span>
-                          </div>
-                          <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
-                            <div
-                              className={`h-full rounded-full bg-gradient-to-r ${PROGRESS_SKILL_COLORS[key]}`}
-                              style={{ width: `${value}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    },
-                  )}
-                </div>
-              </div>
-            </div>
-            ) : null}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
-          <div className="flex h-full flex-col justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
-                  Coming soon
-                </span>
-                <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                  Paid later
-                </span>
-              </div>
-              <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
-                Debate School
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                Guided practice for claims, evidence, rebuttals, and calm pushback.
-              </p>
-            </div>
-            <a
-              href="#topic-picker"
-              className="inline-flex w-fit cursor-pointer items-center rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
-            >
-              Start with a debate topic →
-            </a>
-          </div>
-        </section>
-        </div>
 
         <section
           id="topic-picker"
-          className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4"
+          className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6"
         >
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
+              Step 1 · Pick a topic
+            </span>
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
+              Let&apos;s start a debate
+            </h2>
+            <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
+              Choose a fresh topic, set your side, and the Judge will fact-check
+              every move.
+            </p>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-zinc-100">
+                <p className="text-base font-semibold text-zinc-100 sm:text-lg">
                   Pick a topic
                 </p>
                 <p className="mt-1 text-sm text-zinc-400">
@@ -1098,149 +1067,323 @@ export function SetupScreen({
           </div>
         </section>
 
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Topic
-          </label>
-          <textarea
-            maxLength={200}
-            rows={3}
-            value={topic}
-            onChange={(e) => onTopic(e.target.value)}
-            placeholder='e.g. "Remote work is better than working from the office"'
-            className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-          <div className="flex items-center justify-between gap-3 text-xs">
-            <span className="text-zinc-500">Or write your own statement.</span>
-            <span className="text-zinc-600">{topic.length}/200</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Your side
-          </span>
-          <div className="grid grid-cols-2 gap-3">
-            {(["FOR", "AGAINST"] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onSide(s)}
-                className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
-                  s === "FOR"
-                    ? side === s
-                      ? "border-emerald-500 bg-emerald-500/20 text-emerald-100 shadow-md shadow-emerald-900/30"
-                      : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-emerald-500/45 hover:bg-emerald-950/25 hover:text-emerald-100/95"
-                    : side === s
-                      ? "border-rose-500 bg-rose-500/20 text-rose-100 shadow-md shadow-rose-900/30"
-                      : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-            Nickname
-          </label>
-          <input
-            type="text"
-            maxLength={20}
-            value={nickname}
-            onChange={(e) => onNickname(e.target.value)}
-            placeholder="e.g. Alex"
-            className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-          <span className="text-right text-xs text-zinc-600">
-            {nickname.length}/20
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Debate rounds
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
+          <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
+              Step 2 · Take a side
             </span>
-            <span className="text-sm font-semibold text-indigo-300">
-              {turnRounds} rounds
-            </span>
-          </div>
-          <input
-            type="range"
-            min={MIN_TURN_ROUNDS}
-            max={MAX_TURN_ROUNDS}
-            step={1}
-            value={turnRounds}
-            onChange={(e) => onTurnRounds(Number(e.target.value))}
-            className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
-          />
-          <div className="flex justify-between text-xs text-zinc-600">
-            <span>{MIN_TURN_ROUNDS}</span>
-            <span>{MAX_TURN_ROUNDS}</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Time per turn
-            </span>
-            <span className={`text-sm font-semibold transition-colors ${timedModeEnabled ? "text-indigo-300" : "text-zinc-500"}`}>
-              {timedModeEnabled ? formatTimer(turnTimerSeconds) : "No timer"}
-            </span>
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
+              Write your statement, pick FOR or AGAINST
+            </h2>
+            <p className="text-sm leading-relaxed text-zinc-400">
+              You can refine the topic above into your own words.
+            </p>
           </div>
 
-          {timedModeEnabled ? (
-            <>
+          <div className="mt-5 flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <label className="text-base font-semibold text-zinc-100 sm:text-lg">
+                Topic
+              </label>
+              <textarea
+                maxLength={200}
+                rows={3}
+                value={topic}
+                onChange={(e) => onTopic(e.target.value)}
+                placeholder='e.g. "Remote work is better than working from the office"'
+                className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <div className="flex items-center justify-between gap-3 text-xs">
+                <span className="text-zinc-500">Or write your own statement.</span>
+                <span className="text-zinc-600">{topic.length}/200</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-base font-semibold text-zinc-100 sm:text-lg">
+                Your side
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                {(["FOR", "AGAINST"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => onSide(s)}
+                    className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                      s === "FOR"
+                        ? side === s
+                          ? "border-emerald-500 bg-emerald-500/20 text-emerald-100 shadow-md shadow-emerald-900/30"
+                          : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-emerald-500/45 hover:bg-emerald-950/25 hover:text-emerald-100/95"
+                        : side === s
+                          ? "border-rose-500 bg-rose-500/20 text-rose-100 shadow-md shadow-rose-900/30"
+                          : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
+          <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
+              Step 3 · Set the match
+            </span>
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
+              Your nickname and pacing
+            </h2>
+            <p className="text-sm leading-relaxed text-zinc-400">
+              How many rounds and how much time per turn.
+            </p>
+          </div>
+
+          <div className="mt-5 flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <label className="text-base font-semibold text-zinc-100 sm:text-lg">
+                Nickname
+              </label>
+              <input
+                type="text"
+                maxLength={20}
+                value={nickname}
+                onChange={(e) => onNickname(e.target.value)}
+                placeholder="e.g. Alex"
+                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <span className="text-right text-xs text-zinc-600">
+                {nickname.length}/20
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-semibold text-zinc-100 sm:text-lg">
+                  Debate rounds
+                </span>
+                <span className="text-sm font-semibold text-indigo-300">
+                  {turnRounds} rounds
+                </span>
+              </div>
               <input
                 type="range"
-                min={MIN_TURN_TIMER_SECONDS}
-                max={MAX_TURN_TIMER_SECONDS}
-                step={30}
-                value={turnTimerSeconds}
-                onChange={(e) => onTurnTimerSeconds(Number(e.target.value))}
+                min={MIN_TURN_ROUNDS}
+                max={MAX_TURN_ROUNDS}
+                step={1}
+                value={turnRounds}
+                onChange={(e) => onTurnRounds(Number(e.target.value))}
                 className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
               />
               <div className="flex justify-between text-xs text-zinc-600">
-                <span>{formatTimer(MIN_TURN_TIMER_SECONDS)}</span>
-                <span>{formatTimer(MAX_TURN_TIMER_SECONDS)}</span>
+                <span>{MIN_TURN_ROUNDS}</span>
+                <span>{MAX_TURN_ROUNDS}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-zinc-500">You can pause at any time.</p>
-                <button
-                  type="button"
-                  onClick={() => setTimedMode(false)}
-                  className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
-                >
-                  Play without a timer →
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-zinc-500">No countdown, no pressure.</p>
-              <button
-                type="button"
-                onClick={() => setTimedMode(true)}
-                className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
-              >
-                ← Add a timer
-              </button>
             </div>
-          )}
-        </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-base font-semibold text-zinc-100 sm:text-lg">
+                  Time per turn
+                </span>
+                <span
+                  className={`text-sm font-semibold transition-colors ${timedModeEnabled ? "text-indigo-300" : "text-zinc-500"}`}
+                >
+                  {timedModeEnabled ? formatTimer(turnTimerSeconds) : "No timer"}
+                </span>
+              </div>
+
+              {timedModeEnabled ? (
+                <>
+                  <input
+                    type="range"
+                    min={MIN_TURN_TIMER_SECONDS}
+                    max={MAX_TURN_TIMER_SECONDS}
+                    step={30}
+                    value={turnTimerSeconds}
+                    onChange={(e) => onTurnTimerSeconds(Number(e.target.value))}
+                    className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
+                  />
+                  <div className="flex justify-between text-xs text-zinc-600">
+                    <span>{formatTimer(MIN_TURN_TIMER_SECONDS)}</span>
+                    <span>{formatTimer(MAX_TURN_TIMER_SECONDS)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-zinc-500">
+                      You can pause at any time.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setTimedMode(false)}
+                      className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
+                    >
+                      Play without a timer →
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-zinc-500">
+                    No countdown, no pressure.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setTimedMode(true)}
+                    className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
+                  >
+                    ← Add a timer
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
 
         <button
           type="button"
           disabled={!canStart}
           onClick={onStart}
-          className="cursor-pointer rounded-xl bg-indigo-600 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100"
+          className="cursor-pointer rounded-xl bg-indigo-600 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100 sm:text-lg"
         >
           Start debate
         </button>
+
+        <div className="mt-2 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-zinc-800" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+              More ways to play
+            </span>
+            <span className="h-px flex-1 bg-zinc-800" />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            <PlayWithFriendPod nickname={nickname} />
+
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
+              <div className="flex flex-col gap-4">
+                <button
+                  type="button"
+                  onClick={() => setProgressOpen((v) => !v)}
+                  className="flex w-full cursor-pointer flex-wrap items-start justify-between gap-3 text-left"
+                  aria-expanded={progressOpen}
+                >
+                  <span>
+                    <span className="block text-base font-semibold text-zinc-100 sm:text-lg">
+                      Your progress
+                    </span>
+                    <span className="mt-1 block text-sm text-zinc-400">
+                      Local stats from your recent debates.
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-right">
+                      <span className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                        Streak
+                      </span>
+                      <span className="mt-1 block text-3xl font-semibold tabular-nums text-zinc-100">
+                        {progress?.streakDays ?? 0}
+                      </span>
+                      <span className="block text-xs text-zinc-500">
+                        {(progress?.streakDays ?? 0) === 1 ? "day" : "days"}
+                      </span>
+                    </span>
+                    <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-400">
+                      {progressOpen ? "Hide" : "Show"}
+                    </span>
+                  </span>
+                </button>
+
+                {progressOpen ? (
+                  <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr] xl:grid-cols-1 2xl:grid-cols-[0.9fr_1.1fr]">
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                        Today
+                      </p>
+                      <div className="mt-3 flex items-end gap-2">
+                        <span className="text-3xl font-semibold text-zinc-100">
+                          {progress?.debatesToday ?? 0}
+                        </span>
+                        <span className="pb-1 text-sm text-zinc-400">
+                          debates today
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                        {progress?.graceAvailable === false
+                          ? "Grace day used. Play today to keep the streak."
+                          : "One missed day is allowed before the streak resets."}
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                          Skills
+                        </p>
+                        <span className="text-xs text-zinc-600">
+                          from your verdicts
+                        </span>
+                      </div>
+                      <div className="mt-3 grid gap-2">
+                        {(
+                          Object.keys(PROGRESS_SKILL_LABELS) as ProgressSkillKey[]
+                        ).map((key) => {
+                          const value = progressSkills?.[key] ?? 50;
+                          return (
+                            <div key={key} className="flex flex-col gap-1">
+                              <div className="flex justify-between text-xs">
+                                <span className="font-medium text-zinc-300">
+                                  {PROGRESS_SKILL_LABELS[key]}
+                                </span>
+                                <span className="font-mono text-zinc-500">
+                                  {value}%
+                                </span>
+                              </div>
+                              <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+                                <div
+                                  className={`h-full rounded-full bg-gradient-to-r ${PROGRESS_SKILL_COLORS[key]}`}
+                                  style={{ width: `${value}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
+              <div className="flex h-full flex-col justify-between gap-4">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
+                      Coming soon
+                    </span>
+                    <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                      Paid later
+                    </span>
+                  </div>
+                  <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
+                    Debate School
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
+                    Guided practice for claims, evidence, rebuttals, and calm
+                    pushback.
+                  </p>
+                </div>
+                <a
+                  href="#topic-picker"
+                  className="inline-flex w-fit cursor-pointer items-center rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+                >
+                  Start with a debate topic →
+                </a>
+              </div>
+            </section>
+          </div>
+        </div>
 
         <footer className="flex items-center justify-center gap-4 text-xs text-zinc-600">
           <span>© {new Date().getFullYear()} Bluume, Inc</span>
