@@ -766,7 +766,7 @@ export function SetupScreen({
   }, []);
 
   return (
-    <div className="relative z-20 mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12">
+    <div className="relative z-20 mx-auto flex w-full max-w-lg flex-col gap-8 px-4 py-12 lg:max-w-5xl xl:max-w-6xl">
       {PARTICLES.map((p, i) => {
         const variance = particleVariance[i] ?? randomVariant();
         const isRocket =
@@ -936,16 +936,17 @@ export function SetupScreen({
           </p>
         </header>
 
-        <section
-          id="topic-picker"
-          className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6"
-        >
+        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <section
+            id="topic-picker"
+            className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6"
+          >
           <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
               Solo · You vs AI · Step 1 · Pick a topic
             </span>
-            <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
-              Let&apos;s start a debate
+            <h2 className="text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl">
+              What do you want to debate?
             </h2>
             <p className="text-sm leading-relaxed text-zinc-400 sm:text-base">
               You debate the AI opponent; the Judge fact-checks every move and
@@ -1072,67 +1073,70 @@ export function SetupScreen({
               </>
             )}
           </div>
-        </section>
+          </section>
 
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
-          <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
-              Step 2 · Take a side
-            </span>
-            <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
-              Write your statement, pick FOR or AGAINST
-            </h2>
-            <p className="text-sm leading-relaxed text-zinc-400">
-              You can refine the topic above into your own words.
-            </p>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <label className="text-base font-semibold text-zinc-100 sm:text-lg">
-                Topic
-              </label>
-              <textarea
-                maxLength={200}
-                rows={3}
-                value={topic}
-                onChange={(e) => onTopic(e.target.value)}
-                placeholder='e.g. "Remote work is better than working from the office"'
-                className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-              <div className="flex items-center justify-between gap-3 text-xs">
-                <span className="text-zinc-500">Or write your own statement.</span>
-                <span className="text-zinc-600">{topic.length}/200</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <span className="text-base font-semibold text-zinc-100 sm:text-lg">
-                Your side
+          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
+            <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
+                Step 2 · Take a side
               </span>
-              <div className="grid grid-cols-2 gap-3">
-                {(["FOR", "AGAINST"] as const).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => onSide(s)}
-                    className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
-                      s === "FOR"
-                        ? side === s
-                          ? "border-emerald-500 bg-emerald-500/20 text-emerald-100 shadow-md shadow-emerald-900/30"
-                          : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-emerald-500/45 hover:bg-emerald-950/25 hover:text-emerald-100/95"
-                        : side === s
-                          ? "border-rose-500 bg-rose-500/20 text-rose-100 shadow-md shadow-rose-900/30"
-                          : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
-                    }`}
-                  >
-                    {s}
-                  </button>
-                ))}
+              <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl xl:text-2xl">
+                Write your statement, pick FOR or AGAINST
+              </h2>
+              <p className="text-sm leading-relaxed text-zinc-400">
+                You can refine the topic above into your own words.
+              </p>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <label className="text-base font-semibold text-zinc-100 sm:text-lg">
+                  Topic
+                </label>
+                <textarea
+                  maxLength={200}
+                  rows={3}
+                  value={topic}
+                  onChange={(e) => onTopic(e.target.value)}
+                  placeholder='e.g. "Remote work is better than working from the office"'
+                  className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="text-zinc-500">
+                    Or write your own statement.
+                  </span>
+                  <span className="text-zinc-600">{topic.length}/200</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-base font-semibold text-zinc-100 sm:text-lg">
+                  Your side
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  {(["FOR", "AGAINST"] as const).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => onSide(s)}
+                      className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                        s === "FOR"
+                          ? side === s
+                            ? "border-emerald-500 bg-emerald-500/20 text-emerald-100 shadow-md shadow-emerald-900/30"
+                            : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-emerald-500/45 hover:bg-emerald-950/25 hover:text-emerald-100/95"
+                          : side === s
+                            ? "border-rose-500 bg-rose-500/20 text-rose-100 shadow-md shadow-rose-900/30"
+                            : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
 
         <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
           <div className="flex flex-col gap-2 border-b border-zinc-800/80 pb-4">
