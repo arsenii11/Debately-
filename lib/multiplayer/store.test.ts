@@ -37,6 +37,12 @@ beforeEach(() => {
   getStoreInternalsForTests().reset();
 });
 
+it("createSessionWithHost allows empty nickname (set later in lobby)", () => {
+  const { session, slot } = createSessionWithHost({ nickname: "" });
+  const p = session.players.find((x) => x.slot === slot);
+  expect(p?.nickname).toBe("");
+});
+
 function startedSession(): {
   sessionId: string;
   hostToken: string;

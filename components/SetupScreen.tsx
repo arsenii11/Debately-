@@ -402,18 +402,12 @@ function PlayWithFriendPod({ nickname }: { nickname: string }) {
   }, []);
 
   const effectiveLobbyNickname = (nickname.trim() || mpNickHydrated).slice(0, 32);
-  const canCreateLobby = effectiveLobbyNickname.length > 0;
 
   const handleCreate = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
       const cleanedNickname = effectiveLobbyNickname;
-      if (!cleanedNickname) {
-        setError("Enter a nickname first.");
-        setBusy(false);
-        return;
-      }
       const res = await fetch("/api/multiplayer/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -432,7 +426,7 @@ function PlayWithFriendPod({ nickname }: { nickname: string }) {
         const tokenMap = tokenMapRaw ? (JSON.parse(tokenMapRaw) as Record<string, string>) : {};
         tokenMap[data.sessionId] = data.playerToken;
         window.localStorage.setItem("debately:mp:tokens", JSON.stringify(tokenMap));
-        persistMpNickname(cleanedNickname);
+        if (cleanedNickname) persistMpNickname(cleanedNickname);
       } catch {
         /* ignore storage failures */
       }
@@ -467,7 +461,7 @@ function PlayWithFriendPod({ nickname }: { nickname: string }) {
           <button
             type="button"
             onClick={handleCreate}
-            disabled={busy || !canCreateLobby}
+            disabled={busy}
             className="inline-flex w-fit cursor-pointer items-center rounded-xl border border-indigo-500/60 bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-100 transition-colors hover:border-indigo-400 hover:bg-indigo-500/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "Creating lobby…" : "Create lobby link →"}
@@ -719,13 +713,8 @@ export function SetupScreen({
               }
             : { left: `calc(${p.left ?? "0"} + ${variance.xPx}px)` }),
           opacity: p.bright ? 0.88 : 0.4,
-          pointerEvents: "auto",
-          cursor: "pointer",
+          pointerEvents: "none",
           userSelect: "none",
-          // Bigger invisible hitbox for easier taps/clicks on moving emojis.
-          padding: "10px",
-          margin: "-10px",
-          // Setup form container is z-20; keep rockets below input fields.
           zIndex: isRocket ? 12 : 5,
           ...(fx?.k === "flee"
             ? ({
@@ -750,23 +739,66 @@ export function SetupScreen({
               }),
         };
 
+        const hitTargetClass =
+          "inline-block cursor-pointer touch-manipulation rounded-md p-2 -m-2 [pointer-events:auto]";
+
         if (p.anim === "rocketMoon") {
           return (
             <div
               key={i}
               aria-hidden
-              className={`touch-manipulation ${p.desktopOnly ? "hidden sm:block" : ""} ${hideGutterOnXs ? "max-sm:hidden" : ""}`}
-              onClick={(e) => handleParticleClick(i, e)}
+              className={`${p.desktopOnly ? "hidden sm:block" : ""} ${hideGutterOnXs ? "max-sm:hidden" : ""}`}
               style={wrapperStyle}
             >
-              <div className="setup-moon-stack" style={cardVars}>
-                <span className="setup-moon-body">🌕</span>
-                <div
-                  className="setup-moon-orbit-arm"
-                  style={{ animation: fleeing ? "none" : undefined }}
-                >
+              <div
+                role="presentation"
+                className={hitTargetClass}
+                onClick={(e) => handleParticleClick(i, e)}
+              >
+                <div className="setup-moon-stack" style={cardVars}>
+                  <span className="setup-moon-body">🌕</span>
+                  <div
+                    className="setup-moon-orbit-arm"
+                    style={{ animation: fleeing ? "none" : undefined }}
+                  >
+                    <span
+                      className="setup-moon-rocket setup-p setup-p-rocket-flame"
+                      style={{
+                        animation: fleeing ? "none" : undefined,
+                      }}
+                    >
+                      🚀
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        if (p.anim === "rocketEarth") {
+          return (
+            <div
+              key={i}
+              aria-hidden
+              className={`${p.desktopOnly ? "hidden sm:block" : ""} ${hideGutterOnXs ? "max-sm:hidden" : ""}`}
+              style={wrapperStyle}
+            >
+              <div
+                role="presentation"
+                className={hitTargetClass}
+                onClick={(e) => handleParticleClick(i, e)}
+              >
+                <div className="setup-earth-stack" style={cardVars}>
+                  <span className="setup-earth-globe">🌍</span>
                   <span
-                    className="setup-moon-rocket setup-p setup-p-rocket-flame"
+                    className={`setup-earth-rocket setup-p setup-p-rocket-flame ${
+                      variance.earthVariant === 1
+                        ? ""
+                        : variance.earthVariant === 2
+                          ? "setup-earth-rocket-v2"
+                          : "setup-earth-rocket-v3"
+                    }`}
                     style={{
                       animation: fleeing ? "none" : undefined,
                     }}
@@ -779,65 +811,40 @@ export function SetupScreen({
           );
         }
 
-        if (p.anim === "rocketEarth") {
-          return (
-            <div
-              key={i}
-              aria-hidden
-              className={`touch-manipulation ${p.desktopOnly ? "hidden sm:block" : ""} ${hideGutterOnXs ? "max-sm:hidden" : ""}`}
-              onClick={(e) => handleParticleClick(i, e)}
-              style={wrapperStyle}
-            >
-              <div className="setup-earth-stack" style={cardVars}>
-                <span className="setup-earth-globe">🌍</span>
-                <span
-                  className={`setup-earth-rocket setup-p setup-p-rocket-flame ${
-                    variance.earthVariant === 1
-                      ? ""
-                      : variance.earthVariant === 2
-                        ? "setup-earth-rocket-v2"
-                        : "setup-earth-rocket-v3"
-                  }`}
-                  style={{
-                    animation: fleeing ? "none" : undefined,
-                  }}
-                >
-                  🚀
-                </span>
-              </div>
-            </div>
-          );
-        }
-
         return (
           <div
             key={i}
             aria-hidden
-            className={`touch-manipulation ${p.desktopOnly ? "hidden sm:block" : ""} ${hideGutterOnXs ? "max-sm:hidden" : ""}`}
-            onClick={(e) => handleParticleClick(i, e)}
+            className={`${p.desktopOnly ? "hidden sm:block" : ""} ${hideGutterOnXs ? "max-sm:hidden" : ""}`}
             style={wrapperStyle}
           >
-            <span
-              className={`setup-p${fleeing ? "" : ` ${animClass}`}${isRocket ? " setup-p-rocket-flame" : ""}${!isRocket && p.bright ? " setup-p-glow" : ""}`}
-              style={
-                {
-                  display: "block",
-                  fontSize: p.size,
-                  ...cardVars,
-                  animation: fleeing ? "none" : undefined,
-                } as React.CSSProperties
-              }
+            <div
+              role="presentation"
+              className={hitTargetClass}
+              onClick={(e) => handleParticleClick(i, e)}
             >
               <span
-                className={`inline-block${nudge ? " setup-p-nudge-pulse" : ""}`}
+                className={`setup-p${fleeing ? "" : ` ${animClass}`}${isRocket ? " setup-p-rocket-flame" : ""}${!isRocket && p.bright ? " setup-p-glow" : ""}`}
+                style={
+                  {
+                    display: "block",
+                    fontSize: p.size,
+                    ...cardVars,
+                    animation: fleeing ? "none" : undefined,
+                  } as React.CSSProperties
+                }
               >
-                {glyph}
+                <span
+                  className={`inline-block${nudge ? " setup-p-nudge-pulse" : ""}`}
+                >
+                  {glyph}
+                </span>
               </span>
-            </span>
+            </div>
           </div>
         );
       })}
-      <div className="relative z-30 flex flex-col gap-8">
+      <div className="relative z-[100] isolate flex flex-col gap-8 [pointer-events:auto]">
         <header className="text-center">
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">
             Debately
@@ -936,6 +943,7 @@ export function SetupScreen({
                 Nickname
               </label>
               <input
+                id="setup-nickname-input"
                 type="text"
                 maxLength={20}
                 value={nickname}
