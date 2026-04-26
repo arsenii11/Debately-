@@ -744,7 +744,7 @@ export function MultiplayerApp({ sessionId }: Props) {
     );
   }
 
-  if (session.state === "finished" && session.verdict) {
+  if (session.state === "finished" && session.verdict && mySide) {
     return (
       <div className="mx-auto flex w-full flex-col items-center gap-4 p-6">
         <VerdictCard
