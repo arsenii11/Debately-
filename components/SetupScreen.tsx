@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   DEFAULT_TIMED_TURN_TIMER_SECONDS,
   UNTIMED_TURN_TIMER_SECONDS,
@@ -14,6 +14,7 @@ import {
   type TurnTimerSeconds,
 } from "@/lib/types";
 import type { DebatelyProgress, ProgressSkillKey } from "@/lib/localProgress";
+import { getNickname, setNickname as persistMpNickname } from "@/lib/multiplayer/clientAuth";
 
 type ParticleAnim =
   | "rocketBack"
@@ -395,14 +396,19 @@ type Props = {
 function PlayWithFriendPod({ nickname }: { nickname: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mpNickHydrated, setMpNickHydrated] = useState("");
+  useLayoutEffect(() => {
+    setMpNickHydrated(getNickname().trim());
+  }, []);
 
-  const canCreateLobby = nickname.trim().length > 0;
+  const effectiveLobbyNickname = (nickname.trim() || mpNickHydrated).slice(0, 32);
+  const canCreateLobby = effectiveLobbyNickname.length > 0;
 
   const handleCreate = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
-      const cleanedNickname = nickname.trim().slice(0, 32);
+      const cleanedNickname = effectiveLobbyNickname;
       if (!cleanedNickname) {
         setError("Enter a nickname first.");
         setBusy(false);
@@ -426,9 +432,7 @@ function PlayWithFriendPod({ nickname }: { nickname: string }) {
         const tokenMap = tokenMapRaw ? (JSON.parse(tokenMapRaw) as Record<string, string>) : {};
         tokenMap[data.sessionId] = data.playerToken;
         window.localStorage.setItem("debately:mp:tokens", JSON.stringify(tokenMap));
-        if (cleanedNickname) {
-          window.localStorage.setItem("debately:mp:nickname", cleanedNickname);
-        }
+        persistMpNickname(cleanedNickname);
       } catch {
         /* ignore storage failures */
       }
@@ -437,7 +441,7 @@ function PlayWithFriendPod({ nickname }: { nickname: string }) {
       setError(err instanceof Error ? err.message : "Could not create lobby.");
       setBusy(false);
     }
-  }, [nickname]);
+  }, [effectiveLobbyNickname]);
 
   return (
     <section className="rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-4">

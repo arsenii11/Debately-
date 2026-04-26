@@ -23,12 +23,8 @@ import {
   setNickname as persistNickname,
   setPlayerToken,
 } from "@/lib/multiplayer/clientAuth";
-import { SpectatorLikes } from "@/components/multiplayer/SpectatorLikes";
-import type {
-  PublicSession,
-  SlotId,
-  SpecLike,
-} from "@/lib/multiplayer/types";
+import { SpectatorReactions } from "@/components/multiplayer/SpectatorReactions";
+import type { PublicSession, SlotId } from "@/lib/multiplayer/types";
 import type { Side, ThinkingStage } from "@/lib/types";
 import {
   DEFAULT_TIMED_TURN_TIMER_SECONDS,
@@ -140,6 +136,16 @@ function LiveDebate(props: LiveStateProps) {
         thinkingStage={thinkingStage}
         isAIThinking={isAIThinking}
         thinkingLabel={thinkingLabel}
+        argumentReactions={({ round, side }) => (
+          <SpectatorReactions
+            sessionId={session.id}
+            round={round}
+            side={side}
+            reactions={session.likes ?? []}
+            readOnly
+            align={side === mySide ? "start" : "end"}
+          />
+        )}
       />
       <InputBar
         value={inputText}
@@ -207,6 +213,16 @@ function ReadOnlyDebate({
         thinkingStage="verdict"
         isAIThinking
         thinkingLabel="Judge is preparing the final verdict…"
+        argumentReactions={({ round, side }) => (
+          <SpectatorReactions
+            sessionId={session.id}
+            round={round}
+            side={side}
+            reactions={session.likes ?? []}
+            readOnly
+            align={side === perspectiveSide ? "start" : "end"}
+          />
+        )}
       />
     </div>
   );
@@ -219,6 +235,7 @@ type SpectatorViewProps = {
   againstNick: string;
   spectatorHistory: ReturnType<typeof viewMultiplayerRoundsFromSide>;
   currentTurnNick: string;
+  refreshSession: () => Promise<void>;
 };
 
 function SpectatorView({
@@ -228,17 +245,8 @@ function SpectatorView({
   againstNick,
   spectatorHistory,
   currentTurnNick,
+  refreshSession,
 }: SpectatorViewProps) {
-  const [likes, setLikes] = useState<SpecLike[]>(session.likes ?? []);
-
-  // Keep likes in sync when session updates via SSE (parent re-renders pass new session).
-  // Since this component is recreated on every parent render, session.likes is always fresh.
-  const syncedLikes = session.likes ?? likes;
-
-  const roundsWithMoves = session.history.filter(
-    (r) => r.forMove || r.againstMove,
-  );
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2 text-xs text-zinc-400">
@@ -280,50 +288,24 @@ function SpectatorView({
         thinkingStage={null}
         isAIThinking={false}
         thinkingLabel=""
+        showYourSideBadge={false}
+        argumentReactions={({ round, side }) => (
+          <SpectatorReactions
+            sessionId={sessionId}
+            round={round}
+            side={side}
+            reactions={session.likes ?? []}
+            onUpdate={() => {
+              void refreshSession();
+            }}
+            align={side === "FOR" ? "start" : "end"}
+          />
+        )}
       />
 
-      {roundsWithMoves.length > 0 ? (
-        <div className="shrink-0 border-t border-zinc-800 bg-zinc-950/90 px-4 py-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-            React to arguments
-          </p>
-          <div className="flex flex-col gap-2">
-            {roundsWithMoves.map((r) => (
-              <div key={r.round} className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
-                <span className="w-16 shrink-0 font-semibold">R{r.round}</span>
-                {r.forMove ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-emerald-400">{forNick}</span>
-                    <SpectatorLikes
-                      sessionId={sessionId}
-                      round={r.round}
-                      side="FOR"
-                      likes={syncedLikes}
-                      onLiked={setLikes}
-                    />
-                  </div>
-                ) : null}
-                {r.againstMove ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-rose-400">{againstNick}</span>
-                    <SpectatorLikes
-                      sessionId={sessionId}
-                      round={r.round}
-                      side="AGAINST"
-                      likes={syncedLikes}
-                      onLiked={setLikes}
-                    />
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="border-t border-zinc-800 bg-zinc-950/80 px-4 py-3 text-center text-xs text-zinc-500">
-          You are watching as a spectator · no input allowed
-        </div>
-      )}
+      <div className="shrink-0 border-t border-zinc-800 bg-zinc-950/80 px-4 py-2 text-center text-[11px] text-zinc-500">
+        Spectator · react under each argument · name required once
+      </div>
     </div>
   );
 }
@@ -764,6 +746,7 @@ export function MultiplayerApp({ sessionId }: Props) {
         againstNick={againstPlayer?.nickname ?? "AGAINST"}
         spectatorHistory={spectatorHistory}
         currentTurnNick={currentTurnNick}
+        refreshSession={refreshSession}
       />
     );
   }

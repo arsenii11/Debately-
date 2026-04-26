@@ -45,13 +45,23 @@ export type SessionSettings = {
   turnTimerSeconds: TurnTimerSeconds;
 };
 
-/** A spectator reaction (like) on a specific argument. */
+export const SPEC_REACTION_KINDS = [
+  "like",
+  "dislike",
+  "cackle",
+  "fire",
+] as const;
+export type SpecReactionKind = (typeof SPEC_REACTION_KINDS)[number];
+
+/** A spectator reaction on a specific argument (round + FOR/AGAINST side). */
 export type SpecLike = {
   /** Display name entered by the spectator. */
   name: string;
   round: number;
   side: Side;
   at: number;
+  /** Defaults to "like" for data saved before this field existed. */
+  kind: SpecReactionKind;
 };
 
 export type MultiplayerSession = {
@@ -72,7 +82,7 @@ export type MultiplayerSession = {
   concededBy: SlotId | null;
   /** Counts skips by side label so verdict prompt can apply -5 per skip. */
   skippedTurns: { FOR: number; AGAINST: number };
-  /** Spectator likes per argument. */
+  /** Spectator reactions per argument (likes, dislikes, etc.). */
   likes: SpecLike[];
 };
 

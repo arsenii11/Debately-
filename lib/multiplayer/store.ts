@@ -21,10 +21,13 @@ import {
   tryStartLive,
   updateLobby,
 } from "@/lib/multiplayer/sessionLogic";
-import type {
-  MultiplayerSession,
-  PublicSession,
-  SlotId,
+import {
+  SPEC_REACTION_KINDS,
+  type MultiplayerSession,
+  type PublicSession,
+  type SlotId,
+  type SpecLike,
+  type SpecReactionKind,
 } from "@/lib/multiplayer/types";
 import type { FactCheck, Verdict } from "@/lib/types";
 
@@ -183,12 +186,20 @@ function commit(
   return next;
 }
 
+function normalizeLikeEntry(l: SpecLike): SpecLike {
+  const raw = (l as SpecLike & { kind?: SpecReactionKind }).kind;
+  const kind =
+    raw && SPEC_REACTION_KINDS.includes(raw) ? raw : "like";
+  return { name: l.name, round: l.round, side: l.side, at: l.at, kind };
+}
+
 export function publicView(
   session: MultiplayerSession,
   yourTokenHash: string | null,
 ): PublicSession {
   return {
     ...session,
+    likes: session.likes.map(normalizeLikeEntry),
     players: session.players.map((p) => ({
       slot: p.slot,
       nickname: p.nickname,
@@ -450,6 +461,7 @@ export function applyLike(args: {
   name: string;
   round: number;
   side: Side;
+  kind?: SpecReactionKind;
 }): ApplyLikeResult {
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);

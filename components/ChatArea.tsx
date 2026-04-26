@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import { SURRENDER_PLAYER_MOVE } from "@/lib/debateSurrender";
 import type { RoundData, Side, ThinkingStage } from "@/lib/types";
 import { AIBubble } from "./AIBubble";
@@ -39,6 +39,10 @@ type Props = {
   isAIThinking: boolean;
   thinkingLabel: string;
   lastOpponentAnchorRef?: RefObject<HTMLDivElement | null>;
+  /** Solo / seated player: show "You · FOR|AGAINST" next to topic. Off for spectators. */
+  showYourSideBadge?: boolean;
+  /** Multiplayer: reactions row under each submitted argument (FOR/AGAINST in absolute terms). */
+  argumentReactions?: (ctx: { round: number; side: Side }) => ReactNode;
 };
 
 export function ChatArea({
@@ -54,6 +58,8 @@ export function ChatArea({
   isAIThinking,
   thinkingLabel,
   lastOpponentAnchorRef,
+  showYourSideBadge = true,
+  argumentReactions,
 }: Props) {
   const anchorIdx = lastOpponentAnchorRef
     ? lastOpponentAnchorIndex(history, isAIThinking, thinkingStage)
@@ -61,13 +67,27 @@ export function ChatArea({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-zinc-800 bg-zinc-900/40 px-4 py-4 text-center sm:py-5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+      <div className="border-b border-zinc-800 bg-zinc-900/40 px-4 py-4 sm:py-5">
+        <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
           Topic
         </p>
-        <p className="mx-auto mt-1.5 max-w-3xl text-lg font-semibold leading-snug text-zinc-100 sm:text-xl">
-          {topic}
-        </p>
+        <div className="mx-auto mt-1.5 flex w-full max-w-3xl flex-col items-center gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <p className="min-w-0 flex-1 text-center text-lg font-semibold leading-snug text-zinc-100 sm:text-left sm:text-xl">
+            {topic}
+          </p>
+          {showYourSideBadge ? (
+            <span
+              className={`inline-flex shrink-0 items-center rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-white shadow-sm whitespace-nowrap ${
+                playerSide === "FOR"
+                  ? "border-emerald-500/55 bg-emerald-600/90"
+                  : "border-rose-500/55 bg-rose-600/90"
+              }`}
+              title="Your side in this debate"
+            >
+              You · {playerSide}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-6 max-sm:[scroll-padding-bottom:min(42vh,320px)] sm:px-6">
@@ -96,15 +116,25 @@ export function ChatArea({
             const playerBlock = (
               <>
                 {round.playerMove ? (
-                  <PlayerBubble
-                    name={playerName}
-                    side={playerSide}
-                    text={
-                      round.playerMove.trim() === SURRENDER_PLAYER_MOVE
-                        ? "I concede this debate."
-                        : round.playerMove
-                    }
-                  />
+                  <>
+                    <PlayerBubble
+                      name={playerName}
+                      side={playerSide}
+                      text={
+                        round.playerMove.trim() === SURRENDER_PLAYER_MOVE
+                          ? "I concede this debate."
+                          : round.playerMove
+                      }
+                    />
+                    {argumentReactions ? (
+                      <div className="mt-0.5 flex w-full justify-start">
+                        {argumentReactions({
+                          round: round.round,
+                          side: playerSide,
+                        })}
+                      </div>
+                    ) : null}
+                  </>
                 ) : null}
                 {showFcPlayerThinking ? (
                   <ThinkingBanner label={thinkingLabel} />
@@ -118,20 +148,30 @@ export function ChatArea({
             const opponentBlock = (
               <>
                 {round.opponentMove ? (
-                  <div
-                    ref={
-                      lastOpponentAnchorRef && idx === anchorIdx
-                        ? lastOpponentAnchorRef
-                        : undefined
-                    }
-                    className="flex justify-end max-sm:scroll-mt-4"
-                  >
-                    <AIBubble
-                      opponentSide={opponentSide}
-                      opponentName={opponentName}
-                      avatarLabel={opponentName ? opponentInitial : "AI"}
-                      text={round.opponentMove}
-                    />
+                  <div className="flex w-full flex-col items-end gap-0.5 max-sm:scroll-mt-4">
+                    <div
+                      ref={
+                        lastOpponentAnchorRef && idx === anchorIdx
+                          ? lastOpponentAnchorRef
+                          : undefined
+                      }
+                      className="flex justify-end"
+                    >
+                      <AIBubble
+                        opponentSide={opponentSide}
+                        opponentName={opponentName}
+                        avatarLabel={opponentName ? opponentInitial : "AI"}
+                        text={round.opponentMove}
+                      />
+                    </div>
+                    {argumentReactions ? (
+                      <div className="flex w-full justify-end pr-1">
+                        {argumentReactions({
+                          round: round.round,
+                          side: opponentSide,
+                        })}
+                      </div>
+                    ) : null}
                   </div>
                 ) : showOppThinking ? (
                   <div

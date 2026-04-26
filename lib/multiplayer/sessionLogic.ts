@@ -15,14 +15,16 @@ import type {
   TurnTimerSeconds,
   Verdict,
 } from "@/lib/types";
-import type {
-  LobbyProposal,
-  MultiplayerRound,
-  MultiplayerSession,
-  PlayerSlot,
-  SessionSettings,
-  SlotId,
-  SpecLike,
+import {
+  SPEC_REACTION_KINDS,
+  type LobbyProposal,
+  type MultiplayerRound,
+  type MultiplayerSession,
+  type PlayerSlot,
+  type SessionSettings,
+  type SlotId,
+  type SpecLike,
+  type SpecReactionKind,
 } from "@/lib/multiplayer/types";
 
 export const SKIP_AUTO_CONCEDE_THRESHOLD = 3;
@@ -576,13 +578,26 @@ export type RecordLikeResult =
   | { kind: "ok"; session: MultiplayerSession }
   | { kind: "error"; reason: string };
 
-/** Spectator adds a like to a specific argument (round + side). Deduped by name+round+side. */
+function normalizeReactionKind(k: unknown): SpecReactionKind {
+  return SPEC_REACTION_KINDS.includes(k as SpecReactionKind)
+    ? (k as SpecReactionKind)
+    : "like";
+}
+
+/** Spectator adds a reaction to a specific argument. Deduped by name+round+side+kind. */
 export function recordLike(
   session: MultiplayerSession,
-  args: { name: string; round: number; side: Side; now: number },
+  args: {
+    name: string;
+    round: number;
+    side: Side;
+    kind?: SpecReactionKind;
+    now: number;
+  },
 ): RecordLikeResult {
   const name = args.name.trim().slice(0, MAX_SPEC_NAME_LENGTH);
   if (!name) return { kind: "error", reason: "Name is required." };
+  const kind = normalizeReactionKind(args.kind);
   if (args.round < 1 || args.round > session.history.length) {
     return { kind: "error", reason: "Invalid round." };
   }
@@ -592,16 +607,26 @@ export function recordLike(
     args.side === "FOR" ? !!roundData.forMove : !!roundData.againstMove;
   if (!moveExists) return { kind: "error", reason: "Argument not yet submitted." };
 
-  const alreadyLiked = session.likes.some(
-    (l) => l.name.toLowerCase() === name.toLowerCase() && l.round === args.round && l.side === args.side,
+  const already = session.likes.some(
+    (l) =>
+      l.name.toLowerCase() === name.toLowerCase() &&
+      l.round === args.round &&
+      l.side === args.side &&
+      normalizeReactionKind(l.kind) === kind,
   );
-  if (alreadyLiked) return { kind: "error", reason: "Already liked." };
+  if (already) return { kind: "error", reason: "You already used this reaction here." };
 
   if (session.likes.length >= MAX_LIKES_PER_SESSION) {
-    return { kind: "error", reason: "Like limit reached." };
+    return { kind: "error", reason: "Reaction limit reached." };
   }
 
-  const like: SpecLike = { name, round: args.round, side: args.side, at: args.now };
+  const like: SpecLike = {
+    name,
+    round: args.round,
+    side: args.side,
+    at: args.now,
+    kind,
+  };
   return {
     kind: "ok",
     session: bumpRevision({ ...session, likes: [...session.likes, like] }, args.now),
