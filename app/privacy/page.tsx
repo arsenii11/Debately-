@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         Privacy Policy
       </h1>
       <p className="mb-10 text-sm text-zinc-500">
-        Effective date: April 26, 2026 · Bluume, Inc
+        Effective date: April 26, 2026 (updated May 2026) · Bluume, Inc
       </p>
 
       <section className="flex flex-col gap-8 text-[15px] leading-relaxed">
@@ -65,11 +65,27 @@ export default function PrivacyPage() {
               which is cleared when the browser session ends.
             </li>
             <li>
-              <strong className="text-zinc-200">Multiplayer link sessions require temporary server storage.</strong>{" "}
+              <strong className="text-zinc-200">Multiplayer link sessions — temporary storage during play.</strong>{" "}
               To let two players share a lobby, reconnect, and receive live updates, we store
               the session state in memory and periodically write a JSON snapshot to disk. This
               can include nicknames, topics, arguments, factchecks, verdicts, and anonymous
-              player-token hashes. Sessions expire automatically, currently after about 12 hours.
+              player-token hashes. Active sessions expire automatically after about 12 hours of
+              inactivity.
+            </li>
+            <li>
+              <strong className="text-zinc-200">Debate results stored for 30 days.</strong>{" "}
+              Once a multiplayer debate concludes and a final verdict is issued, the full result —
+              including the topic, nicknames, transcript, scores, and judge summary — is retained
+              on our server for up to 30 days to support the shareable result link (
+              <code className="rounded bg-zinc-800 px-1 py-0.5 text-xs">/result/&lt;id&gt;</code>)
+              and the PDF download feature. After 30 days the record is permanently deleted.
+              You can request early deletion by emailing us with the session link.
+            </li>
+            <li>
+              <strong className="text-zinc-200">Spectator reactions.</strong>{" "}
+              When a spectator submits a "like" reaction on an argument, the display name they
+              enter is stored as part of the session record and is subject to the same 30-day
+              retention window.
             </li>
           </ul>
         </div>
@@ -155,9 +171,9 @@ export default function PrivacyPage() {
           <p className="mb-3">
             Depending on where you live, you may have rights including access, rectification,
             erasure, restriction, portability, and objection. We do not run user accounts, so
-            most solo usage has no server-side profile attached to you. Multiplayer sessions are
-            anonymous and short-lived; if you contact us about a specific session, include the
-            session link so we can assess whether any active temporary record exists.
+            solo usage has no server-side profile attached to you. Completed multiplayer debates
+            are stored anonymously for up to 30 days. To request early deletion of a specific
+            result, email us with the session link; we will delete it within 72 hours.
           </p>
           <p>
             If you have concerns, email us at{" "}

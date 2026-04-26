@@ -674,6 +674,7 @@ export function MultiplayerApp({ sessionId }: Props) {
           opponentName={againstPlayer?.nickname ?? "AGAINST"}
           newDebateLabel="Back home"
           onNewDebate={() => router.push("/")}
+          resultUrl={`${window.location.origin}/result/${sessionId}`}
         />
       </div>
     );
@@ -716,6 +717,7 @@ export function MultiplayerApp({ sessionId }: Props) {
           opponentName={opponentName}
           newDebateLabel="Back home"
           onNewDebate={() => router.push("/")}
+          resultUrl={`${window.location.origin}/result/${sessionId}`}
         />
       </div>
     );

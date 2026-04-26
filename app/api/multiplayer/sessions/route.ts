@@ -28,6 +28,9 @@ export async function POST(request: Request) {
   }
   const nickname =
     typeof body.nickname === "string" ? body.nickname.trim().slice(0, 32) : "";
+  if (!nickname) {
+    return NextResponse.json({ error: "Nickname required." }, { status: 400 });
+  }
 
   try {
     const { session, slot, playerToken } = createSessionWithHost({ nickname });

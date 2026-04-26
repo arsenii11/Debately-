@@ -9,10 +9,19 @@ import {
 } from "@/lib/multiplayer/store";
 import { viewHistoryFromSide } from "@/lib/multiplayer/sessionLogic";
 import type { Side } from "@/lib/types";
-import type { MultiplayerSession, SlotId } from "@/lib/multiplayer/types";
+import type { MultiplayerSession, PlayerSlot, SlotId } from "@/lib/multiplayer/types";
 
 const inflightFactcheck = new Set<string>();
 const inflightVerdict = new Set<string>();
+
+function displayNameForVerdict(player: PlayerSlot): string {
+  const trimmed = (player.nickname ?? "").trim();
+  if (trimmed.length > 0) return trimmed.slice(0, 32);
+  if (player.side === "FOR" || player.side === "AGAINST") {
+    return `${player.side} debater`;
+  }
+  return player.slot === "A" ? "Host" : "Guest";
+}
 
 function previousMoveTextFor(
   session: MultiplayerSession,
@@ -112,8 +121,8 @@ export async function runVerdictForSession(args: {
       history,
       skippedTurns,
       playerConceded,
-      playerName: anchor.nickname || `Player ${anchor.slot}`,
-      opponentName: other.nickname || `Player ${other.slot}`,
+      playerName: displayNameForVerdict(anchor),
+      opponentName: displayNameForVerdict(other),
       mode: "multiplayer",
     });
     applyVerdict({ sessionId: args.sessionId, verdict });

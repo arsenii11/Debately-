@@ -11,6 +11,7 @@ import {
   JUDGE_FACTCHECK_SYSTEM,
   JUDGE_FACTCHECK_COMPACT_RETRY_SUFFIX,
   judgeFactcheckUserPrompt,
+  isPlayfulDebateTopic,
 } from "@/lib/prompts";
 import type { FactCheck, Side } from "@/lib/types";
 
@@ -112,6 +113,7 @@ export async function runFactcheck(args: FactcheckArgs): Promise<FactCheck> {
     /^no previous argument$/i.test(previousMoveText.trim());
   const firstPlayerFactcheck =
     speaker === "player" && round <= 1 && hasNoPreviousArgument;
+  const vibeFirstTopic = isPlayfulDebateTopic(topic);
 
   const factcheckParams = {
     systemInstruction: JUDGE_FACTCHECK_SYSTEM,
@@ -122,11 +124,12 @@ export async function runFactcheck(args: FactcheckArgs): Promise<FactCheck> {
       previousMoveText,
       moveText,
       outputLanguage,
+      vibeFirst: vibeFirstTopic,
     }),
     maxOutputTokens: 1800,
     responseMimeType: "application/json" as const,
-    temperature: 0.35,
-    enableSearch: !firstPlayerFactcheck,
+    temperature: vibeFirstTopic ? 0.5 : 0.35,
+    enableSearch: !firstPlayerFactcheck && !vibeFirstTopic,
     ...(firstPlayerFactcheck
       ? { responseSchema: FACTCHECK_RESPONSE_SCHEMA }
       : {}),
@@ -217,15 +220,16 @@ export async function runFactcheck(args: FactcheckArgs): Promise<FactCheck> {
         },
       );
       try {
+        const expansionSuffix = vibeFirstTopic
+          ? `\n\nEXPANSION RETRY: Still thin — add at most one extra row only if a second distinct point exists; otherwise sharpen the single vibe/banter row. Max 2 rows for humor topics; focus on delivery.`
+          : `\n\nEXPANSION RETRY: The previous factcheck was too short. Extract 2-3 factual claims (when present) and provide concise but complete comments for each claim (up to 2 short sentences each). Keep strict JSON shape.`;
         const rawExpanded = await generateGeminiText({
           ...factcheckParams,
-          userPrompt:
-            factcheckParams.userPrompt +
-            `\n\nEXPANSION RETRY: The previous factcheck was too short. Extract 2-3 factual claims (when present) and provide concise but complete comments for each claim (up to 2 short sentences each). Keep strict JSON shape.`,
+          userPrompt: factcheckParams.userPrompt + expansionSuffix,
           enableSearch: false,
           responseSchema: FACTCHECK_RESPONSE_SCHEMA,
-          maxOutputTokens: 2600,
-          temperature: 0.2,
+          maxOutputTokens: vibeFirstTopic ? 1600 : 2600,
+          temperature: vibeFirstTopic ? 0.45 : 0.2,
         });
         const parsedExpanded = parseFactcheckJson(rawExpanded);
         if (

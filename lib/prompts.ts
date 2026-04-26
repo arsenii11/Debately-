@@ -196,11 +196,40 @@ are supposed to argue ${params.playerSide}, then keep pushing your ${params.oppo
 {"text":"your counter-argument, matching the length guidance for this turn"}`;
 }
 
+/** Humor / shitpost / crude topics — lighter factcheck, vibe-first scoring, no web search. */
+export function isPlayfulDebateTopic(topic: string): boolean {
+  const t = topic.trim();
+  if (t.length < 2) return false;
+  const l = t.toLowerCase();
+  if (
+    /\b(meme|shitpost|tier\s*list|hypothetical|would you rather|rofl|lmao|lol\b|ironic\b|irony|satire|parody|cringe|unserious|absurd|slapstick|gross-?out|boogers?|fart|poop|toilet|diarrh|pineapple on pizza|chicken or (the )?egg|nsfw|shitposting)\b/i.test(
+      l,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /\b(boob|boobs|\bass\b|butt\b|dick|penis|nipple|nipples|anal|porn|sex\b|bodily|taboo)\b/i.test(
+      l,
+    )
+  ) {
+    return true;
+  }
+  if (
+    /[а-яё]{2,}(рофл|прикол|стеб|абсурд|ирони|сарказм|мем|жоп|сиськ|перд|говн|унитаз|секс|порно|шутк)/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 /** Judge factcheck — spec §3.2 */
 export const JUDGE_FACTCHECK_SYSTEM = `You are an impartial debate judge performing a factcheck on a single argument.
 
 Your job:
-1. Extract 1-3 specific factual claims from the text
+1. Extract 1-3 specific factual claims from the text (see VIBE-FIRST exception below)
 2. For each claim, assess if it's:
    - "verified" — well-supported by reliable evidence
    - "disputed" — partially true or sources disagree
@@ -219,11 +248,21 @@ IMPORTANT:
 - Use web search when available before finalizing this factcheck, especially
   for recent events, current politics, wars, elections, sanctions, markets,
   and fast-changing statistics.
+- VIBE-FIRST / ROFL TOPICS (same class as TONE OVERRIDE / COMEDY below — silly,
+  crude-for-fun, meme, taste-war, absurdist hypotheticals): do NOT deep-factcheck
+  joke premises. Web search is optional: skip it unless the move states a
+  concrete verifiable real-world claim (named law, dated event, statistic).
+  Judge mainly banter quality, comeback timing, in-joke logic, and whether the
+  line lands against the opponent — not encyclopedic truth. Prefer 0–2 fact
+  rows total; one row summarizing "the bit" as the claim is OK. Do not mark
+  obvious hyperbole or toilet humor as "false" unless the speaker pretends it is
+  literal science or news.
 - If the topic names a specific event, policy, person, or decision, search for
   concrete details about THAT specific case before evaluating claims. Factcheck
   against the actual specifics (numbers, dates, outcomes) of the named event,
   not generic policy literature. Note in comments when a claim misrepresents
-  the specific case vs. when it accurately reflects it.
+  the specific case vs. when it accurately reflects it. (Skip this deep-dive
+  when VIBE-FIRST / ROFL applies and the move is not making a serious factual claim.)
 - If evidence is conflicting or unclear after searching, mark as "disputed"
   rather than guessing.
 - Do NOT treat official policy goals/statements as proof that outcomes happen
@@ -250,6 +289,11 @@ IMPORTANT:
     absurd argument → deadpan absurd reply, meme-logic → meme-logic back.
   • Keep scoring normal (argument strength still matters), but the comment is
     the punchline, not the lecture.
+  • VIBE-FIRST within comedy mode: "relevance" is mostly delivery, wit, and how
+    well the move answers the opponent's energy — not how many empirical facts
+    check out. Funny on-topic banter can score in the 55–85 band even when every
+    factual row is "disputed". Reserve very low scores (≤25) for empty insults
+    with zero engagement, not for gross-out humor that still responds to the thread.
   • "disputed" is fine for subjective claims; the comment should wink, not warn.
   • Never be more vulgar than the user's own wording, but don't be more prim either.
   Example bad comment: "Не все 'пацаны' имеют одинаковый жизненный опыт, что
@@ -266,6 +310,9 @@ CRITICAL language rule:
 
 Argument strength score calibration for the "relevance" field (strict):
 - Use the full 0-100 range; do not default to high scores.
+- When VIBE-FIRST / ROFL / COMEDY applies to the topic, IGNORE the next three
+  bullets about forcing low scores from "disputed"/"false" rows — use the
+  VIBE-FIRST guidance in COMEDY mode instead.
 - If all extracted claims are "disputed" or "false" with you undermining the speaker,
   the score MUST be <= 40.
 - If every claim is "false", the score MUST be <= 25.
@@ -289,12 +336,15 @@ export function judgeFactcheckUserPrompt(params: {
   previousMoveText: string;
   moveText: string;
   outputLanguage?: "Russian" | "English";
+  /** When true, factcheck is vibe-first (banter judge). Defaults from topic heuristic. */
+  vibeFirst?: boolean;
 }): string {
   const today = new Date().toISOString().slice(0, 10);
   const targetLanguage =
     params.outputLanguage ?? detectLanguageFromText(params.moveText);
   const prev =
     params.previousMoveText.trim() || "No previous argument";
+  const vibeFirst = params.vibeFirst ?? isPlayfulDebateTopic(params.topic);
   return `Topic: "${params.topic}"
 Current date (UTC): ${today}
 Output language: ${targetLanguage}
@@ -304,6 +354,11 @@ Previous Debately/player argument: "${prev}"
 Tone: If the topic is playful/crude/absurd/taste-based, activate COMEDY mode —
 comments must match the vibe (cheeky, deadpan, in on the joke). NO formal
 sociological analysis. NO "not everyone…" lectures. Wink, don't warn.
+${vibeFirst ? `
+VIBE-FIRST (this topic is flagged humor/rofl): you are a banter judge, not a prosecutor.
+At most 1–2 fact rows. Score "relevance" mainly on wit, timing, and how well this
+move answers the opponent — not on how many real-world facts you can verify.
+` : ""}
 
 Argument to factcheck:
 "${params.moveText}"
@@ -449,7 +504,8 @@ Skipped turns (player timed out): ${params.skippedTurns} (−5 points per skip t
 Tone: If the topic is playful/crude/absurd/taste-based, the summary and
 best-argument lines MUST be funny and match the debate's energy. No dry
 summaries, no moralizing. Score normally, roast entertainingly.
-${mode === "multiplayer" ? `Multiplayer tone rule: never call either side "Debately" unless that is literally their nickname. Use the two human names above. If the topic is funny/crude/absurd, write the verdict text in English by default and make it sound like a hype commentator: winner cooked, loser got cooked, with specific argument examples.` : ""}
+${mode === "multiplayer" ? `Multiplayer tone rule: never call either side "Debately" unless that is literally their nickname. Use the two human names above. If the topic is funny/crude/absurd, write the verdict text in English by default and make it sound like a hype commentator: winner cooked, loser got cooked, with specific argument examples.
+CRITICAL naming: the two debaters are exactly "${playerLabel}" and "${opponentLabel}". Copy those strings character-for-character in the summary and when naming winner/loser. Never write "Player A", "Player B", "Slot A", "Side A", or other invented stand-ins — only these two labels or obvious shortened forms (e.g. first name) if clearly the same person.` : ""}
 
 Full transcript:
 ${full}

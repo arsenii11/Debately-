@@ -396,11 +396,18 @@ function PlayWithFriendPod({ nickname }: { nickname: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const canCreateLobby = nickname.trim().length > 0;
+
   const handleCreate = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
       const cleanedNickname = nickname.trim().slice(0, 32);
+      if (!cleanedNickname) {
+        setError("Enter a nickname first.");
+        setBusy(false);
+        return;
+      }
       const res = await fetch("/api/multiplayer/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -456,7 +463,7 @@ function PlayWithFriendPod({ nickname }: { nickname: string }) {
           <button
             type="button"
             onClick={handleCreate}
-            disabled={busy}
+            disabled={busy || !canCreateLobby}
             className="inline-flex w-fit cursor-pointer items-center rounded-xl border border-indigo-500/60 bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-100 transition-colors hover:border-indigo-400 hover:bg-indigo-500/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "Creating lobby…" : "Create lobby link →"}

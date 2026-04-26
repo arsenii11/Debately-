@@ -508,12 +508,17 @@ export function applyFactcheck(
   return bumpRevision(setHistoryRound(session, updated), args.now);
 }
 
+const RESULT_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
 export function setVerdict(
   session: MultiplayerSession,
   verdict: Verdict,
   now: number,
 ): MultiplayerSession {
-  return bumpRevision({ ...session, verdict, state: "finished" }, now);
+  return bumpRevision(
+    { ...session, verdict, state: "finished", expiresAt: now + RESULT_TTL_MS },
+    now,
+  );
 }
 
 export function recordConcede(

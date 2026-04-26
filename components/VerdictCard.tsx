@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { Verdict } from "@/lib/types";
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
   opponentName?: string;
   onNewDebate: () => void;
   newDebateLabel?: string;
+  resultUrl?: string;
 };
 
 const rows: { key: keyof Verdict["breakdown"]; label: string; weight: string }[] =
@@ -86,7 +88,18 @@ export function VerdictCard({
   opponentName,
   onNewDebate,
   newDebateLabel,
+  resultUrl,
 }: Props) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    const url = resultUrl ?? window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
   const opponentLabel = opponentName ?? "Debately";
   const winner =
     verdict.score_player === verdict.score_opponent
@@ -271,10 +284,30 @@ export function VerdictCard({
           </div>
         </div>
 
+        {resultUrl ? (
+          <div className="mt-6 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => void handleShare()}
+              className="cursor-pointer rounded-xl border border-zinc-600 py-2.5 text-sm font-semibold text-zinc-200 transition-all hover:border-zinc-500 hover:bg-zinc-800/60 hover:text-white active:scale-[0.99]"
+            >
+              {copied ? "Copied!" : "Share result"}
+            </button>
+            <a
+              href={resultUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex cursor-pointer items-center justify-center rounded-xl border border-indigo-500/40 bg-indigo-500/10 py-2.5 text-sm font-semibold text-indigo-200 transition-all hover:border-indigo-400 hover:bg-indigo-500/20 active:scale-[0.99]"
+            >
+              Save as PDF
+            </a>
+          </div>
+        ) : null}
+
         <button
           type="button"
           onClick={onNewDebate}
-          className="mt-8 w-full cursor-pointer rounded-xl border border-zinc-600 py-3 text-sm font-semibold text-zinc-200 transition-all hover:border-zinc-500 hover:bg-zinc-800/60 hover:text-white active:scale-[0.99]"
+          className="mt-3 w-full cursor-pointer rounded-xl border border-zinc-600 py-3 text-sm font-semibold text-zinc-200 transition-all hover:border-zinc-500 hover:bg-zinc-800/60 hover:text-white active:scale-[0.99]"
         >
           {newDebateLabel ?? "New Debate"}
         </button>
