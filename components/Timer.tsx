@@ -21,7 +21,7 @@ export function Timer({
 
   return (
     <div
-      className={`flex min-w-[140px] flex-col gap-1 ${paused ? "opacity-55" : ""}`}
+      className={`flex min-w-0 max-w-[9.5rem] shrink flex-col gap-1 sm:max-w-[11rem] ${paused ? "opacity-55" : ""}`}
     >
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
         <div

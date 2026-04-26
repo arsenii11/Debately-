@@ -706,7 +706,7 @@ export function DebatelyApp() {
 
   if (phase === "setup") {
     return (
-      <div className="flex min-h-dvh flex-1 flex-col bg-zinc-950 text-zinc-100">
+      <div className="flex min-h-dvh w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden bg-zinc-950 text-zinc-100">
         <SetupScreen
           nickname={nickname}
           topic={topic}
@@ -727,18 +727,18 @@ export function DebatelyApp() {
 
   return (
     <div
-      className={`flex min-h-0 min-h-dvh flex-1 flex-col bg-zinc-950 text-zinc-100 transition-all duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      className={`flex min-h-0 min-h-dvh w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden bg-zinc-950 text-zinc-100 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] ${
         debateEntered
           ? "translate-y-0 opacity-100"
-          : "translate-y-8 opacity-0"
+          : "translate-y-6 opacity-0"
       }`}
     >
       {launchCountdown !== null ? (
         <DebateLaunchOverlay step={launchCountdown} />
       ) : null}
-      <header className="sticky top-0 z-40 shrink-0 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/75">
-        <div className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
-          <div className="flex items-center justify-between gap-2 sm:contents">
+      <header className="sticky top-0 z-40 w-full min-w-0 max-w-full shrink-0 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/75">
+        <div className="flex min-w-0 flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-5">
+          <div className="flex min-w-0 items-center justify-between gap-2 sm:contents">
             <button
               type="button"
               onClick={handleNew}
@@ -752,7 +752,7 @@ export function DebatelyApp() {
                 Solo
               </span>
             </button>
-            <div className="flex flex-wrap items-center justify-end gap-3 sm:order-3">
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:order-3 sm:gap-3">
               {phase === "debating" && (
                 <span className="text-sm text-zinc-400">
                   Round{" "}
@@ -889,7 +889,7 @@ export function DebatelyApp() {
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <ChatArea
           topic={topic}
           playerName={nickname.trim() || "Player"}

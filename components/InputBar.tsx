@@ -257,10 +257,10 @@ export function InputBar({
 
   return (
     <div
-      className="border-t border-zinc-800 bg-zinc-950/95 px-3 py-3 backdrop-blur sm:px-4"
+      className="min-w-0 max-w-full overflow-x-hidden border-t border-zinc-800 bg-zinc-950/95 px-3 py-3 backdrop-blur sm:px-4"
       style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
     >
-      <div className="mx-auto flex max-w-3xl flex-col gap-2">
+      <div className="mx-auto flex min-w-0 max-w-3xl flex-col gap-2">
         <div className="relative">
           <textarea
             rows={3}
@@ -334,7 +334,7 @@ export function InputBar({
                 Dismiss
               </button>
             </div>
-            <pre className="mt-2 whitespace-pre-wrap font-sans text-xs leading-relaxed">
+            <pre className="mt-2 max-w-full whitespace-pre-wrap break-words font-sans text-xs leading-relaxed [overflow-wrap:anywhere]">
               {aiHint}
             </pre>
           </div>

@@ -77,19 +77,22 @@ function LiveDebate(props: LiveStateProps) {
   const history = viewMultiplayerRoundsFromSide(session.history, mySide);
   const showTimer = session.settings.turnTimerSeconds > 0;
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2 text-xs text-zinc-400">
+    <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-x-hidden">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-2 border-b border-zinc-800 bg-zinc-950/85 px-3 py-2 text-xs text-zinc-400 sm:px-4">
         <Link
           href="/"
-          className="rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
+          className="shrink-0 rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
         >
           ← Back home
         </Link>
-        <div className="flex items-center gap-3">
-          <span>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 sm:gap-3">
+          <span className="shrink-0 whitespace-nowrap">
             Round {session.currentRound}/{session.settings.turnRounds}
           </span>
-          <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300">
+          <span
+            className="max-w-[40vw] truncate rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300 sm:max-w-[11rem]"
+            title={opponentNickname}
+          >
             {opponentNickname}
           </span>
           {showTimer ? (
@@ -99,28 +102,32 @@ function LiveDebate(props: LiveStateProps) {
               paused={paused}
             />
           ) : (
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">
+            <span className="shrink-0 text-[10px] uppercase tracking-wide text-zinc-500">
               Untimed
             </span>
           )}
         </div>
       </div>
       {isMyTurn ? (
-        <div className="flex items-center justify-center gap-2 border-b border-emerald-500/20 bg-emerald-950/25 px-4 py-2">
-          <span className="relative flex h-2 w-2">
+        <div className="flex items-center justify-center gap-2 border-b border-emerald-500/20 bg-emerald-950/25 px-3 py-2 sm:px-4">
+          <span className="relative flex h-2 w-2 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
           </span>
-          <span className="text-sm font-semibold text-emerald-300">Your turn — write your argument</span>
+          <span className="min-w-0 text-center text-xs font-semibold text-emerald-300 sm:text-sm">
+            Your turn — write your argument
+          </span>
         </div>
       ) : (
-        <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-4 py-2">
-          <span className="relative flex h-2 w-2">
+        <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-3 py-2 sm:px-4">
+          <span className="relative flex h-2 w-2 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-zinc-500 opacity-50" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-zinc-500" />
           </span>
-          <span className="text-sm text-zinc-400">
-            Waiting for <span className="font-semibold text-zinc-200">{opponentNickname}</span> to argue…
+          <span className="min-w-0 text-center text-xs text-zinc-400 sm:text-sm">
+            Waiting for{" "}
+            <span className="font-semibold text-zinc-200">{opponentNickname}</span>{" "}
+            to argue…
           </span>
         </div>
       )}
@@ -180,26 +187,28 @@ function ReadOnlyDebate({
   const history = viewMultiplayerRoundsFromSide(session.history, perspectiveSide);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2 text-xs text-zinc-400">
+    <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-x-hidden">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-zinc-800 bg-zinc-950/85 px-3 py-2 text-xs text-zinc-400 sm:px-4">
         <Link
           href="/"
-          className="rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
+          className="shrink-0 rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
         >
           ← Home
         </Link>
-        <div className="flex items-center gap-3">
-          <span>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
+          <span className="shrink-0 whitespace-nowrap">
             Round {session.currentRound}/{session.settings.turnRounds}
           </span>
-          <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300">
+          <span className="shrink-0 rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300">
             Read-only
           </span>
         </div>
       </div>
-      <div className="border-b border-indigo-500/20 bg-indigo-950/20 px-4 py-3 text-center">
-        <p className="text-sm font-semibold text-indigo-200">{bannerTitle}</p>
-        <p className="mt-1 text-xs text-zinc-400">{bannerSubtitle}</p>
+      <div className="min-w-0 border-b border-indigo-500/20 bg-indigo-950/20 px-3 py-3 text-center sm:px-4">
+        <p className="break-words text-sm font-semibold text-indigo-200">
+          {bannerTitle}
+        </p>
+        <p className="mt-1 break-words text-xs text-zinc-400">{bannerSubtitle}</p>
       </div>
       <ChatArea
         topic={session.settings.topic}
@@ -248,30 +257,41 @@ function SpectatorView({
   refreshSession,
 }: SpectatorViewProps) {
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2 text-xs text-zinc-400">
-        <Link href="/" className="rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white">
+    <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-col overflow-x-hidden">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-zinc-800 bg-zinc-950/85 px-3 py-2 text-xs text-zinc-400 sm:px-4">
+        <Link
+          href="/"
+          className="shrink-0 rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white"
+        >
           ← Home
         </Link>
-        <div className="flex items-center gap-3">
-          <span className="rounded-full border border-fuchsia-500/40 bg-fuchsia-950/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
-            Spectator
-          </span>
-          <span>Round {session.currentRound}/{session.settings.turnRounds}</span>
-          <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300">
+        <div className="flex min-w-0 flex-col items-end gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-2">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <span className="rounded-full border border-fuchsia-500/40 bg-fuchsia-950/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
+              Spectator
+            </span>
+            <span className="whitespace-nowrap">
+              Round {session.currentRound}/{session.settings.turnRounds}
+            </span>
+          </div>
+          <span
+            className="max-w-[min(100%,18rem)] truncate rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-center text-[10px] font-bold uppercase tracking-wide text-zinc-300"
+            title={`${forNick} vs ${againstNick}`}
+          >
             {forNick} vs {againstNick}
           </span>
         </div>
       </div>
 
       {session.state === "live" ? (
-        <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-4 py-2">
-          <span className="relative flex h-2 w-2">
+        <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-3 py-2 sm:px-4">
+          <span className="relative flex h-2 w-2 shrink-0">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-60" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-400" />
           </span>
-          <span className="text-sm text-zinc-400">
-            <span className="font-semibold text-zinc-200">{currentTurnNick}</span> is arguing…
+          <span className="min-w-0 text-center text-xs text-zinc-400 sm:text-sm">
+            <span className="font-semibold text-zinc-200">{currentTurnNick}</span> is
+            arguing…
           </span>
         </div>
       ) : null}

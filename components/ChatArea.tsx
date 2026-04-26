@@ -66,13 +66,13 @@ export function ChatArea({
     : -1;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-zinc-800 bg-zinc-900/40 px-4 py-4 sm:py-5">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="min-w-0 border-b border-zinc-800 bg-zinc-900/40 px-4 py-4 sm:py-5">
         <p className="text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
           Topic
         </p>
-        <div className="mx-auto mt-1.5 flex w-full max-w-3xl flex-col items-center gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <p className="min-w-0 flex-1 text-center text-lg font-semibold leading-snug text-zinc-100 sm:text-left sm:text-xl">
+        <div className="mx-auto mt-1.5 flex w-full min-w-0 max-w-3xl flex-col items-center gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <p className="min-w-0 flex-1 break-words text-center text-lg font-semibold leading-snug text-zinc-100 sm:text-left sm:text-xl">
             {topic}
           </p>
           {showYourSideBadge ? (
@@ -90,8 +90,8 @@ export function ChatArea({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-6 max-sm:[scroll-padding-bottom:min(42vh,320px)] sm:px-6">
-        <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-6 max-sm:[scroll-padding-bottom:min(42vh,320px)] sm:px-6">
+        <div className="mx-auto flex min-w-0 max-w-3xl flex-col gap-6">
           {history.map((round, idx) => {
             const isLast = idx === history.length - 1;
             const firstSide = roundFirstSide ?? playerSide;

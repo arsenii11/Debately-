@@ -25,9 +25,9 @@ export function AIBubble({
         {avatarLabel}
       </div>
       <div className="min-w-0 flex-1 text-right">
-        <div className="mb-1 flex items-center justify-end gap-2">
+        <div className="mb-1 flex min-w-0 items-center justify-end gap-2">
           <span
-            className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+            className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
               opponentSide === "FOR"
                 ? "bg-emerald-500/25 text-emerald-300"
                 : "bg-rose-500/25 text-rose-300"
@@ -35,12 +35,12 @@ export function AIBubble({
           >
             {opponentSide}
           </span>
-          <span className="text-sm font-semibold text-zinc-200">
+          <span className="min-w-0 truncate text-sm font-semibold text-zinc-200">
             {opponentName}
           </span>
         </div>
         <div
-          className={`rounded-[14px_3px_14px_14px] border px-4 py-3 text-left text-sm leading-relaxed text-zinc-100 ${
+          className={`max-w-full break-words rounded-[14px_3px_14px_14px] border px-4 py-3 text-left text-sm leading-relaxed text-zinc-100 [overflow-wrap:anywhere] ${
             opponentSide === "FOR"
               ? "border-emerald-500/35 bg-emerald-950/40"
               : "border-rose-500/35 bg-rose-950/35"

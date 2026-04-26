@@ -30,12 +30,14 @@ export function FactCheckCard({ variant, data }: Props) {
         : `${shortClaim} (+${data.facts.length - 1} more)`;
 
   return (
-    <div className="mx-auto w-full max-w-md">
+    <div className="mx-auto w-full min-w-0 max-w-md">
       <div className="rounded-2xl border border-amber-500/25 bg-zinc-900/90 px-4 py-4 shadow-lg shadow-black/20">
         <p className="text-center text-[11px] font-bold uppercase tracking-[0.2em] text-amber-500/90">
           {title}
         </p>
-        <p className="mt-2 text-sm font-medium text-zinc-200">{preview}</p>
+        <p className="mt-2 break-words text-sm font-medium text-zinc-200">
+          {preview}
+        </p>
         <p className="mt-1 text-[11px] uppercase tracking-wide text-zinc-500">
           Signed by Judge
         </p>
@@ -66,10 +68,12 @@ export function FactCheckCard({ variant, data }: Props) {
               {data.facts.length > 0 ? (
                 data.facts.map((f, i) => (
                   <li key={i} className="text-sm">
-                    <p className={`font-medium ${statusStyles[f.status]}`}>
+                    <p
+                      className={`break-words font-medium [overflow-wrap:anywhere] ${statusStyles[f.status]}`}
+                    >
                       ● {f.claim}
                     </p>
-                    <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+                    <p className="mt-1 break-words text-xs leading-relaxed text-zinc-500">
                       {f.comment}
                     </p>
                   </li>

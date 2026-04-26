@@ -21,8 +21,10 @@ export function PlayerBubble({ name, side, text }: Props) {
         {initial}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="mb-1 flex items-center gap-2">
-          <span className="text-sm font-semibold text-zinc-200">{name}</span>
+        <div className="mb-1 flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate text-sm font-semibold text-zinc-200">
+            {name}
+          </span>
           <span
             className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
               side === "FOR"
@@ -34,7 +36,7 @@ export function PlayerBubble({ name, side, text }: Props) {
           </span>
         </div>
         <div
-          className={`rounded-[3px_14px_14px_14px] border px-4 py-3 text-sm leading-relaxed text-zinc-100 ${
+          className={`max-w-full break-words rounded-[3px_14px_14px_14px] border px-4 py-3 text-sm leading-relaxed text-zinc-100 [overflow-wrap:anywhere] ${
             side === "FOR"
               ? "border-emerald-500/35 bg-emerald-950/45"
               : "border-rose-500/35 bg-rose-950/40"
