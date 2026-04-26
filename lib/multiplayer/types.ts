@@ -45,6 +45,15 @@ export type SessionSettings = {
   turnTimerSeconds: TurnTimerSeconds;
 };
 
+/** A spectator reaction (like) on a specific argument. */
+export type SpecLike = {
+  /** Display name entered by the spectator. */
+  name: string;
+  round: number;
+  side: Side;
+  at: number;
+};
+
 export type MultiplayerSession = {
   v: 1;
   id: string;
@@ -63,6 +72,8 @@ export type MultiplayerSession = {
   concededBy: SlotId | null;
   /** Counts skips by side label so verdict prompt can apply -5 per skip. */
   skippedTurns: { FOR: number; AGAINST: number };
+  /** Spectator likes per argument. */
+  likes: SpecLike[];
 };
 
 /** Public-facing snapshot — token hashes redacted, "yourSlot" set per recipient. */

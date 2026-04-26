@@ -23,9 +23,11 @@ import {
   setNickname as persistNickname,
   setPlayerToken,
 } from "@/lib/multiplayer/clientAuth";
+import { SpectatorLikes } from "@/components/multiplayer/SpectatorLikes";
 import type {
   PublicSession,
   SlotId,
+  SpecLike,
 } from "@/lib/multiplayer/types";
 import type { Side, ThinkingStage } from "@/lib/types";
 import {
@@ -206,6 +208,122 @@ function ReadOnlyDebate({
         isAIThinking
         thinkingLabel="Judge is preparing the final verdict…"
       />
+    </div>
+  );
+}
+
+type SpectatorViewProps = {
+  session: PublicSession;
+  sessionId: string;
+  forNick: string;
+  againstNick: string;
+  spectatorHistory: ReturnType<typeof viewMultiplayerRoundsFromSide>;
+  currentTurnNick: string;
+};
+
+function SpectatorView({
+  session,
+  sessionId,
+  forNick,
+  againstNick,
+  spectatorHistory,
+  currentTurnNick,
+}: SpectatorViewProps) {
+  const [likes, setLikes] = useState<SpecLike[]>(session.likes ?? []);
+
+  // Keep likes in sync when session updates via SSE (parent re-renders pass new session).
+  // Since this component is recreated on every parent render, session.likes is always fresh.
+  const syncedLikes = session.likes ?? likes;
+
+  const roundsWithMoves = session.history.filter(
+    (r) => r.forMove || r.againstMove,
+  );
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2 text-xs text-zinc-400">
+        <Link href="/" className="rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white">
+          ← Home
+        </Link>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full border border-fuchsia-500/40 bg-fuchsia-950/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
+            Spectator
+          </span>
+          <span>Round {session.currentRound}/{session.settings.turnRounds}</span>
+          <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300">
+            {forNick} vs {againstNick}
+          </span>
+        </div>
+      </div>
+
+      {session.state === "live" ? (
+        <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-4 py-2">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-400" />
+          </span>
+          <span className="text-sm text-zinc-400">
+            <span className="font-semibold text-zinc-200">{currentTurnNick}</span> is arguing…
+          </span>
+        </div>
+      ) : null}
+
+      <ChatArea
+        topic={session.settings.topic}
+        playerName={forNick}
+        opponentName={againstNick}
+        playerSide="FOR"
+        opponentSide="AGAINST"
+        roundFirstSide="FOR"
+        history={spectatorHistory}
+        currentRound={session.currentRound}
+        thinkingStage={null}
+        isAIThinking={false}
+        thinkingLabel=""
+      />
+
+      {roundsWithMoves.length > 0 ? (
+        <div className="shrink-0 border-t border-zinc-800 bg-zinc-950/90 px-4 py-3">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            React to arguments
+          </p>
+          <div className="flex flex-col gap-2">
+            {roundsWithMoves.map((r) => (
+              <div key={r.round} className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+                <span className="w-16 shrink-0 font-semibold">R{r.round}</span>
+                {r.forMove ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-emerald-400">{forNick}</span>
+                    <SpectatorLikes
+                      sessionId={sessionId}
+                      round={r.round}
+                      side="FOR"
+                      likes={syncedLikes}
+                      onLiked={setLikes}
+                    />
+                  </div>
+                ) : null}
+                {r.againstMove ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-rose-400">{againstNick}</span>
+                    <SpectatorLikes
+                      sessionId={sessionId}
+                      round={r.round}
+                      side="AGAINST"
+                      likes={syncedLikes}
+                      onLiked={setLikes}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="border-t border-zinc-800 bg-zinc-950/80 px-4 py-3 text-center text-xs text-zinc-500">
+          You are watching as a spectator · no input allowed
+        </div>
+      )}
     </div>
   );
 }
@@ -637,49 +755,14 @@ export function MultiplayerApp({ sessionId }: Props) {
         ? (forPlayer?.nickname ?? "FOR player")
         : (againstPlayer?.nickname ?? "AGAINST player");
     return (
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-950/85 px-4 py-2 text-xs text-zinc-400">
-          <Link href="/" className="rounded-md px-2 py-1 font-semibold text-zinc-300 hover:bg-zinc-900 hover:text-white">
-            ← Home
-          </Link>
-          <div className="flex items-center gap-3">
-            <span className="rounded-full border border-fuchsia-500/40 bg-fuchsia-950/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
-              Spectator
-            </span>
-            <span>Round {session.currentRound}/{session.settings.turnRounds}</span>
-            <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-300">
-              {forPlayer?.nickname ?? "?"} vs {againstPlayer?.nickname ?? "?"}
-            </span>
-          </div>
-        </div>
-        {session.state === "live" ? (
-          <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-4 py-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-60" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-indigo-400" />
-            </span>
-            <span className="text-sm text-zinc-400">
-              <span className="font-semibold text-zinc-200">{currentTurnNick}</span> is arguing…
-            </span>
-          </div>
-        ) : null}
-        <ChatArea
-          topic={session.settings.topic}
-          playerName={forPlayer?.nickname ?? "FOR"}
-          opponentName={againstPlayer?.nickname ?? "AGAINST"}
-          playerSide="FOR"
-          opponentSide="AGAINST"
-          roundFirstSide="FOR"
-          history={spectatorHistory}
-          currentRound={session.currentRound}
-          thinkingStage={null}
-          isAIThinking={false}
-          thinkingLabel=""
-        />
-        <div className="border-t border-zinc-800 bg-zinc-950/80 px-4 py-3 text-center text-xs text-zinc-500">
-          You are watching as a spectator · no input allowed
-        </div>
-      </div>
+      <SpectatorView
+        session={session}
+        sessionId={sessionId}
+        forNick={forPlayer?.nickname ?? "FOR"}
+        againstNick={againstPlayer?.nickname ?? "AGAINST"}
+        spectatorHistory={spectatorHistory}
+        currentTurnNick={currentTurnNick}
+      />
     );
   }
 

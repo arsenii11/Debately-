@@ -22,6 +22,7 @@ import type {
   PlayerSlot,
   SessionSettings,
   SlotId,
+  SpecLike,
 } from "@/lib/multiplayer/types";
 
 export const SKIP_AUTO_CONCEDE_THRESHOLD = 3;
@@ -108,6 +109,7 @@ export function createEmptySession(now: number): MultiplayerSession {
     verdict: null,
     concededBy: null,
     skippedTurns: { FOR: 0, AGAINST: 0 },
+    likes: [],
   };
 }
 
@@ -560,6 +562,45 @@ export function consumeHint(
     }),
     now,
   );
+}
+
+const MAX_LIKES_PER_SESSION = 500;
+const MAX_SPEC_NAME_LENGTH = 32;
+
+export type RecordLikeResult =
+  | { kind: "ok"; session: MultiplayerSession }
+  | { kind: "error"; reason: string };
+
+/** Spectator adds a like to a specific argument (round + side). Deduped by name+round+side. */
+export function recordLike(
+  session: MultiplayerSession,
+  args: { name: string; round: number; side: Side; now: number },
+): RecordLikeResult {
+  const name = args.name.trim().slice(0, MAX_SPEC_NAME_LENGTH);
+  if (!name) return { kind: "error", reason: "Name is required." };
+  if (args.round < 1 || args.round > session.history.length) {
+    return { kind: "error", reason: "Invalid round." };
+  }
+  const roundData = session.history[args.round - 1];
+  if (!roundData) return { kind: "error", reason: "Round not found." };
+  const moveExists =
+    args.side === "FOR" ? !!roundData.forMove : !!roundData.againstMove;
+  if (!moveExists) return { kind: "error", reason: "Argument not yet submitted." };
+
+  const alreadyLiked = session.likes.some(
+    (l) => l.name.toLowerCase() === name.toLowerCase() && l.round === args.round && l.side === args.side,
+  );
+  if (alreadyLiked) return { kind: "error", reason: "Already liked." };
+
+  if (session.likes.length >= MAX_LIKES_PER_SESSION) {
+    return { kind: "error", reason: "Like limit reached." };
+  }
+
+  const like: SpecLike = { name, round: args.round, side: args.side, at: args.now };
+  return {
+    kind: "ok",
+    session: bumpRevision({ ...session, likes: [...session.likes, like] }, args.now),
+  };
 }
 
 /** RoundData-shaped view of the multiplayer history from the perspective of `mySide`. */

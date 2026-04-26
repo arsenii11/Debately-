@@ -14,6 +14,7 @@ import {
   joinSession,
   recordMove,
   recordConcede,
+  recordLike,
   consumeHint,
   setVerdict,
   touchPresence,
@@ -436,6 +437,26 @@ export function subscribeToSession(
   return () => {
     state.emitter.off(event, listener);
   };
+}
+
+import type { Side } from "@/lib/types";
+
+export type ApplyLikeResult =
+  | { kind: "ok"; session: MultiplayerSession }
+  | { kind: "error"; reason: string };
+
+export function applyLike(args: {
+  sessionId: string;
+  name: string;
+  round: number;
+  side: Side;
+}): ApplyLikeResult {
+  const state = ensureStore();
+  const session = state.sessions.get(args.sessionId);
+  if (!session) return { kind: "error", reason: "Session not found." };
+  const result = recordLike(session, { ...args, now: Date.now() });
+  if (result.kind === "error") return result;
+  return { kind: "ok", session: commit(state, result.session) };
 }
 
 export function getStoreInternalsForTests(): {
