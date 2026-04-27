@@ -153,25 +153,33 @@ export function TopicPicker({ selectedTopic, onTopic }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <p className="text-base font-semibold text-zinc-100 sm:text-lg">
             Pick a topic
           </p>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-500">
+            {loadingTopics ? (
+              "Loading topics…"
+            ) : (
+              <>
+                Today&apos;s set includes{" "}
+                <span className="font-medium tabular-nums text-zinc-400">
+                  {newTopicsToday}
+                </span>{" "}
+                {newTopicsToday === 1 ? "fresh topic" : "fresh topics"}.
+              </>
+            )}
+          </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-            {loadingTopics ? "Loading" : `${newTopicsToday} new today`}
-          </span>
-          <button
-            type="button"
-            onClick={handleRandom}
-            disabled={loadingTopics || !topicCategories}
-            className="cursor-pointer rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-200 transition-all hover:border-indigo-400 hover:bg-indigo-500/15 hover:text-indigo-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Random
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={handleRandom}
+          disabled={loadingTopics || !topicCategories}
+          className="touch-manipulation sm:self-end min-h-11 w-full shrink-0 cursor-pointer rounded-xl border-2 border-indigo-500/55 bg-indigo-600/20 px-4 py-2.5 text-center text-sm font-semibold text-indigo-100 shadow-sm shadow-indigo-950/20 transition-colors hover:border-indigo-400 hover:bg-indigo-500/30 hover:text-white active:scale-[0.99] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900/50 disabled:text-zinc-600 disabled:shadow-none disabled:hover:scale-100 sm:w-auto sm:min-w-[10.5rem]"
+        >
+          Random topic
+        </button>
       </div>
 
       {loadingTopics ? (

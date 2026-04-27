@@ -358,12 +358,6 @@ function formatTimer(seconds: number): string {
 
 import { TopicPicker } from "@/components/TopicPicker";
 
-function dedupeTopics(topics: string[]): string[] {
-  return Array.from(
-    new Set(topics.map((topic) => topic.trim()).filter((topic) => topic.length > 0)),
-  );
-}
-
 const PROGRESS_SKILL_LABELS: Record<ProgressSkillKey, string> = {
   factual: "Evidence",
   logic: "Logic",
@@ -393,7 +387,25 @@ type Props = {
   onStart: () => void;
 };
 
-function PlayWithFriendPod({ nickname }: { nickname: string }) {
+type HomeMode = "solo" | "multiplayer" | "school";
+
+const HOME_MODES: Array<{
+  id: HomeMode;
+  label: string;
+  shortLabel: string;
+}> = [
+  { id: "solo", label: "Solo", shortLabel: "Solo" },
+  { id: "multiplayer", label: "Multiplayer", shortLabel: "Friends" },
+  { id: "school", label: "Debate School", shortLabel: "School" },
+];
+
+function PlayWithFriendPod({
+  nickname,
+  centered = false,
+}: {
+  nickname: string;
+  centered?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mpNickHydrated, setMpNickHydrated] = useState("");
@@ -438,31 +450,32 @@ function PlayWithFriendPod({ nickname }: { nickname: string }) {
   }, [effectiveLobbyNickname]);
 
   return (
-    <section className="rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-4">
-      <div className="flex h-full flex-col justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-indigo-400/40 bg-indigo-500/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-indigo-200">
-              New
-            </span>
-            <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-              Multiplayer
-            </span>
-          </div>
+    <section className="w-full max-w-lg rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-4 sm:p-5">
+      <div
+        className={`flex h-full flex-col justify-between gap-4 ${centered ? "items-center text-center" : ""}`}
+      >
+        <div className={centered ? "flex flex-col items-center" : ""}>
+          <p
+            className={`text-xs leading-relaxed text-zinc-500 ${centered ? "text-center" : ""}`}
+          >
+            <span className="font-medium text-indigo-400/95">Multiplayer</span>
+            <span className="text-zinc-600"> — </span>
+            <span>private lobby, share a link, debate a real person.</span>
+          </p>
           <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
             Play with a friend
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">
             Create a private lobby, share the link, and debate a real person.
             The Judge fact-checks each move and scores the match.
           </p>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className={`flex flex-col gap-2 ${centered ? "w-full items-center" : ""}`}>
           <button
             type="button"
             onClick={handleCreate}
             disabled={busy}
-            className="inline-flex w-fit cursor-pointer items-center rounded-xl border border-indigo-500/60 bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-100 transition-colors hover:border-indigo-400 hover:bg-indigo-500/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex w-fit cursor-pointer items-center justify-center rounded-xl border border-indigo-500/60 bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-100 transition-colors hover:border-indigo-400 hover:bg-indigo-500/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "Creating lobby…" : "Create lobby link →"}
           </button>
@@ -490,6 +503,7 @@ export function SetupScreen({
   onStart,
 }: Props) {
   const canStart = nickname.trim().length > 0 && topic.trim().length > 0;
+  const [homeMode, setHomeMode] = useState<HomeMode>("solo");
   const [particleEmojis, setParticleEmojis] = useState<string[]>(() =>
     PARTICLES.map(initialParticleEmoji),
   );
@@ -506,6 +520,23 @@ export function SetupScreen({
   tapFxRef.current = tapFx;
   const timedModeEnabled = turnTimerSeconds > UNTIMED_TURN_TIMER_SECONDS;
   const progressSkills = progress?.skills;
+
+  useEffect(() => {
+    const syncFromHash = () => {
+      const h = window.location.hash.replace(/^#/, "");
+      if (h === "topic-picker") {
+        setHomeMode("solo");
+        window.requestAnimationFrame(() => {
+          document
+            .getElementById("topic-picker")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    };
+    syncFromHash();
+    window.addEventListener("hashchange", syncFromHash);
+    return () => window.removeEventListener("hashchange", syncFromHash);
+  }, []);
 
   const setTimedMode = useCallback(
     (enabled: boolean) => {
@@ -670,7 +701,7 @@ export function SetupScreen({
   }, []);
 
   return (
-    <div className="relative z-20 mx-auto flex w-full max-w-lg flex-col gap-8 overflow-x-hidden px-4 py-12 sm:max-w-xl md:max-w-2xl lg:max-w-5xl xl:max-w-6xl">
+    <div className="relative z-20 mx-auto flex w-full max-w-2xl flex-col gap-8 overflow-x-hidden px-4 py-10 sm:py-12">
       {PARTICLES.map((p, i) => {
         const variance = particleVariance[i] ?? randomVariant();
         const isRocket =
@@ -843,214 +874,249 @@ export function SetupScreen({
           </div>
         );
       })}
-      <div className="relative z-[100] isolate flex flex-col gap-8 [pointer-events:auto]">
-        <header className="text-center">
+      <div className="relative z-[100] isolate mx-auto flex w-full max-w-2xl flex-col gap-8 [pointer-events:auto]">
+        <header className="flex flex-col items-center gap-5 text-center">
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">
             Debately
           </h1>
-          <p className="mt-1 text-sm font-medium uppercase tracking-widest text-fuchsia-400/90">
-            Solo
+          <nav
+            className="flex w-full max-w-lg justify-center px-0.5 sm:max-w-xl"
+            aria-label="App mode"
+          >
+            <div
+              className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-zinc-800 bg-zinc-900/55 p-1 shadow-lg shadow-black/20"
+              role="tablist"
+            >
+              {HOME_MODES.map((m) => {
+                const active = homeMode === m.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setHomeMode(m.id)}
+                    className={`touch-manipulation flex min-h-11 cursor-pointer items-center justify-center rounded-xl px-1.5 py-2.5 text-center text-[11px] font-semibold leading-tight transition-all sm:min-h-12 sm:px-2 sm:text-sm ${
+                      active
+                        ? "bg-gradient-to-r from-fuchsia-600/90 to-pink-600/90 text-white shadow-md shadow-fuchsia-950/40"
+                        : "text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200"
+                    }`}
+                  >
+                    <span className="max-[380px]:hidden">{m.label}</span>
+                    <span className="hidden max-[380px]:inline">
+                      {m.shortLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+          <p className="max-w-md text-sm leading-relaxed text-zinc-500">
+            {homeMode === "solo"
+              ? "Practice against the AI with a neutral Judge."
+              : homeMode === "multiplayer"
+                ? "Create a lobby and debate someone you know."
+                : "Learn why structured argument practice pays off."}
           </p>
         </header>
 
-        <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-          <section
-            id="topic-picker"
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6"
-          >
-            <div className="border-b border-zinc-800/80 pb-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
-                You vs AI
-              </p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-50 sm:text-4xl">
-                What do you want to debate?
-              </h2>
-            </div>
+        {homeMode === "solo" ? (
+          <div className="flex flex-col gap-6">
+            <section
+              id="topic-picker"
+              className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 text-center sm:p-6"
+            >
+              <div className="border-b border-zinc-800/80 pb-4 text-center">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
+                  You vs AI
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
+                  What do you want to debate?
+                </h2>
+              </div>
 
-          <div className="mt-5">
-            <TopicPicker selectedTopic={topic} onTopic={onTopic} />
-          </div>
-          </section>
+              <div className="mt-5 text-left">
+                <TopicPicker selectedTopic={topic} onTopic={onTopic} />
+              </div>
+            </section>
 
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
-            <div className="border-b border-zinc-800/80 pb-4">
-              <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl lg:text-2xl">
-                Your position
-              </h2>
-            </div>
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 text-center sm:p-6">
+              <div className="border-b border-zinc-800/80 pb-4 text-center">
+                <h2 className="text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
+                  Your position
+                </h2>
+              </div>
 
-            <div className="mt-5 flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <label className="text-base font-semibold text-zinc-100 sm:text-lg">
-                  Topic
-                </label>
-                <textarea
-                  maxLength={200}
-                  rows={3}
-                  value={topic}
-                  onChange={(e) => onTopic(e.target.value)}
-                  placeholder='e.g. "Remote work is better than working from the office"'
-                  className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <span className="text-zinc-500">
-                    Optional: refine the selected topic.
+              <div className="mt-5 flex flex-col gap-5 text-left">
+                <div className="flex flex-col gap-2">
+                  <label className="text-base font-semibold text-zinc-100 sm:text-lg">
+                    Topic
+                  </label>
+                  <textarea
+                    maxLength={200}
+                    rows={3}
+                    value={topic}
+                    onChange={(e) => onTopic(e.target.value)}
+                    placeholder='e.g. "Remote work is better than working from the office"'
+                    className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="text-zinc-500">
+                      Optional: refine the selected topic.
+                    </span>
+                    <span className="text-zinc-600">{topic.length}/200</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <span className="text-base font-semibold text-zinc-100 sm:text-lg">
+                    Your side
                   </span>
-                  <span className="text-zinc-600">{topic.length}/200</span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(["FOR", "AGAINST"] as const).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => onSide(s)}
+                        className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                          s === "FOR"
+                            ? side === s
+                              ? "border-emerald-500 bg-emerald-500/20 text-emerald-100 shadow-md shadow-emerald-900/30"
+                              : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-emerald-500/45 hover:bg-emerald-950/25 hover:text-emerald-100/95"
+                            : side === s
+                              ? "border-rose-500 bg-rose-500/20 text-rose-100 shadow-md shadow-rose-900/30"
+                              : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+            </section>
 
-              <div className="flex flex-col gap-2">
-                <span className="text-base font-semibold text-zinc-100 sm:text-lg">
-                  Your side
-                </span>
-                <div className="grid grid-cols-2 gap-3">
-                  {(["FOR", "AGAINST"] as const).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => onSide(s)}
-                      className={`cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
-                        s === "FOR"
-                          ? side === s
-                            ? "border-emerald-500 bg-emerald-500/20 text-emerald-100 shadow-md shadow-emerald-900/30"
-                            : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-emerald-500/45 hover:bg-emerald-950/25 hover:text-emerald-100/95"
-                          : side === s
-                            ? "border-rose-500 bg-rose-500/20 text-rose-100 shadow-md shadow-rose-900/30"
-                            : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 text-center sm:p-6">
+              <div className="border-b border-zinc-800/80 pb-4 text-center">
+                <h2 className="text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
+                  Nickname and pacing
+                </h2>
+              </div>
+
+              <div className="mt-5 flex flex-col gap-5 text-left">
+                <div className="flex flex-col gap-2">
+                  <label className="text-base font-semibold text-zinc-100 sm:text-lg">
+                    Nickname
+                  </label>
+                  <input
+                    id="setup-nickname-input"
+                    type="text"
+                    maxLength={20}
+                    value={nickname}
+                    onChange={(e) => onNickname(e.target.value)}
+                    placeholder="e.g. Alex"
+                    className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <span className="text-right text-xs text-zinc-600">
+                    {nickname.length}/20
+                  </span>
                 </div>
-              </div>
-            </div>
-          </section>
-        </div>
 
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 sm:p-6">
-          <div className="border-b border-zinc-800/80 pb-4">
-            <h2 className="text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
-              Your nickname and pacing
-            </h2>
-          </div>
-
-          <div className="mt-5 flex max-w-2xl flex-col gap-5">
-            <div className="flex flex-col gap-2">
-              <label className="text-base font-semibold text-zinc-100 sm:text-lg">
-                Nickname
-              </label>
-              <input
-                id="setup-nickname-input"
-                type="text"
-                maxLength={20}
-                value={nickname}
-                onChange={(e) => onNickname(e.target.value)}
-                placeholder="e.g. Alex"
-                className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-              <span className="text-right text-xs text-zinc-600">
-                {nickname.length}/20
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-base font-semibold text-zinc-100 sm:text-lg">
-                  Debate rounds
-                </span>
-                <span className="text-sm font-semibold text-indigo-300">
-                  {turnRounds} rounds
-                </span>
-              </div>
-              <input
-                type="range"
-                min={MIN_TURN_ROUNDS}
-                max={MAX_TURN_ROUNDS}
-                step={1}
-                value={turnRounds}
-                onChange={(e) => onTurnRounds(Number(e.target.value))}
-                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
-              />
-              <div className="flex justify-between text-xs text-zinc-600">
-                <span>{MIN_TURN_ROUNDS}</span>
-                <span>{MAX_TURN_ROUNDS}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-base font-semibold text-zinc-100 sm:text-lg">
-                  Time per turn
-                </span>
-                <span
-                  className={`text-sm font-semibold transition-colors ${timedModeEnabled ? "text-indigo-300" : "text-zinc-500"}`}
-                >
-                  {timedModeEnabled ? formatTimer(turnTimerSeconds) : "No timer"}
-                </span>
-              </div>
-
-              {timedModeEnabled ? (
-                <>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-semibold text-zinc-100 sm:text-lg">
+                      Debate rounds
+                    </span>
+                    <span className="text-sm font-semibold text-indigo-300">
+                      {turnRounds} rounds
+                    </span>
+                  </div>
                   <input
                     type="range"
-                    min={MIN_TURN_TIMER_SECONDS}
-                    max={MAX_TURN_TIMER_SECONDS}
-                    step={30}
-                    value={turnTimerSeconds}
-                    onChange={(e) => onTurnTimerSeconds(Number(e.target.value))}
+                    min={MIN_TURN_ROUNDS}
+                    max={MAX_TURN_ROUNDS}
+                    step={1}
+                    value={turnRounds}
+                    onChange={(e) => onTurnRounds(Number(e.target.value))}
                     className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
                   />
                   <div className="flex justify-between text-xs text-zinc-600">
-                    <span>{formatTimer(MIN_TURN_TIMER_SECONDS)}</span>
-                    <span>{formatTimer(MAX_TURN_TIMER_SECONDS)}</span>
+                    <span>{MIN_TURN_ROUNDS}</span>
+                    <span>{MAX_TURN_ROUNDS}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span />
-                    <button
-                      type="button"
-                      onClick={() => setTimedMode(false)}
-                      className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
-                    >
-                      Play without a timer →
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-zinc-500">
-                    No countdown, no pressure.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setTimedMode(true)}
-                    className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
-                  >
-                    ← Add a timer
-                  </button>
                 </div>
-              )}
-            </div>
-          </div>
-        </section>
 
-        <button
-          type="button"
-          disabled={!canStart}
-          onClick={onStart}
-          className="cursor-pointer rounded-xl bg-indigo-600 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100 sm:text-lg"
-        >
-          Start debate vs AI →
-        </button>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-semibold text-zinc-100 sm:text-lg">
+                      Time per turn
+                    </span>
+                    <span
+                      className={`text-sm font-semibold transition-colors ${timedModeEnabled ? "text-indigo-300" : "text-zinc-500"}`}
+                    >
+                      {timedModeEnabled
+                        ? formatTimer(turnTimerSeconds)
+                        : "No timer"}
+                    </span>
+                  </div>
 
-        <div id="more-ways-to-play" className="mt-2 flex flex-col gap-3">
-          <div className="h-px bg-zinc-800" />
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-            <PlayWithFriendPod nickname={nickname} />
+                  {timedModeEnabled ? (
+                    <>
+                      <input
+                        type="range"
+                        min={MIN_TURN_TIMER_SECONDS}
+                        max={MAX_TURN_TIMER_SECONDS}
+                        step={30}
+                        value={turnTimerSeconds}
+                        onChange={(e) =>
+                          onTurnTimerSeconds(Number(e.target.value))
+                        }
+                        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-zinc-700 accent-indigo-500"
+                      />
+                      <div className="flex justify-between text-xs text-zinc-600">
+                        <span>{formatTimer(MIN_TURN_TIMER_SECONDS)}</span>
+                        <span>{formatTimer(MAX_TURN_TIMER_SECONDS)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span />
+                        <button
+                          type="button"
+                          onClick={() => setTimedMode(false)}
+                          className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
+                        >
+                          Play without a timer →
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-zinc-500">
+                        No countdown, no pressure.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setTimedMode(true)}
+                        className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
+                      >
+                        ← Add a timer
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
 
-            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
-              <div className="flex flex-col gap-4">
+            <button
+              type="button"
+              disabled={!canStart}
+              onClick={onStart}
+              className="cursor-pointer rounded-xl bg-indigo-600 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100 sm:text-lg"
+            >
+              Start debate vs AI →
+            </button>
+
+            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 text-center sm:p-5">
+              <div className="flex flex-col gap-4 text-left">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <h3 className="text-base font-semibold text-zinc-100 sm:text-lg">
                     Your progress
@@ -1068,7 +1134,7 @@ export function SetupScreen({
                   </span>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-[0.9fr_1.1fr] xl:grid-cols-1 2xl:grid-cols-[0.9fr_1.1fr]">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
                       Today
@@ -1126,34 +1192,83 @@ export function SetupScreen({
                 </div>
               </div>
             </section>
+          </div>
+        ) : null}
 
-            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
-              <div className="flex h-full flex-col justify-between gap-4">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-zinc-700 bg-zinc-950/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
-                      Coming soon
-                    </span>
-                  </div>
-                  <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
-                    Debate School
-                  </h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                    Preview: why debate practice matters. Lessons coming later.
-                  </p>
-                </div>
-                <a
+        {homeMode === "multiplayer" ? (
+          <div className="flex flex-col items-center gap-6 text-center">
+            <PlayWithFriendPod nickname={nickname} centered />
+            <p className="max-w-md text-sm leading-relaxed text-zinc-500">
+              Your lobby name uses the Solo nickname when set, or a name you
+              have used in multiplayer before.
+            </p>
+            <button
+              type="button"
+              onClick={() => setHomeMode("solo")}
+              className="text-sm font-medium text-indigo-400 transition-colors hover:text-indigo-300"
+            >
+              Set nickname in Solo →
+            </button>
+          </div>
+        ) : null}
+
+        {homeMode === "school" ? (
+          <div className="flex flex-col items-center gap-6 text-center">
+            <section className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
+                Preview · Lessons coming later
+              </p>
+              <h2 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
+                Why debate practice matters
+              </h2>
+              <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-zinc-400">
+                Turn opinions into claims you can defend, tighten evidence, and
+                get sharper under pressure — the same moves behind clear
+                writing, decisions, and working well with AI.
+              </p>
+              <ul className="mx-auto mt-6 max-w-md space-y-3 text-left text-sm text-zinc-300">
+                <li className="flex gap-3">
+                  <span className="mt-0.5 shrink-0 text-fuchsia-400">◆</span>
+                  <span>
+                    Structured lessons and drills are on the roadmap; until
+                    then, Solo is your practice loop.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="mt-0.5 shrink-0 text-indigo-400">◆</span>
+                  <span>
+                    The Judge scores evidence, logic, relevance, and rhetoric —
+                    not who sounds loudest.
+                  </span>
+                </li>
+              </ul>
+              <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <Link
                   href="/debate-school"
-                  className="inline-flex w-fit cursor-pointer items-center rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-2 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-900 hover:text-white"
+                  className="inline-flex w-full cursor-pointer items-center justify-center rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-900/30 transition-colors hover:bg-indigo-500 sm:w-auto"
                 >
-                  Preview Debate School →
-                </a>
+                  Open full Debate School preview →
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHomeMode("solo");
+                    window.requestAnimationFrame(() => {
+                      document
+                        .getElementById("topic-picker")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    });
+                  }}
+                  className="inline-flex w-full cursor-pointer items-center justify-center rounded-xl border border-zinc-600 bg-zinc-950/50 px-6 py-3 text-sm font-semibold text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-zinc-900 sm:w-auto"
+                >
+                  Practice in Solo
+                </button>
               </div>
             </section>
           </div>
-        </div>
+        ) : null}
 
-        <footer className="flex items-center justify-center gap-4 text-xs text-zinc-600">
+        <footer className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-zinc-600">
           <span>© {new Date().getFullYear()} Bluume, Inc</span>
           <Link href="/privacy" className="transition-colors hover:text-zinc-400">
             Privacy
