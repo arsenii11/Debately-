@@ -1014,7 +1014,7 @@ export function SetupScreen({
                   </span>
                 </div>
 
-                <VoiceInputLangSelect id="setup-voice-input-lang" />
+                <VoiceInputLangSelect idPrefix="setup" />
 
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">

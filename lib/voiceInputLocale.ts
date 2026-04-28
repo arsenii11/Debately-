@@ -1,6 +1,24 @@
 export const VOICE_INPUT_LANG_STORAGE_KEY = "debately:voiceLang";
 
+export const VOICE_TRANSCRIBE_BACKEND_KEY = "debately:transcribeBackend";
+
+export type TranscribeBackend = "gemini" | "browser";
+
 export const VOICE_LANG_AUTO = "auto";
+
+export const TRANSCRIBE_BACKEND_OPTIONS: ReadonlyArray<{
+  value: TranscribeBackend;
+  label: string;
+}> = [
+  {
+    value: "gemini",
+    label: "Cloud (Gemini — auto language, best quality)",
+  },
+  {
+    value: "browser",
+    label: "Browser (free, offline-capable)",
+  },
+];
 
 /** Curated list for the UI; stored value may be any valid BCP 47 tag the user pastes — we still persist unknown tags if chosen from older builds. */
 export const VOICE_INPUT_LANG_OPTIONS: ReadonlyArray<{
@@ -56,4 +74,24 @@ export function resolveSpeechRecognitionLang(stored: string): string {
   const primary = navigator.language || navigator.languages?.[0];
   if (primary && /^[a-zA-Z]{2,3}/.test(primary)) return primary;
   return "en-US";
+}
+
+export function loadTranscribeBackend(): TranscribeBackend {
+  if (typeof window === "undefined") return "gemini";
+  try {
+    const raw = localStorage.getItem(VOICE_TRANSCRIBE_BACKEND_KEY)?.trim();
+    if (raw === "browser") return "browser";
+    return "gemini";
+  } catch {
+    return "gemini";
+  }
+}
+
+export function saveTranscribeBackend(value: TranscribeBackend): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(VOICE_TRANSCRIBE_BACKEND_KEY, value);
+  } catch {
+    /* ignore */
+  }
 }
