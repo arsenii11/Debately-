@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  loadVoiceInputLang,
+  resolveSpeechRecognitionLang,
+} from "@/lib/voiceInputLocale";
 
 const MAX = 1500;
 
@@ -146,6 +150,7 @@ export function InputBar({
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [listeningLangTag, setListeningLangTag] = useState<string | null>(null);
   const [aiHint, setAiHint] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -210,6 +215,9 @@ export function InputBar({
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.maxAlternatives = 1;
+    const lang = resolveSpeechRecognitionLang(loadVoiceInputLang());
+    recognition.lang = lang;
+    setListeningLangTag(lang);
 
     recognition.onresult = (event) => {
       let interimTranscript = "";
@@ -237,6 +245,7 @@ export function InputBar({
 
     recognition.onend = () => {
       setIsListening(false);
+      setListeningLangTag(null);
       recognitionRef.current = null;
     };
 
@@ -246,6 +255,7 @@ export function InputBar({
     } catch {
       recognitionRef.current = null;
       setIsListening(false);
+      setListeningLangTag(null);
       setVoiceError("Could not start voice input.");
     }
   }, [disabled, onChange, value]);
@@ -380,7 +390,14 @@ export function InputBar({
           <p className="text-xs text-amber-300">{voiceError}</p>
         ) : isListening ? (
           <p className="text-xs text-indigo-300">
-            Listening... speak now, then tap the mic again when done.
+            Listening
+            {listeningLangTag ? (
+              <span className="font-mono text-indigo-200/90">
+                {" "}
+                ({listeningLangTag})
+              </span>
+            ) : null}
+            … speak now, then tap the mic again when done.
           </p>
         ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
