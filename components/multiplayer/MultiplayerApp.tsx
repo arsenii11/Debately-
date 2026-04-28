@@ -48,9 +48,12 @@ type Props = {
 
 type LiveStateProps = {
   session: PublicSession;
+  sessionId: string;
   mySide: Side;
   myNickname: string;
   opponentNickname: string;
+  opponentLastSeenAt: number;
+  opponentComposerDraft: PublicSession["players"][0]["composerDraft"];
   isMyTurn: boolean;
   thinkingStage: ThinkingStage;
   isAIThinking: boolean;
@@ -63,14 +66,96 @@ type LiveStateProps = {
   hintCooldown: boolean;
   remainingSeconds: number;
   paused: boolean;
+  now: number;
+  refreshSession: () => Promise<void>;
 };
+
+function OpponentWaitBanner({
+  opponentNickname,
+  draft,
+  lastSeenAt,
+  now,
+  onRequestNotifyPermission,
+}: {
+  opponentNickname: string;
+  draft: PublicSession["players"][0]["composerDraft"];
+  lastSeenAt: number;
+  now: number;
+  onRequestNotifyPermission: () => void;
+}) {
+  const awayMs = 45_000;
+  const typingMs = 3_200;
+  const online = lastSeenAt > 0 && now - lastSeenAt <= awayMs;
+  const wordCount = draft?.wordCount ?? 0;
+  const draftAge = draft ? now - draft.updatedAt : Number.POSITIVE_INFINITY;
+
+  let statusLine: string;
+  if (lastSeenAt > 0 && !online) {
+    statusLine = "Away or offline — they may have left the match.";
+  } else if (wordCount === 0 && draftAge < typingMs) {
+    statusLine = "Getting ready to write…";
+  } else if (draftAge < typingMs) {
+    statusLine = "Typing…";
+  } else if (wordCount > 0) {
+    statusLine = "Thinking or editing…";
+  } else {
+    statusLine = "Composing…";
+  }
+
+  const notifySupported =
+    typeof window !== "undefined" && "Notification" in window;
+  const canPrompt =
+    notifySupported && Notification.permission === "default";
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-1 border-b border-zinc-800 bg-zinc-900/40 px-3 py-2 sm:px-4">
+      <div className="flex items-center justify-center gap-2">
+        <span className="relative flex h-2 w-2 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-zinc-500 opacity-50" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-zinc-500" />
+        </span>
+        <span className="min-w-0 text-center text-xs text-zinc-400 sm:text-sm">
+          Waiting for{" "}
+          <span className="font-semibold text-zinc-200">{opponentNickname}</span>{" "}
+          to argue…
+        </span>
+      </div>
+      <p className="text-center text-[11px] text-zinc-500">{statusLine}</p>
+      {online && wordCount > 0 ? (
+        <p className="text-center text-[11px] font-mono tabular-nums text-zinc-400">
+          ~{wordCount} words in their reply (live)
+        </p>
+      ) : null}
+      {canPrompt ? (
+        <button
+          type="button"
+          onClick={onRequestNotifyPermission}
+          className="cursor-pointer text-[11px] font-semibold text-indigo-300 underline decoration-indigo-500/50 underline-offset-2 hover:text-indigo-200"
+        >
+          Notify me when they send
+        </button>
+      ) : notifySupported && Notification.permission === "granted" ? (
+        <p className="text-center text-[10px] text-zinc-600">
+          You’ll get a browser alert if they send while this tab is in the
+          background.
+        </p>
+      ) : null}
+      <p className="text-center text-[10px] text-zinc-600">
+        Tip: use reactions on their last message to cheer them on.
+      </p>
+    </div>
+  );
+}
 
 function LiveDebate(props: LiveStateProps) {
   const {
     session,
+    sessionId,
     mySide,
     myNickname,
     opponentNickname,
+    opponentLastSeenAt,
+    opponentComposerDraft,
     isMyTurn,
     thinkingStage,
     isAIThinking,
@@ -83,6 +168,8 @@ function LiveDebate(props: LiveStateProps) {
     hintCooldown,
     remainingSeconds,
     paused,
+    now,
+    refreshSession,
   } = props;
   const opponentSide: Side = mySide === "FOR" ? "AGAINST" : "FOR";
   const history = viewMultiplayerRoundsFromSide(session.history, mySide);
@@ -130,17 +217,15 @@ function LiveDebate(props: LiveStateProps) {
           </span>
         </div>
       ) : (
-        <div className="flex items-center justify-center gap-2 border-b border-zinc-800 bg-zinc-900/40 px-3 py-2 sm:px-4">
-          <span className="relative flex h-2 w-2 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-zinc-500 opacity-50" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-zinc-500" />
-          </span>
-          <span className="min-w-0 text-center text-xs text-zinc-400 sm:text-sm">
-            Waiting for{" "}
-            <span className="font-semibold text-zinc-200">{opponentNickname}</span>{" "}
-            to argue…
-          </span>
-        </div>
+        <OpponentWaitBanner
+          opponentNickname={opponentNickname}
+          draft={opponentComposerDraft}
+          lastSeenAt={opponentLastSeenAt}
+          now={now}
+          onRequestNotifyPermission={() => {
+            void Notification.requestPermission();
+          }}
+        />
       )}
       <ChatArea
         topic={session.settings.topic}
@@ -156,11 +241,16 @@ function LiveDebate(props: LiveStateProps) {
         thinkingLabel={thinkingLabel}
         argumentReactions={({ round, side }) => (
           <SpectatorReactions
-            sessionId={session.id}
+            sessionId={sessionId}
             round={round}
             side={side}
             reactions={session.likes ?? []}
-            readOnly
+            readOnly={false}
+            persistSpectatorName={false}
+            viewerName={myNickname}
+            onUpdate={() => {
+              void refreshSession();
+            }}
             align={side === mySide ? "start" : "end"}
           />
         )}
@@ -685,6 +775,76 @@ export function MultiplayerApp({ sessionId }: Props) {
     return null;
   }, [mySide, session]);
 
+  const mountedOppNotifyRef = useRef(false);
+  const hadOppMoveRef = useRef(false);
+
+  useEffect(() => {
+    mountedOppNotifyRef.current = false;
+    hadOppMoveRef.current = false;
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!session || session.state !== "live" || !mySide) return;
+    const r = session.history[session.currentRound - 1];
+    const oppMove = r
+      ? mySide === "FOR"
+        ? r.againstMove
+        : r.forMove
+      : null;
+    const has =
+      typeof oppMove === "string" && oppMove.replace(/\s/g, "").length > 0;
+
+    if (!mountedOppNotifyRef.current) {
+      mountedOppNotifyRef.current = true;
+      hadOppMoveRef.current = has;
+      return;
+    }
+
+    const prev = hadOppMoveRef.current;
+    hadOppMoveRef.current = has;
+
+    if (isMyTurn || !has || prev) return;
+
+    if (typeof document === "undefined" || !document.hidden) return;
+
+    try {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Debately", {
+          body: `${opponentName} sent their argument.`,
+          tag: `debately-opp-${sessionId}-${session.currentRound}`,
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      navigator.vibrate?.(60);
+    } catch {
+      /* ignore */
+    }
+  }, [session, mySide, isMyTurn, opponentName, sessionId]);
+
+  useEffect(() => {
+    if (!session || session.state !== "live" || !isMyTurn) return;
+    const words = inputText
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+    const id = window.setTimeout(() => {
+      void fetch(`/api/multiplayer/sessions/${sessionId}/draft`, {
+        method: "POST",
+        headers: authHeaders(sessionId),
+        body: JSON.stringify({ wordCount: words }),
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { session?: PublicSession } | null) => {
+          if (data?.session) setSession(data.session);
+        })
+        .catch(() => {});
+    }, 450);
+    return () => clearTimeout(id);
+  }, [inputText, isMyTurn, session, sessionId]);
+
   if (error && !session) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-3 p-8 text-center">
@@ -808,9 +968,12 @@ export function MultiplayerApp({ sessionId }: Props) {
   return (
     <LiveDebate
       session={session}
+      sessionId={sessionId}
       mySide={mySide}
       myNickname={myName}
       opponentNickname={opponentName}
+      opponentLastSeenAt={opponentRecord?.lastSeenAt ?? now}
+      opponentComposerDraft={opponentRecord?.composerDraft ?? null}
       isMyTurn={isMyTurn}
       thinkingStage={thinkingStage}
       isAIThinking={aiThinking}
@@ -826,6 +989,8 @@ export function MultiplayerApp({ sessionId }: Props) {
       }
       remainingSeconds={remainingSeconds}
       paused={!isMyTurn}
+      now={now}
+      refreshSession={refreshSession}
     />
   );
 }

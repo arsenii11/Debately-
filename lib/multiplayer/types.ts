@@ -37,6 +37,11 @@ export type PlayerSlot = {
   consecutiveSkips: number;
   conceded: boolean;
   proposal: LobbyProposal;
+  /**
+   * While this slot has the turn, live word count for the opponent's "waiting" UI.
+   * Cleared when the move is submitted.
+   */
+  composerDraft?: { wordCount: number; updatedAt: number } | null;
 };
 
 export type SessionSettings = {

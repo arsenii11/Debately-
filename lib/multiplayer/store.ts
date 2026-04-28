@@ -13,6 +13,7 @@ import {
   isDeadlineExpired,
   joinSession,
   recordMove,
+  recordComposerDraft,
   recordConcede,
   recordLike,
   removeLike,
@@ -212,6 +213,7 @@ export function publicView(
       conceded: p.conceded,
       proposal: p.proposal,
       claimed: p.tokenHash.length > 0,
+      composerDraft: p.composerDraft ?? null,
     })),
     yourSlot: yourTokenHash ? findSlotByTokenHash(session, yourTokenHash) : null,
   };
@@ -330,6 +332,24 @@ export function applyLobbyUpdate(args: {
 export type MoveResult =
   | { kind: "ok"; session: MultiplayerSession; finished: boolean }
   | { kind: "error"; reason: string };
+
+export type ComposerDraftResult =
+  | { kind: "ok"; session: MultiplayerSession }
+  | { kind: "error"; reason: string };
+
+export function applyComposerDraft(args: {
+  sessionId: string;
+  slot: SlotId;
+  wordCount: number;
+}): ComposerDraftResult {
+  const state = ensureStore();
+  const session = state.sessions.get(args.sessionId);
+  if (!session) return { kind: "error", reason: "Session not found." };
+  const now = Date.now();
+  const result = recordComposerDraft(session, args.slot, args.wordCount, now);
+  if (result.kind === "error") return result;
+  return { kind: "ok", session: commit(state, result.session) };
+}
 
 export function applyMove(args: {
   sessionId: string;

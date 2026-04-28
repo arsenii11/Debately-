@@ -76,9 +76,15 @@ function parseCategories(data: unknown): TopicCategory[] | null {
 type Props = {
   selectedTopic: string;
   onTopic: (topic: string) => void;
+  /** Default 200 (Solo); lobby may use 280. */
+  maxTopicLength?: number;
 };
 
-export function TopicPicker({ selectedTopic, onTopic }: Props) {
+export function TopicPicker({
+  selectedTopic,
+  onTopic,
+  maxTopicLength = 200,
+}: Props) {
   const [topicCategories, setTopicCategories] = useState<TopicCategory[] | null>(null);
   const [activeTopicGroup, setActiveTopicGroup] = useState<string>("easy");
   const [loadingTopics, setLoadingTopics] = useState(true);
@@ -156,18 +162,17 @@ export function TopicPicker({ selectedTopic, onTopic }: Props) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <p className="text-base font-semibold text-zinc-100 sm:text-lg">
-            Pick a topic
+            Pick a topic to fight!
           </p>
           <p className="mt-1 text-xs leading-relaxed text-zinc-500">
             {loadingTopics ? (
               "Loading topics…"
             ) : (
               <>
-                Today&apos;s set includes{" "}
                 <span className="font-medium tabular-nums text-zinc-400">
                   {newTopicsToday}
                 </span>{" "}
-                {newTopicsToday === 1 ? "fresh topic" : "fresh topics"}.
+                new topics dropped today. Jump in 🔥
               </>
             )}
           </p>
@@ -178,7 +183,7 @@ export function TopicPicker({ selectedTopic, onTopic }: Props) {
           disabled={loadingTopics || !topicCategories}
           className="touch-manipulation sm:self-end min-h-11 w-full shrink-0 cursor-pointer rounded-xl border-2 border-indigo-500/55 bg-indigo-600/20 px-4 py-2.5 text-center text-sm font-semibold text-indigo-100 shadow-sm shadow-indigo-950/20 transition-colors hover:border-indigo-400 hover:bg-indigo-500/30 hover:text-white active:scale-[0.99] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900/50 disabled:text-zinc-600 disabled:shadow-none disabled:hover:scale-100 sm:w-auto sm:min-w-[10.5rem]"
         >
-          Random topic
+          Surprise me 🎲
         </button>
       </div>
 
@@ -204,26 +209,30 @@ export function TopicPicker({ selectedTopic, onTopic }: Props) {
         </div>
       ) : (
         <>
-          {topicOfTheDay ? (
-            <button
-              type="button"
-              onClick={() => onTopic(topicOfTheDay)}
-              className={`cursor-pointer rounded-xl border p-4 text-left transition-all active:scale-[0.99] ${
-                selectedTopic.trim() === topicOfTheDay
-                  ? "border-zinc-500 bg-zinc-800/70"
-                  : "border-zinc-700 bg-zinc-950/45 hover:border-zinc-500 hover:bg-zinc-900/70"
-              }`}
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="topic-picker-custom"
+              className="text-sm font-semibold text-zinc-200"
             >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-zinc-800 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-300">
-                  Topic of the Day
-                </span>
-              </div>
-              <p className="mt-3 text-base font-medium leading-snug text-zinc-100">
-                {topicOfTheDay}
-              </p>
-            </button>
-          ) : null}
+              Write your own topic — or pick one below 👇
+            </label>
+            <textarea
+              id="topic-picker-custom"
+              maxLength={maxTopicLength}
+              rows={3}
+              value={selectedTopic}
+              onChange={(e) => onTopic(e.target.value.slice(0, maxTopicLength))}
+              placeholder="e.g. 'Pineapple belongs on pizza' — make it spicy 🌶"
+              className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+            <div className="flex justify-end text-xs text-zinc-600">
+              {selectedTopic.length}/{maxTopicLength}
+            </div>
+          </div>
+
+          <p className="text-center text-xs font-medium tracking-wide text-zinc-500">
+            — or pick from below —
+          </p>
 
           <div className="flex flex-wrap gap-2.5">
             {(topicCategories ?? []).map((group) => {
@@ -245,20 +254,27 @@ export function TopicPicker({ selectedTopic, onTopic }: Props) {
           </div>
 
           <div className="grid gap-2 min-[420px]:grid-cols-2">
-            {activeStarterTopics.map((starterTopic) => {
+            {activeStarterTopics.map((starterTopic, idx) => {
               const selected = selectedTopic.trim() === starterTopic;
+              const isHottest =
+                Boolean(topicOfTheDay) && starterTopic === topicOfTheDay;
               return (
                 <button
-                  key={starterTopic}
+                  key={`${activeTopicGroup}-${idx}-${starterTopic.slice(0, 24)}`}
                   type="button"
                   onClick={() => onTopic(starterTopic)}
-                  className={`cursor-pointer rounded-2xl border px-4 py-3 text-left text-sm leading-relaxed transition-all active:scale-[0.99] ${
+                  className={`flex flex-col gap-2 text-left transition-all active:scale-[0.99] ${
                     selected
-                      ? "border-indigo-500 bg-indigo-500/15 text-zinc-50 shadow-md shadow-indigo-950/30"
-                      : "border-zinc-700 bg-zinc-950/60 text-zinc-200 hover:border-indigo-500/45 hover:bg-zinc-900 hover:text-white"
+                      ? "cursor-pointer rounded-2xl border border-indigo-500 bg-indigo-500/15 px-4 py-3 text-sm leading-relaxed text-zinc-50 shadow-md shadow-indigo-950/30"
+                      : "cursor-pointer rounded-2xl border border-zinc-700 bg-zinc-950/60 px-4 py-3 text-sm leading-relaxed text-zinc-200 hover:border-indigo-500/45 hover:bg-zinc-900 hover:text-white"
                   }`}
                 >
-                  {starterTopic}
+                  {isHottest ? (
+                    <span className="w-fit rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-200">
+                      🔥 Hottest topic today
+                    </span>
+                  ) : null}
+                  <span>{starterTopic}</span>
                 </button>
               );
             })}

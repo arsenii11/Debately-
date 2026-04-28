@@ -37,6 +37,8 @@ type Props = {
    * localStorage for this view. Omitted in read-only in-debate UI.
    */
   viewerName?: string;
+  /** When false, do not write spectator name to localStorage (e.g. debaters using their lobby nickname). */
+  persistSpectatorName?: boolean;
 };
 
 export function SpectatorReactions({
@@ -48,6 +50,7 @@ export function SpectatorReactions({
   onUpdate,
   align = "end",
   viewerName: viewerNameProp,
+  persistSpectatorName = true,
 }: Props) {
   const [busyKind, setBusyKind] = useState<SpecReactionKind | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +101,7 @@ export function SpectatorReactions({
           setError(data.error ?? "Could not react.");
           return;
         }
-        setSpectatorDisplayName(name.trim());
+        if (persistSpectatorName) setSpectatorDisplayName(name.trim());
         onUpdate?.(data.session?.likes);
       } catch {
         setError("Network error.");
@@ -106,7 +109,7 @@ export function SpectatorReactions({
         setBusyKind(null);
       }
     },
-    [sessionId, round, side, onUpdate],
+    [sessionId, round, side, onUpdate, persistSpectatorName],
   );
 
   const submitRemove = useCallback(

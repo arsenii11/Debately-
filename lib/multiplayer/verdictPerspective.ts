@@ -1,6 +1,6 @@
 import type { Side } from "@/lib/types";
 import type { Verdict } from "@/lib/types";
-import type { PublicSession } from "@/lib/multiplayer/types";
+import type { PublicSession, SlotId } from "@/lib/multiplayer/types";
 
 /** Swaps "player" and "opponent" axes in a verdict. */
 function swapVerdict(verdict: Verdict): Verdict {
@@ -17,6 +17,18 @@ function swapVerdict(verdict: Verdict): Verdict {
       rhetoric: [verdict.breakdown.rhetoric[1], verdict.breakdown.rhetoric[0]],
     },
   };
+}
+
+/**
+ * Verdict from the judge is computed with `player` = whoever anchored the request (see `runVerdictForSession`).
+ * Persisted sessions must always store scores as slot A = `score_player`, slot B = `score_opponent`,
+ * matching `verdictInForAgainstOrder` and `session.players[0]` / `[1]`.
+ */
+export function normalizeVerdictToSlotA(
+  verdict: Verdict,
+  anchorSlot: SlotId,
+): Verdict {
+  return anchorSlot === "A" ? verdict : swapVerdict(verdict);
 }
 
 /**
