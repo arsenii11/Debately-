@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -50,6 +51,9 @@ import type {
 } from "@/lib/types";
 
 const OPPONENT_FAILED_TEXT = "Debately failed to respond.";
+
+/** Solo-only easter egg: skip AI debate and show a static image. */
+const SOLO_CHEREMSHA_EGG_TOPIC = "arseniy_loh6767";
 
 function opponentSideFor(player: Side): Side {
   return player === "FOR" ? "AGAINST" : "FOR";
@@ -120,6 +124,10 @@ export function DebatelyApp() {
 
   const opponentSide = opponentSideFor(playerSide);
   const isTimedDebate = turnTimerSeconds > UNTIMED_TURN_TIMER_SECONDS;
+  const isCheremshaSoloEgg = useMemo(
+    () => topic.trim() === SOLO_CHEREMSHA_EGG_TOPIC,
+    [topic],
+  );
   const playerDisplay = nickname.trim() || "Player";
   const playerInitial =
     playerDisplay.trim().charAt(0).toUpperCase() || "?";
@@ -275,6 +283,7 @@ export function DebatelyApp() {
     if (
       phase !== "debating" ||
       !isTimedDebate ||
+      isCheremshaSoloEgg ||
       isAIThinking ||
       launchCountdown !== null ||
       timerPaused
@@ -301,7 +310,15 @@ export function DebatelyApp() {
     }, 1000);
 
     return () => window.clearInterval(id);
-  }, [phase, isTimedDebate, isAIThinking, currentRound, launchCountdown, timerPaused]);
+  }, [
+    phase,
+    isTimedDebate,
+    isCheremshaSoloEgg,
+    isAIThinking,
+    currentRound,
+    launchCountdown,
+    timerPaused,
+  ]);
 
   const updateRound = useCallback(
     (roundNumber: number, patch: Partial<RoundData>) => {
@@ -626,6 +643,7 @@ export function DebatelyApp() {
   }, [phase, isAIThinking, launchCountdown, runConcede]);
 
   const handleStart = useCallback(() => {
+    const egg = topic.trim() === SOLO_CHEREMSHA_EGG_TOPIC;
     setPhase("debating");
     setHistory([]);
     setCurrentRound(1);
@@ -638,13 +656,39 @@ export function DebatelyApp() {
     setIsAIThinking(false);
     setThinkingStage(null);
     skipScheduled.current = false;
-    setLaunchCountdown(isTimedDebate ? 3 : null);
-    if (!isTimedDebate) {
+    setLaunchCountdown(!egg && isTimedDebate ? 3 : null);
+    if (egg) {
+      setTimer(0);
+    } else if (!isTimedDebate) {
       setTimer(UNTIMED_TURN_TIMER_SECONDS);
     }
-  }, [isTimedDebate]);
+  }, [isTimedDebate, topic]);
 
   const handleNew = useCallback(() => {
+    if (
+      phase === "debating" &&
+      topic.trim() === SOLO_CHEREMSHA_EGG_TOPIC &&
+      history.length === 0 &&
+      !isAIThinking &&
+      launchCountdown === null
+    ) {
+      clearDebatelySession();
+      setPhase("setup");
+      setHistory([]);
+      setCurrentRound(1);
+      setTimer(turnTimerSeconds);
+      setTimerPaused(false);
+      setInputText("");
+      setVerdict(null);
+      setError(null);
+      setSkippedTurns(0);
+      setIsAIThinking(false);
+      setThinkingStage(null);
+      skipScheduled.current = false;
+      setLaunchCountdown(null);
+      return;
+    }
+
     const opponentHasReplied =
       phase === "debating" &&
       history.some((r) => r.opponentMove && r.opponentMove.trim().length > 0);
@@ -692,6 +736,7 @@ export function DebatelyApp() {
     launchCountdown,
     runConcede,
     turnTimerSeconds,
+    topic,
   ]);
 
   if (!sessionReady) {
@@ -753,7 +798,7 @@ export function DebatelyApp() {
               </span>
             </button>
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:order-3 sm:gap-3">
-              {phase === "debating" && (
+              {phase === "debating" && !isCheremshaSoloEgg && (
                 <span className="text-sm text-zinc-400">
                   Round{" "}
                   <span className="font-mono text-zinc-200">
@@ -761,11 +806,12 @@ export function DebatelyApp() {
                   </span>
                 </span>
               )}
-              {phase === "debating" && !isTimedDebate ? (
+              {phase === "debating" && !isCheremshaSoloEgg && !isTimedDebate ? (
                 <span className="text-xs font-medium uppercase tracking-wide text-indigo-300">
                   Untimed
                 </span>
               ) : phase === "debating" &&
+              !isCheremshaSoloEgg &&
               launchCountdown === null &&
               !isAIThinking &&
               timer > 0 ? (
@@ -784,6 +830,7 @@ export function DebatelyApp() {
                   </button>
                 </div>
               ) : phase === "debating" &&
+                !isCheremshaSoloEgg &&
                 isTimedDebate &&
                 launchCountdown === null &&
                 !isAIThinking &&
@@ -812,74 +859,76 @@ export function DebatelyApp() {
               ) : null}
             </div>
           </div>
-          <div className="flex min-w-0 items-center justify-center gap-3 border-t border-zinc-800/70 pt-2 sm:order-2 sm:flex-1 sm:border-t-0 sm:pt-0 sm:px-2">
-            <div className="flex min-w-0 max-w-[46%] items-center gap-2 sm:max-w-none">
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
-                  playerSide === "FOR" ? "bg-emerald-600" : "bg-rose-600"
-                }`}
-              >
-                {playerInitial}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-zinc-200 sm:text-sm">
-                  {playerDisplay}
-                </p>
-                <span
-                  className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                    playerSide === "FOR"
-                      ? "bg-emerald-500/25 text-emerald-300"
-                      : "bg-rose-500/25 text-rose-300"
+          {!isCheremshaSoloEgg ? (
+            <div className="flex min-w-0 items-center justify-center gap-3 border-t border-zinc-800/70 pt-2 sm:order-2 sm:flex-1 sm:border-t-0 sm:pt-0 sm:px-2">
+              <div className="flex min-w-0 max-w-[46%] items-center gap-2 sm:max-w-none">
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${
+                    playerSide === "FOR" ? "bg-emerald-600" : "bg-rose-600"
                   }`}
                 >
-                  {playerSide}
-                </span>
-              </div>
-            </div>
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              vs
-            </span>
-            <div className="relative flex min-w-0 max-w-[46%] items-center gap-2 sm:max-w-none">
-              <button
-                type="button"
-                onClick={() => setShowAiInfo((v) => !v)}
-                className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-600 to-pink-600 text-[10px] font-bold text-white shadow-md shadow-fuchsia-950/30 transition-transform hover:scale-105 active:scale-95"
-                aria-expanded={showAiInfo}
-                aria-label="About Debately AI opponent"
-              >
-                AI
-              </button>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-zinc-200 sm:text-sm">
-                  Debately
-                </p>
-                <span
-                  className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                    opponentSide === "FOR"
-                      ? "bg-emerald-500/25 text-emerald-300"
-                      : "bg-rose-500/25 text-rose-300"
-                  }`}
-                >
-                  {opponentSide}
-                </span>
-              </div>
-              {showAiInfo ? (
-                <div className="absolute right-0 top-full z-50 mt-3 w-72 rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-left shadow-xl shadow-black/30 sm:right-auto sm:left-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                    AI opponent
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-200">
-                    Debately argues the opposite side. It is tuned to push back,
-                    not to act like a neutral assistant.
-                  </p>
-                  <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-                    Expect short rebuttals, pressure on weak assumptions, and a
-                    more online debate style while staying within basic boundaries.
-                  </p>
+                  {playerInitial}
                 </div>
-              ) : null}
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-zinc-200 sm:text-sm">
+                    {playerDisplay}
+                  </p>
+                  <span
+                    className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                      playerSide === "FOR"
+                        ? "bg-emerald-500/25 text-emerald-300"
+                        : "bg-rose-500/25 text-rose-300"
+                    }`}
+                  >
+                    {playerSide}
+                  </span>
+                </div>
+              </div>
+              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                vs
+              </span>
+              <div className="relative flex min-w-0 max-w-[46%] items-center gap-2 sm:max-w-none">
+                <button
+                  type="button"
+                  onClick={() => setShowAiInfo((v) => !v)}
+                  className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-600 to-pink-600 text-[10px] font-bold text-white shadow-md shadow-fuchsia-950/30 transition-transform hover:scale-105 active:scale-95"
+                  aria-expanded={showAiInfo}
+                  aria-label="About Debately AI opponent"
+                >
+                  AI
+                </button>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-zinc-200 sm:text-sm">
+                    Debately
+                  </p>
+                  <span
+                    className={`mt-0.5 inline-block rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                      opponentSide === "FOR"
+                        ? "bg-emerald-500/25 text-emerald-300"
+                        : "bg-rose-500/25 text-rose-300"
+                    }`}
+                  >
+                    {opponentSide}
+                  </span>
+                </div>
+                {showAiInfo ? (
+                  <div className="absolute right-0 top-full z-50 mt-3 w-72 rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-left shadow-xl shadow-black/30 sm:right-auto sm:left-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+                      AI opponent
+                    </p>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-200">
+                      Debately argues the opposite side. It is tuned to push back,
+                      not to act like a neutral assistant.
+                    </p>
+                    <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                      Expect short rebuttals, pressure on weak assumptions, and a
+                      more online debate style while staying within basic boundaries.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </header>
 
@@ -890,20 +939,33 @@ export function DebatelyApp() {
       ) : null}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <ChatArea
-          topic={topic}
-          playerName={nickname.trim() || "Player"}
-          playerSide={playerSide}
-          opponentSide={opponentSide}
-          history={history}
-          currentRound={currentRound}
-          thinkingStage={thinkingStage}
-          isAIThinking={isAIThinking}
-          thinkingLabel={thinkingLabel}
-          lastOpponentAnchorRef={lastOpponentAnchorRef}
-        />
+        {isCheremshaSoloEgg && phase === "debating" ? (
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto px-4 py-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/cheremsha.jpg"
+              alt=""
+              className="max-h-[min(85dvh,900px)] w-auto max-w-full object-contain"
+            />
+          </div>
+        ) : (
+          <>
+            <ChatArea
+              topic={topic}
+              playerName={nickname.trim() || "Player"}
+              playerSide={playerSide}
+              opponentSide={opponentSide}
+              history={history}
+              currentRound={currentRound}
+              thinkingStage={thinkingStage}
+              isAIThinking={isAIThinking}
+              thinkingLabel={thinkingLabel}
+              lastOpponentAnchorRef={lastOpponentAnchorRef}
+            />
 
-        <div ref={bottomRef} className="h-px w-full shrink-0" aria-hidden />
+            <div ref={bottomRef} className="h-px w-full shrink-0" aria-hidden />
+          </>
+        )}
 
         {phase === "finished" && verdict ? (
           <div className="shrink-0 border-t border-zinc-800 bg-zinc-950 px-3 py-8 sm:px-6">
@@ -927,7 +989,7 @@ export function DebatelyApp() {
         ) : null}
       </div>
 
-      {phase === "debating" && !isAIThinking ? (
+      {phase === "debating" && !isAIThinking && !isCheremshaSoloEgg ? (
         <InputBar
           value={inputText}
           onChange={setInputText}
