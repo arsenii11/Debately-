@@ -148,6 +148,31 @@ export function InputBar({
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [aiHint, setAiHint] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv || !shellRef.current) return;
+    const apply = () => {
+      const el = shellRef.current;
+      if (!el) return;
+      const overlap = Math.max(
+        0,
+        window.innerHeight - vv.height - vv.offsetTop,
+      );
+      el.style.paddingBottom = `calc(0.75rem + env(safe-area-inset-bottom) + ${overlap}px)`;
+    };
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    apply();
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+      if (shellRef.current) shellRef.current.style.paddingBottom = "";
+    };
+  }, []);
 
   useEffect(() => {
     setVoiceSupported(Boolean(getSpeechRecognitionCtor()));
@@ -255,19 +280,31 @@ export function InputBar({
 
   const dismissHint = useCallback(() => setAiHint(null), []);
 
+  const handleTextareaFocus = useCallback(() => {
+    onFocus?.();
+    requestAnimationFrame(() => {
+      textareaRef.current?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    });
+  }, [onFocus]);
+
   return (
     <div
+      ref={shellRef}
       className="min-w-0 max-w-full overflow-x-hidden border-t border-zinc-800 bg-zinc-950/95 px-3 py-3 backdrop-blur sm:px-4"
       style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
     >
       <div className="mx-auto flex min-w-0 max-w-3xl flex-col gap-2">
         <div className="relative">
           <textarea
+            ref={textareaRef}
             rows={3}
             value={value}
             disabled={disabled}
             onChange={(e) => onChange(e.target.value.slice(0, MAX))}
-            onFocus={onFocus}
+            onFocus={handleTextareaFocus}
             onKeyDown={onKeyDown}
             placeholder="Make your argument… (Enter to send, Shift+Enter for newline)"
             className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 pr-14 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"

@@ -7,6 +7,7 @@ import {
   applyVerdict,
   getSession,
 } from "@/lib/multiplayer/store";
+import { normalizeVerdictToSlotA } from "@/lib/multiplayer/verdictPerspective";
 import { viewHistoryFromSide } from "@/lib/multiplayer/sessionLogic";
 import type { Side } from "@/lib/types";
 import type { MultiplayerSession, PlayerSlot, SlotId } from "@/lib/multiplayer/types";
@@ -114,7 +115,7 @@ export async function runVerdictForSession(args: {
     const playerConceded =
       session.concededBy === anchorSlot ||
       history.some((r) => r.playerMove.trim() === SURRENDER_PLAYER_MOVE);
-    const verdict = await runVerdict({
+    const verdictRaw = await runVerdict({
       topic: session.settings.topic,
       playerSide: anchor.side,
       opponentSide: other.side,
@@ -125,6 +126,7 @@ export async function runVerdictForSession(args: {
       opponentName: displayNameForVerdict(other),
       mode: "multiplayer",
     });
+    const verdict = normalizeVerdictToSlotA(verdictRaw, anchorSlot);
     applyVerdict({ sessionId: args.sessionId, verdict });
   } catch (err) {
     debatelyLog("verdict", "error", "multiplayer verdict failed", {

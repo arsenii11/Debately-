@@ -394,9 +394,9 @@ const HOME_MODES: Array<{
   label: string;
   shortLabel: string;
 }> = [
-  { id: "solo", label: "Solo", shortLabel: "Solo" },
-  { id: "multiplayer", label: "Multiplayer", shortLabel: "Friends" },
-  { id: "school", label: "Debate School", shortLabel: "School" },
+  { id: "solo", label: "Solo 🤖", shortLabel: "Solo 🤖" },
+  { id: "multiplayer", label: "vs Friend ⚔", shortLabel: "vs Friend" },
+  { id: "school", label: "Learn 🎓", shortLabel: "Learn 🎓" },
 ];
 
 function PlayWithFriendPod({
@@ -460,14 +460,14 @@ function PlayWithFriendPod({
           >
             <span className="font-medium text-indigo-400/95">Multiplayer</span>
             <span className="text-zinc-600"> — </span>
-            <span>private lobby, share a link, debate a real person.</span>
+            <span>Challenge a friend. AI picks the winner 🤖</span>
           </p>
           <h2 className="mt-4 text-xl font-semibold leading-tight text-zinc-50 sm:text-2xl">
-            Play with a friend
+            Think you can out-argue your friend? 👀
           </h2>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400">
-            Create a private lobby, share the link, and debate a real person.
-            The Judge fact-checks each move and scores the match.
+            Send your friend a link. They argue back. AI judges who actually
+            won. No mercy 💀
           </p>
         </div>
         <div className={`flex flex-col gap-2 ${centered ? "w-full items-center" : ""}`}>
@@ -477,7 +477,7 @@ function PlayWithFriendPod({
             disabled={busy}
             className="inline-flex w-fit cursor-pointer items-center justify-center rounded-xl border border-indigo-500/60 bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-100 transition-colors hover:border-indigo-400 hover:bg-indigo-500/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? "Creating lobby…" : "Create lobby link →"}
+            {busy ? "Creating lobby…" : "Challenge a friend ⚔"}
           </button>
           {error ? (
             <p className="text-xs text-rose-300">{error}</p>
@@ -913,9 +913,9 @@ export function SetupScreen({
           </nav>
           <p className="max-w-md text-sm leading-relaxed text-zinc-500">
             {homeMode === "solo"
-              ? "Practice against the AI with a neutral Judge."
+              ? "Train your brain. Wreck your friends 💀"
               : homeMode === "multiplayer"
-                ? "Create a lobby and debate someone you know."
+                ? "Challenge a friend. AI picks the winner 🤖"
                 : "Learn why structured argument practice pays off."}
           </p>
         </header>
@@ -931,7 +931,7 @@ export function SetupScreen({
                   You vs AI
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-50 sm:text-3xl">
-                  What do you want to debate?
+                  Pick your battlefield ⚡
                 </h2>
               </div>
 
@@ -943,34 +943,25 @@ export function SetupScreen({
             <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 text-center sm:p-6">
               <div className="border-b border-zinc-800/80 pb-4 text-center">
                 <h2 className="text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
-                  Your position
+                  Now pick your side 👊
                 </h2>
               </div>
 
               <div className="mt-5 flex flex-col gap-5 text-left">
-                <div className="flex flex-col gap-2">
-                  <label className="text-base font-semibold text-zinc-100 sm:text-lg">
-                    Topic
-                  </label>
-                  <textarea
-                    maxLength={200}
-                    rows={3}
-                    value={topic}
-                    onChange={(e) => onTopic(e.target.value)}
-                    placeholder='e.g. "Remote work is better than working from the office"'
-                    className="resize-none rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base leading-relaxed text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="text-zinc-500">
-                      Optional: refine the selected topic.
-                    </span>
-                    <span className="text-zinc-600">{topic.length}/200</span>
-                  </div>
-                </div>
+                {topic.trim() ? (
+                  <p className="text-center text-xs leading-relaxed text-zinc-500 sm:text-left">
+                    <span className="font-semibold text-zinc-400">Topic:</span>{" "}
+                    {topic}
+                  </p>
+                ) : (
+                  <p className="text-center text-xs text-amber-200/90">
+                    Choose a topic above first — then lock your side.
+                  </p>
+                )}
 
                 <div className="flex flex-col gap-2">
                   <span className="text-base font-semibold text-zinc-100 sm:text-lg">
-                    Your side
+                    Pick a side. No backing out 👊
                   </span>
                   <div className="grid grid-cols-2 gap-3">
                     {(["FOR", "AGAINST"] as const).map((s) => (
@@ -988,7 +979,7 @@ export function SetupScreen({
                               : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-rose-500/45 hover:bg-rose-950/25 hover:text-rose-100/95"
                         }`}
                       >
-                        {s}
+                        {s === "FOR" ? "👍 I'M FOR IT" : "👎 I'M AGAINST IT"}
                       </button>
                     ))}
                   </div>
@@ -999,14 +990,14 @@ export function SetupScreen({
             <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 text-center sm:p-6">
               <div className="border-b border-zinc-800/80 pb-4 text-center">
                 <h2 className="text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
-                  Nickname and pacing
+                  Who are you? ⚡
                 </h2>
               </div>
 
               <div className="mt-5 flex flex-col gap-5 text-left">
                 <div className="flex flex-col gap-2">
                   <label className="text-base font-semibold text-zinc-100 sm:text-lg">
-                    Nickname
+                    Your battle name
                   </label>
                   <input
                     id="setup-nickname-input"
@@ -1014,7 +1005,7 @@ export function SetupScreen({
                     maxLength={20}
                     value={nickname}
                     onChange={(e) => onNickname(e.target.value)}
-                    placeholder="e.g. Alex"
+                    placeholder="e.g. DebateKing, Alex, The Closer…"
                     className="rounded-xl border border-zinc-700 bg-zinc-900/80 px-4 py-3 text-base text-zinc-100 placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                   <span className="text-right text-xs text-zinc-600">
@@ -1025,7 +1016,7 @@ export function SetupScreen({
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-zinc-100 sm:text-lg">
-                      Debate rounds
+                      How many rounds? (3 = fast, 10 = brutal) 💀
                     </span>
                     <span className="text-sm font-semibold text-indigo-300">
                       {turnRounds} rounds
@@ -1049,7 +1040,7 @@ export function SetupScreen({
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
                     <span className="text-base font-semibold text-zinc-100 sm:text-lg">
-                      Time per turn
+                      Time pressure ⏱
                     </span>
                     <span
                       className={`text-sm font-semibold transition-colors ${timedModeEnabled ? "text-indigo-300" : "text-zinc-500"}`}
@@ -1084,7 +1075,7 @@ export function SetupScreen({
                           onClick={() => setTimedMode(false)}
                           className="cursor-pointer text-xs text-zinc-600 transition-colors hover:text-zinc-400"
                         >
-                          Play without a timer →
+                          Go easy mode (no timer) 😅
                         </button>
                       </div>
                     </>
@@ -1112,24 +1103,28 @@ export function SetupScreen({
               onClick={onStart}
               className="cursor-pointer rounded-xl bg-indigo-600 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100 sm:text-lg"
             >
-              Start debate vs AI →
+              Start Debate — Let&apos;s go ⚔
             </button>
 
             <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 text-center sm:p-5">
               <div className="flex flex-col gap-4 text-left">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <h3 className="text-base font-semibold text-zinc-100 sm:text-lg">
-                    Your progress
+                    Your stats 📊
                   </h3>
                   <span className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-right">
                     <span className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                      Streak
+                      🔥 Win streak
                     </span>
                     <span className="mt-1 block text-3xl font-semibold tabular-nums text-zinc-100">
                       {progress?.streakDays ?? 0}
                     </span>
                     <span className="block text-xs text-zinc-500">
-                      {(progress?.streakDays ?? 0) === 1 ? "day" : "days"}
+                      {(progress?.streakDays ?? 0) === 0
+                        ? "0 days — start today 👀"
+                        : (progress?.streakDays ?? 0) === 1
+                          ? "day"
+                          : "days"}
                     </span>
                   </span>
                 </div>
@@ -1137,30 +1132,34 @@ export function SetupScreen({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Today
+                      Today&apos;s battle ⚔
                     </p>
                     <div className="mt-3 flex items-end gap-2">
                       <span className="text-3xl font-semibold text-zinc-100">
                         {progress?.debatesToday ?? 0}
                       </span>
                       <span className="pb-1 text-sm text-zinc-400">
-                        debates today
+                        {(progress?.debatesToday ?? 0) === 0
+                          ? "debates — your rivals are already arguing 👀"
+                          : (progress?.debatesToday ?? 0) === 1
+                            ? "debate today"
+                            : "debates today"}
                       </span>
                     </div>
                     <p className="mt-2 text-xs leading-relaxed text-zinc-500">
                       {progress?.graceAvailable === false
                         ? "Grace day used. Play today to keep the streak."
-                        : "One missed day is allowed before the streak resets."}
+                        : "Miss 2 days and your streak is gone 🔥"}
                     </p>
                   </div>
 
                   <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                        Skills
+                        Your weak spots 🎯
                       </p>
                       <span className="text-xs text-zinc-600">
-                        from your verdicts
+                        based on your last verdicts
                       </span>
                     </div>
                     <div className="mt-3 grid gap-2">
@@ -1199,15 +1198,14 @@ export function SetupScreen({
           <div className="flex flex-col items-center gap-6 text-center">
             <PlayWithFriendPod nickname={nickname} centered />
             <p className="max-w-md text-sm leading-relaxed text-zinc-500">
-              Your lobby name uses the Solo nickname when set, or a name you
-              have used in multiplayer before.
+              Your nickname carries over from Solo — set it there first.
             </p>
             <button
               type="button"
               onClick={() => setHomeMode("solo")}
               className="text-sm font-medium text-indigo-400 transition-colors hover:text-indigo-300"
             >
-              Set nickname in Solo →
+              Set your battle name first →
             </button>
           </div>
         ) : null}

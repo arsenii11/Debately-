@@ -749,7 +749,7 @@ export function DebatelyApp() {
                 Debately
               </span>
               <span className="rounded-md bg-fuchsia-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-fuchsia-300">
-                Solo
+                Solo 🤖
               </span>
             </button>
             <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:order-3 sm:gap-3">

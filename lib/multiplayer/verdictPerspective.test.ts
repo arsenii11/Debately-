@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Verdict } from "@/lib/types";
 import type { PublicSession } from "@/lib/multiplayer/types";
 import {
+  normalizeVerdictToSlotA,
   verdictForDebatePlayer,
   verdictInForAgainstOrder,
 } from "./verdictPerspective";
@@ -36,6 +37,18 @@ function session(order: "FOR_FIRST" | "AGAINST_FIRST"): Pick<PublicSession, "pla
     ],
   } as Pick<PublicSession, "players">;
 }
+
+describe("normalizeVerdictToSlotA", () => {
+  it("keeps verdict when anchor is slot A", () => {
+    expect(normalizeVerdictToSlotA(V, "A")).toEqual(V);
+  });
+
+  it("swaps scores when anchor was slot B so storage matches players[0]/[1]", () => {
+    const out = normalizeVerdictToSlotA(V, "B");
+    expect(out.score_player).toBe(55);
+    expect(out.score_opponent).toBe(70);
+  });
+});
 
 describe("verdictInForAgainstOrder", () => {
   it("leaves order when FOR is slot0", () => {

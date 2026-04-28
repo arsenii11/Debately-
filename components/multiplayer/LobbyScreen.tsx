@@ -121,11 +121,6 @@ export function LobbyScreen({
     DEFAULT_TURN_TIMER_SECONDS;
   const effectiveSide = myProposal?.side ?? me?.side ?? null;
 
-  const handleSetTopic = useCallback(async () => {
-    const t = topic.trim();
-    await onUpdate({ topic: t || null });
-  }, [onUpdate, topic]);
-
   const handleCopy = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -149,20 +144,20 @@ export function LobbyScreen({
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-5 p-5 sm:p-8">
       <header className="flex flex-col gap-2 text-center">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-          Multiplayer lobby
+          Battle room ⚔
         </p>
         <h1 className="text-2xl font-bold text-zinc-100 sm:text-3xl">
-          Negotiate the debate
+          Set up the fight 🥊
         </h1>
         <p className="text-sm text-zinc-400">
-          Share the link below with a friend. Both pick a topic, sides, and
-          format. The match begins once you both hit Ready.
+          Send this link to your opponent. Once you&apos;re both set, hit Ready,
+          and it begins. No backing out 💀
         </p>
       </header>
 
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-          Share link
+          Your challenge link 🔗
         </p>
         <div className="mt-2 flex items-center gap-2">
           <code className="min-w-0 flex-1 truncate rounded-lg bg-zinc-950 px-3 py-2 text-sm text-zinc-200">
@@ -184,13 +179,13 @@ export function LobbyScreen({
             Join this lobby
           </p>
           <p className="mt-1 text-xs text-amber-200/80">
-            Pick a nickname your opponent will see.
+            Your battle name is what your opponent sees.
           </p>
           <div className="mt-3 flex gap-2">
             <input
               value={nickname}
               onChange={(e) => setNickname(e.target.value.slice(0, 32))}
-              placeholder="Your nickname"
+              placeholder="Your battle name"
               className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-amber-400 focus:outline-none"
             />
             <button
@@ -220,11 +215,12 @@ export function LobbyScreen({
               }`}
             >
               <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                Slot {p.slot}{" "}
-                {isMine ? <span className="text-indigo-300">(you)</span> : null}
+                {isMine ? "You 👤" : p.claimed ? "Opponent 👤" : "Opponent 👤"}
               </p>
               <p className="mt-1 text-base font-bold text-zinc-100">
-                {p.claimed ? p.nickname || "Unnamed" : "Waiting for opponent…"}
+                {p.claimed
+                  ? p.nickname || "Unnamed"
+                  : "Waiting for them to accept… 👀"}
               </p>
               {p.claimed ? (
                 <>
@@ -243,13 +239,13 @@ export function LobbyScreen({
                         : "bg-zinc-800 text-zinc-400"
                     }`}
                   >
-                    {p.ready ? "Ready" : "Not ready"}
+                    {p.ready ? "Ready" : "Not ready yet ⏳"}
                   </p>
                 </>
               ) : (
                 <p className="mt-2 text-xs text-zinc-500">
                   {isHost
-                    ? "Your friend will appear here once they open the link."
+                    ? "Send them the link. They&apos;ll show up here when they open it."
                     : "Hold tight…"}
                 </p>
               )}
@@ -289,41 +285,19 @@ export function LobbyScreen({
           {isHost ? (
             <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
               <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-fuchsia-400/90">
-                Topic proposal
+                Pick the battlefield 🗡
               </p>
               <TopicPicker
                 selectedTopic={topic}
+                maxTopicLength={280}
                 onTopic={(t) => {
                   setTopic(t);
                   void onUpdate({ topic: t });
                 }}
               />
-              <div className="mt-4 space-y-2 border-t border-zinc-800 pt-4">
-                <label className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                  Or type your own
-                </label>
-                <textarea
-                  value={topic}
-                  onChange={(e) => setTopic(e.target.value.slice(0, 280))}
-                  onBlur={handleSetTopic}
-                  rows={2}
-                  placeholder="What should you debate?"
-                  className="w-full resize-none rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none"
-                />
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[11px] text-zinc-500">
-                    You pick the topic; your opponent picks their side.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleSetTopic}
-                    disabled={busy}
-                    className="cursor-pointer rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:border-indigo-500 hover:text-white disabled:opacity-60"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
+              <p className="mt-4 text-[11px] text-zinc-500">
+                You pick the topic; your opponent picks their side.
+              </p>
             </section>
           ) : (
             opponentProposal?.topic ? (
@@ -344,7 +318,7 @@ export function LobbyScreen({
 
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-              Pick a side
+              Choose your side — no switching after 👊
             </p>
             <div className="mt-2 flex gap-2">
               {(["FOR", "AGAINST"] as const).map((s) => (
@@ -372,14 +346,15 @@ export function LobbyScreen({
               </button>
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">
-              If you both pick the same side, the second pick gets flipped.
+              Can&apos;t both argue the same side — one of you gets flipped
+              automatically.
             </p>
           </section>
 
           <section className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                Rounds
+                How many rounds? 🥊
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {ROUND_OPTIONS.map((n) => (
@@ -400,7 +375,7 @@ export function LobbyScreen({
             </div>
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                Per-turn timer
+                Time per turn ⏱
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {TIMER_OPTIONS.map(({ value, label }) => {
@@ -433,7 +408,7 @@ export function LobbyScreen({
 
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-              Display name
+              Your battle name ⚡
             </p>
             <div className="mt-2 flex gap-2">
               <input
@@ -444,7 +419,7 @@ export function LobbyScreen({
                     ? onUpdate({ nickname: nickname.trim() })
                     : undefined
                 }
-                placeholder="Your nickname"
+                placeholder="Your battle name"
                 className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-500 focus:outline-none"
               />
               <button
@@ -461,10 +436,14 @@ export function LobbyScreen({
           <section className="flex flex-col items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4 sm:flex-row sm:justify-between">
             <div className="text-sm text-zinc-300">
               <p className="font-semibold">
-                {myReady ? "You are ready." : "Tap Ready when you are set."}
+                {myReady
+                  ? "You&apos;re locked in."
+                  : "Lock in when you&apos;re ready. Your opponent will see it. 👀"}
               </p>
               <p className="text-xs text-zinc-500">
-                Opponent: {opponentReady ? "ready" : "not ready"}
+                {opponentReady
+                  ? "Opponent: ready ✅"
+                  : "Opponent hasn&apos;t tapped Ready yet… 👀"}
               </p>
             </div>
             <button
@@ -477,7 +456,7 @@ export function LobbyScreen({
                   : "bg-indigo-600 text-white hover:bg-indigo-500"
               } disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500`}
             >
-              {myReady ? "Cancel ready" : "I'm ready"}
+              {myReady ? "Cancel ready" : "I&apos;m Ready — Lock It In ✅"}
             </button>
           </section>
         </>

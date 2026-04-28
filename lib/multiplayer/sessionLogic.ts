@@ -434,6 +434,7 @@ export function recordMove(
     consecutiveSkips: args.skipped ? player.consecutiveSkips + 1 : 0,
     hintsUsedThisTurn: 0,
     lastSeenAt: args.now,
+    composerDraft: null,
   });
 
   const roundFullyDone = bothSidesMovedThisRound(updatedRound);
@@ -493,7 +494,44 @@ export function recordMove(
     finished = true;
   }
 
+  if (finished) {
+    next = {
+      ...next,
+      players: [
+        { ...next.players[0], composerDraft: null },
+        { ...next.players[1], composerDraft: null },
+      ],
+    };
+  }
+
   return { kind: "ok", session: bumpRevision(next, args.now), finished };
+}
+
+export type RecordComposerDraftResult =
+  | { kind: "ok"; session: MultiplayerSession }
+  | { kind: "error"; reason: string };
+
+export function recordComposerDraft(
+  session: MultiplayerSession,
+  slot: SlotId,
+  wordCount: number,
+  now: number,
+): RecordComposerDraftResult {
+  if (session.state !== "live") {
+    return { kind: "error", reason: "Debate is not in progress." };
+  }
+  const turnSlot = getCurrentTurnSlot(session);
+  if (turnSlot !== slot) {
+    return { kind: "error", reason: "Not your turn." };
+  }
+  const w = Math.max(0, Math.min(5000, Math.floor(wordCount)));
+  const player = getSlot(session, slot);
+  const next = setSlot(session, {
+    ...player,
+    composerDraft: { wordCount: w, updatedAt: now },
+    lastSeenAt: now,
+  });
+  return { kind: "ok", session: bumpRevision(next, now) };
 }
 
 export function applyFactcheck(
