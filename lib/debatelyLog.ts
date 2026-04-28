@@ -3,7 +3,7 @@
  * Prefix keeps grepping simple: `docker compose logs -f app | grep debately`
  */
 export function debatelyLog(
-  route: "factcheck" | "verdict" | "opponent" | "gemini",
+  route: "factcheck" | "verdict" | "opponent" | "gemini" | "transcribe",
   level: "info" | "warn" | "error",
   message: string,
   meta?: Record<string, unknown>,
