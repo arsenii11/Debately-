@@ -13,7 +13,6 @@ import {
 import type { Side } from "@/lib/types";
 import type { PublicSession, SlotId } from "@/lib/multiplayer/types";
 import { TopicPicker } from "@/components/TopicPicker";
-import { VoiceInputLangSelect } from "@/components/VoiceInputLangSelect";
 
 type Props = {
   session: PublicSession;
@@ -174,10 +173,6 @@ export function LobbyScreen({
             {copied ? "Copied" : "Copy"}
           </button>
         </div>
-      </section>
-
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
-        <VoiceInputLangSelect id="lobby-voice-lang" />
       </section>
 
       {!me ? (

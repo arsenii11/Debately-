@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { loadVoiceInputLang } from "@/lib/voiceInputLocale";
 
 const MAX = 1500;
 
@@ -183,10 +182,6 @@ export function InputBar({
       try {
         const fd = new FormData();
         fd.append("audio", blob, "recording.webm");
-        const hint = loadVoiceInputLang();
-        if (hint && hint !== "auto") {
-          fd.append("hintLang", hint);
-        }
         const res = await fetch("/api/speech/transcribe", {
           method: "POST",
           body: fd,

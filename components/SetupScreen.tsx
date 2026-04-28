@@ -357,7 +357,6 @@ function formatTimer(seconds: number): string {
 }
 
 import { TopicPicker } from "@/components/TopicPicker";
-import { VoiceInputLangSelect } from "@/components/VoiceInputLangSelect";
 
 const PROGRESS_SKILL_LABELS: Record<ProgressSkillKey, string> = {
   factual: "Evidence",
@@ -1013,8 +1012,6 @@ export function SetupScreen({
                     {nickname.length}/20
                   </span>
                 </div>
-
-                <VoiceInputLangSelect id="setup-voice-lang" />
 
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center justify-between">
