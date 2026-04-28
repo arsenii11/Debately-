@@ -177,7 +177,7 @@ export function LobbyScreen({
       </section>
 
       <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4">
-        <VoiceInputLangSelect idPrefix="lobby" />
+        <VoiceInputLangSelect id="lobby-voice-lang" />
       </section>
 
       {!me ? (

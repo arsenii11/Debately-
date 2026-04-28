@@ -1,50 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  loadTranscribeBackend,
-  loadVoiceInputLang,
-  resolveSpeechRecognitionLang,
-  type TranscribeBackend,
-} from "@/lib/voiceInputLocale";
+import { loadVoiceInputLang } from "@/lib/voiceInputLocale";
 
 const MAX = 1500;
-
-type SpeechRecognitionResultItem = {
-  transcript: string;
-};
-
-type SpeechRecognitionResultLike = {
-  isFinal: boolean;
-  0: SpeechRecognitionResultItem;
-};
-
-type SpeechRecognitionEventLike = {
-  resultIndex: number;
-  results: {
-    length: number;
-    [index: number]: SpeechRecognitionResultLike;
-  };
-};
-
-type SpeechRecognitionErrorEventLike = {
-  error: string;
-};
-
-type SpeechRecognitionLike = {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  maxAlternatives: number;
-  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
-  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-  abort: () => void;
-};
-
-type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
 type WritingHint = {
   label: string;
@@ -62,15 +21,6 @@ function MicrophoneIcon({ className }: { className?: string }) {
       <path d="M11.665 7.915v1.31a5.257 5.257 0 0 1-1.514 3.694 5.174 5.174 0 0 1-1.641 1.126 5.04 5.04 0 0 1-1.456.384v1.899h2.312a.554.554 0 0 1 0 1.108H3.634a.554.554 0 0 1 0-1.108h2.312v-1.899a5.045 5.045 0 0 1-1.456-.384 5.174 5.174 0 0 1-1.641-1.126 5.257 5.257 0 0 1-1.514-3.695v-1.31a.554.554 0 1 1 1.109 0v1.31a4.131 4.131 0 0 0 1.195 2.917 3.989 3.989 0 0 0 5.722 0 4.133 4.133 0 0 0 1.195-2.917v-1.31a.554.554 0 1 1 1.109 0zM3.77 10.37a2.875 2.875 0 0 1-.233-1.146V4.738A2.905 2.905 0 0 1 3.77 3.58a3 3 0 0 1 1.59-1.59 2.902 2.902 0 0 1 1.158-.233 2.865 2.865 0 0 1 1.152.233 2.977 2.977 0 0 1 1.793 2.748l-.012 4.487a2.958 2.958 0 0 1-.856 2.09 3.025 3.025 0 0 1-.937.634 2.865 2.865 0 0 1-1.152.233 2.905 2.905 0 0 1-1.158-.233A2.957 2.957 0 0 1 3.77 10.37z" />
     </svg>
   );
-}
-
-function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
-  if (typeof window === "undefined") return null;
-  const w = window as Window & {
-    SpeechRecognition?: SpeechRecognitionCtor;
-    webkitSpeechRecognition?: SpeechRecognitionCtor;
-  };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
 function appendTranscript(base: string, transcript: string): string {
@@ -124,9 +74,7 @@ type Props = {
   onSubmit: () => void;
   disabled?: boolean;
   onFocus?: () => void;
-  /** End debate early; judge verdict with player conceding. */
   onSurrender?: () => void;
-  /** Multiplayer-only: request a one-shot AI hint for this turn. */
   onRequestAIHint?: () => Promise<string | null> | string | null;
   aiHintDisabled?: boolean;
   aiHintBusy?: boolean;
@@ -146,21 +94,15 @@ export function InputBar({
   const pct = (value.length / MAX) * 100;
   const nearLimit = pct > 90;
   const writingHints = useMemo(() => getWritingHints(value), [value]);
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const cloudChunksRef = useRef<Blob[]>([]);
   const aliveRef = useRef(true);
   const baseTextRef = useRef("");
-  const finalTranscriptRef = useRef("");
   const [voiceSupported, setVoiceSupported] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [cloudBusy, setCloudBusy] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
-  const [listeningLangTag, setListeningLangTag] = useState<string | null>(null);
-  const [activeBackend, setActiveBackend] = useState<TranscribeBackend | null>(
-    null,
-  );
   const [aiHint, setAiHint] = useState<string | null>(null);
   const [hintLoading, setHintLoading] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
@@ -191,15 +133,12 @@ export function InputBar({
 
   useEffect(() => {
     aliveRef.current = true;
-    const browser = Boolean(getSpeechRecognitionCtor());
-    const cloud =
+    const ok =
       typeof MediaRecorder !== "undefined" &&
       Boolean(navigator.mediaDevices?.getUserMedia);
-    setVoiceSupported(browser || cloud);
+    setVoiceSupported(ok);
     return () => {
       aliveRef.current = false;
-      recognitionRef.current?.abort();
-      recognitionRef.current = null;
       mediaRecorderRef.current?.stop();
       mediaRecorderRef.current = null;
       mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -217,10 +156,6 @@ export function InputBar({
     [disabled, onSubmit, value],
   );
 
-  const stopBrowserVoiceInput = useCallback(() => {
-    recognitionRef.current?.stop();
-  }, []);
-
   const finalizeCloudRecording = useCallback(
     async (blobMime: string) => {
       const stream = mediaStreamRef.current;
@@ -236,9 +171,7 @@ export function InputBar({
 
       if (!aliveRef.current) return;
 
-      setIsListening(false);
-      setActiveBackend(null);
-      setListeningLangTag(null);
+      setIsRecording(false);
 
       if (blob.size < 64) {
         setVoiceError("No audio captured.");
@@ -298,10 +231,8 @@ export function InputBar({
       return;
     }
 
-    recognitionRef.current?.abort();
     baseTextRef.current = value;
     setVoiceError(null);
-    setListeningLangTag(null);
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -329,102 +260,21 @@ export function InputBar({
 
       mediaRecorderRef.current = rec;
       rec.start();
-      setActiveBackend("gemini");
-      setIsListening(true);
+      setIsRecording(true);
     } catch {
       setVoiceError("Microphone access was denied or unavailable.");
     }
   }, [disabled, finalizeCloudRecording, value]);
 
-  const startBrowserVoiceInput = useCallback(() => {
-    const Recognition = getSpeechRecognitionCtor();
-    if (!Recognition || disabled) return;
-
-    recognitionRef.current?.abort();
-    const recognition = new Recognition();
-    recognitionRef.current = recognition;
-    baseTextRef.current = value;
-    finalTranscriptRef.current = "";
-    setVoiceError(null);
-
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    const lang = resolveSpeechRecognitionLang(loadVoiceInputLang());
-    recognition.lang = lang;
-    setListeningLangTag(lang);
-    setActiveBackend("browser");
-
-    recognition.onresult = (event) => {
-      let interimTranscript = "";
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i];
-        const transcript = result?.[0]?.transcript ?? "";
-        if (result?.isFinal) {
-          finalTranscriptRef.current = `${finalTranscriptRef.current} ${transcript}`.trim();
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      const transcript = `${finalTranscriptRef.current} ${interimTranscript}`.trim();
-      onChange(appendTranscript(baseTextRef.current, transcript));
-    };
-
-    recognition.onerror = (event) => {
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        setVoiceError("Microphone access is blocked.");
-      } else if (event.error !== "no-speech") {
-        setVoiceError("Could not transcribe voice input.");
-      }
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      setListeningLangTag(null);
-      setActiveBackend(null);
-      recognitionRef.current = null;
-    };
-
-    try {
-      recognition.start();
-      setIsListening(true);
-    } catch {
-      recognitionRef.current = null;
-      setIsListening(false);
-      setListeningLangTag(null);
-      setActiveBackend(null);
-      setVoiceError("Could not start voice input.");
-    }
-  }, [disabled, onChange, value]);
-
   const toggleVoiceInput = useCallback(() => {
     if (disabled || cloudBusy) return;
 
-    const backend = loadTranscribeBackend();
-
-    if (backend === "gemini") {
-      if (isListening) {
-        mediaRecorderRef.current?.stop();
-        return;
-      }
-      void startCloudRecording();
+    if (isRecording) {
+      mediaRecorderRef.current?.stop();
       return;
     }
-
-    if (isListening) {
-      stopBrowserVoiceInput();
-      return;
-    }
-    startBrowserVoiceInput();
-  }, [
-    cloudBusy,
-    disabled,
-    isListening,
-    startBrowserVoiceInput,
-    startCloudRecording,
-    stopBrowserVoiceInput,
-  ]);
+    void startCloudRecording();
+  }, [cloudBusy, disabled, isRecording, startCloudRecording]);
 
   const applyWritingHint = useCallback(
     (hint: WritingHint) => {
@@ -482,23 +332,23 @@ export function InputBar({
               type="button"
               disabled={disabled || cloudBusy}
               onClick={toggleVoiceInput}
-              aria-pressed={isListening}
+              aria-pressed={isRecording}
               aria-label={
                 cloudBusy
                   ? "Transcribing"
-                  : isListening
-                    ? "Stop voice input"
-                    : "Start voice input"
+                  : isRecording
+                    ? "Stop recording"
+                    : "Start voice"
               }
               title={
                 cloudBusy
                   ? "Transcribing…"
-                  : isListening
-                    ? "Stop voice input"
-                    : "Start voice input"
+                  : isRecording
+                    ? "Stop recording"
+                    : "Start voice"
               }
               className={`absolute right-3 top-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900/50 disabled:text-zinc-600 disabled:hover:scale-100 ${
-                isListening
+                isRecording
                   ? "border-rose-400/70 bg-rose-500/15 text-rose-100 shadow-md shadow-rose-950/30"
                   : "border-zinc-700 bg-zinc-950/70 text-zinc-300 hover:border-indigo-500/60 hover:bg-indigo-950/35 hover:text-indigo-100"
               }`}
@@ -560,25 +410,9 @@ export function InputBar({
           <p className="text-xs text-amber-300">{voiceError}</p>
         ) : cloudBusy ? (
           <p className="text-xs text-indigo-300">Transcribing with Gemini…</p>
-        ) : isListening ? (
+        ) : isRecording ? (
           <p className="text-xs text-indigo-300">
-            {activeBackend === "gemini" ? (
-              <>
-                Recording… tap the mic again when you&apos;re done; then we send
-                audio to Gemini.
-              </>
-            ) : (
-              <>
-                Listening
-                {listeningLangTag ? (
-                  <span className="font-mono text-indigo-200/90">
-                    {" "}
-                    ({listeningLangTag})
-                  </span>
-                ) : null}
-                … speak now, then tap the mic again when done.
-              </>
-            )}
+            Recording… tap the mic again to send to Gemini.
           </p>
         ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
