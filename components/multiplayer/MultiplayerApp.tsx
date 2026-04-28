@@ -32,6 +32,10 @@ import {
   getSpectatorDisplayName,
 } from "@/lib/multiplayer/spectatorNameStorage";
 import {
+  messageFromErrorBody,
+  messageFromSessionGetFailure,
+} from "@/lib/multiplayer/sessionIdFormat";
+import {
   verdictForDebatePlayer,
   verdictInForAgainstOrder,
 } from "@/lib/multiplayer/verdictPerspective";
@@ -509,9 +513,9 @@ export function MultiplayerApp({ sessionId }: Props) {
         headers: authHeaders(sessionId),
         cache: "no-store",
       });
-      if (res.status === 404) {
-        setError("Session not found or expired.");
-        clearPlayerToken(sessionId);
+      if (res.status === 400 || res.status === 404) {
+        setError(await messageFromSessionGetFailure(res));
+        if (res.status === 404) clearPlayerToken(sessionId);
         return;
       }
       if (!res.ok) {
@@ -585,8 +589,10 @@ export function MultiplayerApp({ sessionId }: Props) {
           body: JSON.stringify({ nickname }),
         });
         if (!res.ok) {
-          const t = await res.text().catch(() => "Failed to join.");
-          throw new Error(t);
+          const t = await res.text().catch(() => "");
+          throw new Error(
+            messageFromErrorBody(t, res.status, "Failed to join."),
+          );
         }
         const data = (await res.json()) as {
           sessionId: string;

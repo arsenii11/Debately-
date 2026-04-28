@@ -8,12 +8,46 @@ import {
   getSession,
 } from "@/lib/multiplayer/store";
 import { normalizeVerdictToSlotA } from "@/lib/multiplayer/verdictPerspective";
-import { viewHistoryFromSide } from "@/lib/multiplayer/sessionLogic";
-import type { Side } from "@/lib/types";
+import {
+  countCompletedDebateRounds,
+  viewHistoryFromSide,
+} from "@/lib/multiplayer/sessionLogic";
+import type { Side, Verdict } from "@/lib/types";
 import type { MultiplayerSession, PlayerSlot, SlotId } from "@/lib/multiplayer/types";
 
 const inflightFactcheck = new Set<string>();
 const inflightVerdict = new Set<string>();
+
+const MIN_FULL_ROUNDS_FOR_CONCEDE_JUDGEMENT = 2;
+
+function forfeitVerdictWhenEarlyConcede(session: MultiplayerSession): Verdict {
+  const conceded = session.concededBy!;
+  const winnerSlot: SlotId = conceded === "A" ? "B" : "A";
+  const winPlayer = displayNameForVerdict(
+    getSlotForVerdictLabel(session, winnerSlot),
+  );
+  const winnerIsA = winnerSlot === "A";
+  return {
+    score_player: winnerIsA ? 100 : 0,
+    score_opponent: winnerIsA ? 0 : 100,
+    breakdown: {
+      factual: winnerIsA ? [100, 0] : [0, 100],
+      logic: winnerIsA ? [100, 0] : [0, 100],
+      relevance: winnerIsA ? [100, 0] : [0, 100],
+      rhetoric: winnerIsA ? [100, 0] : [0, 100],
+    },
+    summary: `The match ended in concession before ${MIN_FULL_ROUNDS_FOR_CONCEDE_JUDGEMENT} full debate rounds, so the judge did not run a full analysis. **${winPlayer}** is awarded the win by forfeit.`,
+    best_arg_player: "—",
+    best_arg_opponent: "—",
+  };
+}
+
+function getSlotForVerdictLabel(
+  session: MultiplayerSession,
+  slot: SlotId,
+): PlayerSlot {
+  return slot === "A" ? session.players[0] : session.players[1];
+}
 
 function displayNameForVerdict(player: PlayerSlot): string {
   const trimmed = (player.nickname ?? "").trim();
@@ -97,6 +131,16 @@ export async function runVerdictForSession(args: {
     const session = getSession(args.sessionId);
     if (!session) return;
     if (session.verdict) return;
+    if (session.concededBy) {
+      const fullRounds = countCompletedDebateRounds(session);
+      if (fullRounds < MIN_FULL_ROUNDS_FOR_CONCEDE_JUDGEMENT) {
+        applyVerdict({
+          sessionId: args.sessionId,
+          verdict: forfeitVerdictWhenEarlyConcede(session),
+        });
+        return;
+      }
+    }
     // Build a player POV view: anchor "player" to slot A by default.
     const anchorSlot: SlotId = args.fromSlot ?? "A";
     const anchor = anchorSlot === "A" ? session.players[0] : session.players[1];

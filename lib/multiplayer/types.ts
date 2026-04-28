@@ -89,6 +89,8 @@ export type MultiplayerSession = {
   skippedTurns: { FOR: number; AGAINST: number };
   /** Spectator reactions per argument (likes, dislikes, etc.). */
   likes: SpecLike[];
+  /** When true, only host (slot A) can change guest side choice in lobby. */
+  sideSelectionLockedByHost: boolean;
 };
 
 /** Public-facing snapshot — token hashes redacted, "yourSlot" set per recipient. */

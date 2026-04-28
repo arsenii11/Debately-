@@ -16,6 +16,7 @@ type Body = {
   side?: "FOR" | "AGAINST" | null;
   turnRounds?: number | null;
   turnTimerSeconds?: number | null;
+  sideSelectionLockedByHost?: boolean;
   nickname?: string;
   ready?: boolean;
 };

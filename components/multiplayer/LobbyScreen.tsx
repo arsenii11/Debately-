@@ -24,6 +24,7 @@ type Props = {
       side?: Side | null;
       turnRounds?: number | null;
       turnTimerSeconds?: number | null;
+      sideSelectionLockedByHost?: boolean;
       nickname?: string;
       ready?: boolean;
     },
@@ -105,6 +106,7 @@ export function LobbyScreen({
   const myReady = me?.ready === true;
   const opponentReady = opponent?.ready === true;
   const isHost = mySlot === "A";
+  const sideSelectionLockedByHost = session.sideSelectionLockedByHost;
 
   const canEdit = !!me;
   const settings = session.settings;
@@ -317,14 +319,35 @@ export function LobbyScreen({
           )}
 
           <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-              Choose your side — no switching after 👊
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                Choose your side — no switching after 👊
+              </p>
+              {isHost ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdate({
+                      sideSelectionLockedByHost: !sideSelectionLockedByHost,
+                    })
+                  }
+                  disabled={busy}
+                  className={`cursor-pointer rounded-md border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+                    sideSelectionLockedByHost
+                      ? "border-amber-400/60 bg-amber-500/20 text-amber-100"
+                      : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500"
+                  }`}
+                >
+                  {sideSelectionLockedByHost ? "Side lock: on" : "Side lock: off"}
+                </button>
+              ) : null}
+            </div>
             <div className="mt-2 flex gap-2">
               {(["FOR", "AGAINST"] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
+                  disabled={busy || (!isHost && sideSelectionLockedByHost)}
                   onClick={() => onUpdate({ side: s })}
                   className={`flex-1 cursor-pointer rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
                     effectiveSide === s
@@ -332,22 +355,26 @@ export function LobbyScreen({
                         ? "border-emerald-400 bg-emerald-500/20 text-emerald-100"
                         : "border-rose-400 bg-rose-500/20 text-rose-100"
                       : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500"
-                  }`}
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
                 >
                   {s}
                 </button>
               ))}
               <button
                 type="button"
+                disabled={busy || (!isHost && sideSelectionLockedByHost)}
                 onClick={() => onUpdate({ side: null })}
-                className="cursor-pointer rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-400 hover:border-zinc-500"
+                className="cursor-pointer rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs font-semibold text-zinc-400 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Random
               </button>
             </div>
             <p className="mt-2 text-[11px] text-zinc-500">
-              Can&apos;t both argue the same side — one of you gets flipped
-              automatically.
+              {isHost
+                ? "You can lock side choice so only you assign sides before start."
+                : sideSelectionLockedByHost
+                  ? "Host locked side choice and will decide sides."
+                  : "Can&apos;t both argue the same side — one of you gets flipped automatically."}
             </p>
           </section>
 
@@ -361,17 +388,21 @@ export function LobbyScreen({
                   <button
                     key={n}
                     type="button"
+                    disabled={busy || !isHost}
                     onClick={() => onUpdate({ turnRounds: n })}
                     className={`cursor-pointer rounded-md border px-2.5 py-1 text-xs font-semibold ${
                       effectiveRounds === n
                         ? "border-indigo-400 bg-indigo-500/20 text-indigo-100"
                         : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500"
-                    }`}
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
                   >
                     {n}
                   </button>
                 ))}
               </div>
+              {!isHost ? (
+                <p className="mt-2 text-[11px] text-zinc-500">Only host can change rounds.</p>
+              ) : null}
             </div>
             <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
@@ -391,18 +422,22 @@ export function LobbyScreen({
                       key={label}
                       type="button"
                       title={tooltip}
+                      disabled={busy || !isHost}
                       onClick={() => onUpdate({ turnTimerSeconds: value })}
                       className={`cursor-pointer rounded-md border px-2.5 py-1 text-xs font-semibold ${
                         active
                           ? "border-indigo-400 bg-indigo-500/20 text-indigo-100"
                           : "border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500"
-                      }`}
+                      } disabled:cursor-not-allowed disabled:opacity-50`}
                     >
                       {label}
                     </button>
                   );
                 })}
               </div>
+              {!isHost ? (
+                <p className="mt-2 text-[11px] text-zinc-500">Only host can change timer.</p>
+              ) : null}
             </div>
           </section>
 

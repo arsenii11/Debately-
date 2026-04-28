@@ -20,6 +20,7 @@ import {
   getStoreInternalsForTests,
   joinExistingSession,
 } from "@/lib/multiplayer/store";
+import { runVerdictForSession } from "@/lib/multiplayer/aiOrchestrator";
 import {
   SKIP_AUTO_CONCEDE_THRESHOLD,
   hashPlayerToken,
@@ -114,6 +115,71 @@ function startedSession(): {
   };
 }
 
+describe("lobby permissions", () => {
+  it("allows only host to set rounds and timer", () => {
+    const host = createSessionWithHost({ nickname: "Alice" });
+    const join = joinExistingSession({
+      sessionId: host.session.id,
+      nickname: "Bob",
+    });
+    if (join.kind !== "ok") throw new Error("expected fresh join");
+
+    applyLobbyUpdate({
+      sessionId: host.session.id,
+      slot: "B",
+      update: { turnRounds: 8, turnTimerSeconds: 300 },
+    });
+    let session = getSession(host.session.id)!;
+    expect(session.players[1].proposal.turnRounds).toBeNull();
+    expect(session.players[1].proposal.turnTimerSeconds).toBeNull();
+
+    applyLobbyUpdate({
+      sessionId: host.session.id,
+      slot: "A",
+      update: { turnRounds: 8, turnTimerSeconds: 300 },
+    });
+    session = getSession(host.session.id)!;
+    expect(session.players[0].proposal.turnRounds).toBe(8);
+    expect(session.players[0].proposal.turnTimerSeconds).toBe(300);
+  });
+
+  it("prevents guest side changes when host lock is enabled", () => {
+    const host = createSessionWithHost({ nickname: "Alice" });
+    const join = joinExistingSession({
+      sessionId: host.session.id,
+      nickname: "Bob",
+    });
+    if (join.kind !== "ok") throw new Error("expected fresh join");
+
+    applyLobbyUpdate({
+      sessionId: host.session.id,
+      slot: "A",
+      update: { sideSelectionLockedByHost: true, side: "FOR" },
+    });
+    applyLobbyUpdate({
+      sessionId: host.session.id,
+      slot: "B",
+      update: { side: "AGAINST" },
+    });
+    let session = getSession(host.session.id)!;
+    expect(session.sideSelectionLockedByHost).toBe(true);
+    expect(session.players[1].proposal.side).toBeNull();
+
+    applyLobbyUpdate({
+      sessionId: host.session.id,
+      slot: "A",
+      update: { sideSelectionLockedByHost: false },
+    });
+    applyLobbyUpdate({
+      sessionId: host.session.id,
+      slot: "B",
+      update: { side: "AGAINST" },
+    });
+    session = getSession(host.session.id)!;
+    expect(session.players[1].proposal.side).toBe("AGAINST");
+  });
+});
+
 describe("multiplayer store lifecycle", () => {
   it("create → join → propose → ready×2 starts the debate", () => {
     const { sessionId } = startedSession();
@@ -187,6 +253,33 @@ describe("multiplayer store lifecycle", () => {
     expect(session.state).toBe("finished");
     expect(session.concededBy).toBe("B");
     expect(session.currentDeadlineAt).toBeNull();
+  });
+
+  it("concede before 2 full rounds uses forfeit verdict, not full judge", async () => {
+    const { sessionId } = startedSession();
+    const result = applyConcede({ sessionId, slot: "B" });
+    expect(result.kind).toBe("ok");
+    await runVerdictForSession({ sessionId, fromSlot: "B" });
+    const s = getSession(sessionId)!;
+    expect(s.verdict).not.toBeNull();
+    expect(s.verdict!.score_player).toBe(100);
+    expect(s.verdict!.score_opponent).toBe(0);
+    expect(s.verdict!.summary).toMatch(/forfeit/i);
+  });
+
+  it("concede after 1 full round still uses forfeit verdict", async () => {
+    const { sessionId } = startedSession();
+    const m1 = applyMove({ sessionId, slot: "A", text: "FOR opens." });
+    const m2 = applyMove({ sessionId, slot: "B", text: "AGAINST rebuts." });
+    expect(m1.kind).toBe("ok");
+    expect(m2.kind).toBe("ok");
+    const c = applyConcede({ sessionId, slot: "A" });
+    expect(c.kind).toBe("ok");
+    await runVerdictForSession({ sessionId, fromSlot: "A" });
+    const s = getSession(sessionId)!;
+    expect(s.verdict).not.toBeNull();
+    expect(s.verdict!.score_player).toBe(0);
+    expect(s.verdict!.score_opponent).toBe(100);
   });
 
   it("revision is strictly monotonic for any visible state change", () => {

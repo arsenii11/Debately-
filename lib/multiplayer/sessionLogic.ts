@@ -26,11 +26,13 @@ import {
   type SpecLike,
   type SpecReactionKind,
 } from "@/lib/multiplayer/types";
+import {
+  SESSION_ID_ALPHABET,
+  SESSION_ID_LENGTH,
+} from "@/lib/multiplayer/sessionIdFormat";
 
 export const SKIP_AUTO_CONCEDE_THRESHOLD = 3;
 export const DEFAULT_SESSION_TTL_MS = 12 * 60 * 60 * 1000;
-const SESSION_ID_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
-const SESSION_ID_LENGTH = 10;
 
 export function generateSessionId(): string {
   const bytes = randomBytes(SESSION_ID_LENGTH);
@@ -112,6 +114,7 @@ export function createEmptySession(now: number): MultiplayerSession {
     concededBy: null,
     skippedTurns: { FOR: 0, AGAINST: 0 },
     likes: [],
+    sideSelectionLockedByHost: false,
   };
 }
 
@@ -192,6 +195,7 @@ type LobbyUpdate = {
   side?: Side | null;
   turnRounds?: number | null;
   turnTimerSeconds?: number | null;
+  sideSelectionLockedByHost?: boolean;
   nickname?: string;
   ready?: boolean;
 };
@@ -208,20 +212,24 @@ export function updateLobby(
   let nickname = player.nickname;
   let side = player.side;
   let ready = player.ready;
+  let sideSelectionLockedByHost = session.sideSelectionLockedByHost;
 
   if (update.topic !== undefined) {
     const t = (update.topic ?? "").toString().slice(0, 280).trim();
     proposal.topic = t.length === 0 ? null : t;
   }
-  if (update.side !== undefined) {
+  if (typeof update.sideSelectionLockedByHost === "boolean" && slot === "A") {
+    sideSelectionLockedByHost = update.sideSelectionLockedByHost;
+  }
+  if (update.side !== undefined && (slot === "A" || !sideSelectionLockedByHost)) {
     proposal.side = update.side === "FOR" || update.side === "AGAINST" ? update.side : null;
     side = proposal.side;
   }
-  if (update.turnRounds !== undefined) {
+  if (update.turnRounds !== undefined && slot === "A") {
     proposal.turnRounds =
       update.turnRounds === null ? null : clampRounds(update.turnRounds);
   }
-  if (update.turnTimerSeconds !== undefined) {
+  if (update.turnTimerSeconds !== undefined && slot === "A") {
     proposal.turnTimerSeconds =
       update.turnTimerSeconds === null ? null : clampTimer(update.turnTimerSeconds);
   }
@@ -240,6 +248,7 @@ export function updateLobby(
     ready,
     lastSeenAt: now,
   });
+  next = { ...next, sideSelectionLockedByHost };
   next = mirrorOpponentSide(next, slot);
   return bumpRevision(next, now);
 }
@@ -389,6 +398,15 @@ function getCurrentRoundData(session: MultiplayerSession): MultiplayerRound {
 
 function bothSidesMovedThisRound(round: MultiplayerRound): boolean {
   return round.forMove !== null && round.againstMove !== null;
+}
+
+/** Full rounds where both FOR and AGAINST have a move in history. */
+export function countCompletedDebateRounds(session: MultiplayerSession): number {
+  let n = 0;
+  for (const r of session.history) {
+    if (bothSidesMovedThisRound(r)) n++;
+  }
+  return n;
 }
 
 export type RecordMoveResult =

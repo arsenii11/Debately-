@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { messageFromSessionGetFailure } from "@/lib/multiplayer/sessionIdFormat";
 import { verdictInForAgainstOrder } from "@/lib/multiplayer/verdictPerspective";
 import type { PublicSession } from "@/lib/multiplayer/types";
 import type { Verdict } from "@/lib/types";
@@ -37,10 +38,20 @@ export function ResultPageClient({ sessionId }: { sessionId: string }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/multiplayer/sessions/${sessionId}`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Not found"))))
-      .then((data: PublicSession) => setSession(data))
-      .catch(() => setError("Debate result not found or has expired."));
+    void (async () => {
+      const r = await fetch(`/api/multiplayer/sessions/${sessionId}`, {
+        cache: "no-store",
+      });
+      if (r.status === 400 || r.status === 404) {
+        setError(await messageFromSessionGetFailure(r));
+        return;
+      }
+      if (!r.ok) {
+        setError("Failed to load this result.");
+        return;
+      }
+      setSession((await r.json()) as PublicSession);
+    })();
   }, [sessionId]);
 
   const handlePrint = () => window.print();

@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import {
   expireDeadlineIfDue,
   getSession,
@@ -9,6 +10,11 @@ import {
 } from "@/lib/multiplayer/store";
 import { runVerdictForSession } from "@/lib/multiplayer/aiOrchestrator";
 import type { MultiplayerSession } from "@/lib/multiplayer/types";
+import {
+  INVALID_LOBBY_LINK_MESSAGE,
+  SESSION_GONE_MESSAGE,
+  isPlausibleSessionId,
+} from "@/lib/multiplayer/sessionIdFormat";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,10 +32,20 @@ function serializeForToken(
 }
 
 export async function GET(request: Request, { params }: Params) {
-  const { id } = await params;
+  const raw = (await params).id;
+  const id = raw?.trim() ?? "";
+  if (!isPlausibleSessionId(id)) {
+    return NextResponse.json(
+      { error: "invalid_link", message: INVALID_LOBBY_LINK_MESSAGE },
+      { status: 400 },
+    );
+  }
   const session = getSession(id);
   if (!session) {
-    return new Response("Session not found.", { status: 404 });
+    return NextResponse.json(
+      { error: "session_gone", message: SESSION_GONE_MESSAGE },
+      { status: 404 },
+    );
   }
 
   const url = new URL(request.url);
