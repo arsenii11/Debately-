@@ -1271,6 +1271,9 @@ export function SetupScreen({
           <Link href="/privacy" className="transition-colors hover:text-zinc-400">
             Privacy
           </Link>
+          <Link href="/cookies" className="transition-colors hover:text-zinc-400">
+            Cookies
+          </Link>
           <Link href="/terms" className="transition-colors hover:text-zinc-400">
             Terms
           </Link>

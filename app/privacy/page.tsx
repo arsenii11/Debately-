@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         Privacy Policy
       </h1>
       <p className="mb-10 text-sm text-zinc-500">
-        Effective date: April 26, 2026 (updated May 2026) · Bluume, Inc
+        Effective date: April 26, 2026 (updated April 28, 2026) · Bluume, Inc
       </p>
 
       <section className="flex flex-col gap-8 text-[15px] leading-relaxed">
@@ -55,8 +55,15 @@ export default function PrivacyPage() {
               log in, or provide an email address.
             </li>
             <li>
-              <strong className="text-zinc-200">No cookies.</strong> We do not set any cookies,
-              first-party or third-party.
+              <strong className="text-zinc-200">Cookies and local storage for preferences.</strong>{" "}
+              We set first-party cookies and{" "}
+              <code className="rounded bg-zinc-800 px-1 py-0.5 text-xs">localStorage</code>{" "}
+              to keep a random anonymous id for your browser, record whether you have accepted
+              optional analytics, and sync with our{" "}
+              <Link href="/cookies" className="text-indigo-400 hover:text-indigo-300">
+                Cookie policy
+              </Link>
+              . See that page for cookie names, duration, and choices.
             </li>
             <li>
               <strong className="text-zinc-200">Solo debates stay local except for AI processing.</strong>{" "}
@@ -125,7 +132,7 @@ export default function PrivacyPage() {
             4. Analytics
           </h2>
           <p>
-            We use{" "}
+            If you opt in to analytics in our on-site notice, we use{" "}
             <a
               href="https://plausible.io"
               target="_blank"
@@ -133,12 +140,13 @@ export default function PrivacyPage() {
               className="text-indigo-400 hover:text-indigo-300"
             >
               Plausible Analytics
-            </a>
-            , a privacy-preserving analytics service. Plausible does not use cookies, does not
-            collect personal identifiers, and does not store or process individual IP addresses.
-            Only aggregated, anonymous statistics are collected — page views, referrer source,
-            country (derived from IP and immediately discarded), and device type. No data is
-            shared with advertisers.
+            </a>{" "}
+            to understand aggregate traffic. Plausible is designed to limit personal data. If
+            you choose &quot;Essential only,&quot; we do not load Plausible. See also our{" "}
+            <Link href="/cookies" className="text-indigo-400 hover:text-indigo-300">
+              Cookie policy
+            </Link>{" "}
+            for what we store in first-party cookies and <code className="rounded bg-zinc-800 px-1 text-xs">localStorage</code>.
           </p>
         </div>
 
@@ -157,9 +165,23 @@ export default function PrivacyPage() {
               session state are necessary to deliver the core functionality of the Service.
             </li>
             <li>
-              <strong className="text-zinc-200">Legitimate interests</strong> — anonymous
-              analytics to understand aggregate usage patterns, without any impact on individual
-              privacy.
+              <strong className="text-zinc-200">Consent</strong> — where required (for example
+              optional analytics and associated cookies/local storage when you choose &quot;Accept
+              all&quot; in our notice), we rely on your choice as described in the{" "}
+              <Link href="/cookies" className="text-indigo-400 hover:text-indigo-300">
+                Cookie policy
+              </Link>
+              .
+            </li>
+            <li>
+              <strong className="text-zinc-200">Legitimate interests</strong> — for example
+              keeping the Service secure, preventing abuse, and measuring reliability in a way
+              that does not rely on optional marketing trackers. Optional analytics (when you
+              opt in) is described in the{" "}
+              <Link href="/cookies" className="text-indigo-400 hover:text-indigo-300">
+                Cookie policy
+              </Link>
+              .
             </li>
           </ul>
         </div>

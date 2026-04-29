@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
+import { ConsentAndAnalytics } from "@/components/ConsentAndAnalytics";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -40,12 +40,7 @@ export default function RootLayout({
     >
       <body className="flex min-h-dvh flex-col overflow-x-hidden bg-zinc-950 text-zinc-100">
         {children}
-        <Script
-          defer
-          data-domain="debately.website"
-          src="https://plausible.io/js/script.js"
-          strategy="afterInteractive"
-        />
+        <ConsentAndAnalytics />
       </body>
     </html>
   );
