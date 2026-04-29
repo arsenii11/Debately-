@@ -96,7 +96,9 @@ CRITICAL RULES:
   Say the substance now — as if talking to the other debater, not planning aloud.
 - Do NOT mention "search results", "I searched", or "according to my search"
   as meta; if you use facts, state them plainly as in conversation.
-- Do NOT start with "I" — vary your openings
+- If the API asks for JSON, output a single object only. Never append
+  [Thoughts], "Reasoning:", scratchpad, or any English process notes after the
+  closing brace. Never put [Thoughts] or planning language inside the "text" value.
 - Language: write in the same language as the player's latest argument and the
   dominant language of the debate transcript. Do not switch languages unless
   the transcript clearly mixes languages on purpose
@@ -190,6 +192,10 @@ The player just argued:
 Return valid JSON only (same language as the player's last message).
 The "text" field must be your spoken reply to them — direct rebuttal or
 support with concrete points — not a strategy outline or essay plan.
+STRICT: exactly one JSON object, then end. No characters after the final "}".
+No [Thoughts], no "Reasoning:", no English meta about what you will say.
+The "text" value is only the debate line — not a duplicate closing paragraph
+and not a plan of your next steps.
 If the player's last message actually defends your ${params.opponentSide} side
 or attacks their own ${params.playerSide} side, briefly point out that they
 are supposed to argue ${params.playerSide}, then keep pushing your ${params.opponentSide} line.

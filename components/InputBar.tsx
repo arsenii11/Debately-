@@ -332,15 +332,15 @@ export function InputBar({
                 cloudBusy
                   ? "Transcribing"
                   : isRecording
-                    ? "Stop recording"
-                    : "Start voice"
+                    ? "Stop recording and transcribe"
+                    : "Start voice recording"
               }
               title={
                 cloudBusy
                   ? "Transcribing…"
                   : isRecording
-                    ? "Stop recording"
-                    : "Start voice"
+                    ? "Tap to stop — your words are added after transcription"
+                    : "Record voice — tap again when done; text shows after transcribing (no live preview)"
               }
               className={`absolute right-3 top-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900/50 disabled:text-zinc-600 disabled:hover:scale-100 ${
                 isRecording
@@ -406,9 +406,18 @@ export function InputBar({
         ) : cloudBusy ? (
           <p className="text-xs text-indigo-300">Transcribing with Gemini…</p>
         ) : isRecording ? (
-          <p className="text-xs text-indigo-300">
-            Recording… tap the mic again to send to Gemini.
-          </p>
+          <div
+            className="rounded-lg border border-rose-500/35 bg-rose-950/25 px-3 py-2.5"
+            role="status"
+            aria-live="polite"
+          >
+            <p className="text-sm font-medium text-rose-100/95">
+              Recording — no live text
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-rose-200/80">
+              Speak your argument, then <strong className="font-semibold text-rose-50">tap the mic again</strong> to stop. Text is added only after that.
+            </p>
+          </div>
         ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">

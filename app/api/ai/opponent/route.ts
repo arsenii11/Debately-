@@ -8,6 +8,7 @@ import {
   opponentUserPrompt,
 } from "@/lib/prompts";
 import { extractBalancedJsonObject } from "@/lib/extractJson";
+import { stripReasoningLeaks } from "@/lib/stripReasoningLeaks";
 import { countWords } from "@/lib/truncateWords";
 import { DEFAULT_TIMED_TURN_TIMER_SECONDS } from "@/lib/types";
 import type { RoundData, Side } from "@/lib/types";
@@ -82,7 +83,13 @@ function parseOpponentResponse(raw: string): OpponentResponse | null {
   for (const text of candidates) {
     try {
       const parsed = JSON.parse(text) as OpponentResponse;
-      if (parsed && typeof parsed === "object") return parsed;
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        typeof parsed.text === "string"
+      ) {
+        return parsed;
+      }
     } catch {
       /* try next */
     }
@@ -159,8 +166,12 @@ export async function POST(request: Request) {
       });
     }
 
+    raw = stripReasoningLeaks(raw);
+
     const parsed = parseOpponentResponse(raw);
-    let trimmed = stripAccidentalDuplicateBlock((parsed?.text ?? raw).trim());
+    let trimmed = stripAccidentalDuplicateBlock(
+      stripReasoningLeaks((parsed?.text ?? raw).trim()),
+    );
 
     // If the result looks cut mid-sentence, retry in plain-text mode so the
     // model spends all tokens on content rather than JSON scaffolding.
@@ -181,11 +192,11 @@ export async function POST(request: Request) {
           systemInstruction: opponentParams.systemInstruction,
           userPrompt:
             opponentParams.userPrompt +
-            `\n\nIMPORTANT: Output ONLY your spoken response as plain text — no JSON, no markdown, no formatting. End with a complete sentence. Keep it under ${maxWords} words.`,
+            `\n\nIMPORTANT: Output ONLY your spoken response as plain text — no JSON, no markdown, no formatting. End with a complete sentence. Keep it under ${maxWords} words. Do not add [Thoughts] or any reasoning after your answer.`,
           maxOutputTokens: Math.round(lengthProfile.maxOutputTokens * 2.5),
         });
         const trimmed2 = stripAccidentalDuplicateBlock(
-          raw2
+          stripReasoningLeaks(raw2)
             .replace(/^```(?:json)?\s*/i, "")
             .replace(/\s*```$/i, "")
             .replace(/^\{?"text"\s*:\s*"?/i, "")
