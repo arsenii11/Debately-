@@ -22,6 +22,24 @@ function MicrophoneIcon({ className }: { className?: string }) {
   );
 }
 
+function StopRecordingIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <rect x="4" y="4" width="12" height="12" rx="1.2" />
+    </svg>
+  );
+}
+
+const VOICE_BAR_DELAYS = ["0ms", "0.1s", "0.2s", "0.1s", "0.3s", "0.15s"] as const;
+
+const MARQUEE_HINT_P =
+  "Recording — no live preview. Speak, then tap stop to add text after transcribing. ";
+
 function appendTranscript(base: string, transcript: string): string {
   const trimmedTranscript = transcript.trim();
   if (!trimmedTranscript) return base.slice(0, MAX);
@@ -339,16 +357,20 @@ export function InputBar({
                 cloudBusy
                   ? "Transcribing…"
                   : isRecording
-                    ? "Tap to stop — your words are added after transcription"
-                    : "Record voice — tap again when done; text shows after transcribing (no live preview)"
+                    ? "Stop — text is added after transcription (no live preview)"
+                    : "Record — tap again when done; text shows after transcribing"
               }
               className={`absolute right-3 top-3 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg border transition-all active:scale-[0.96] disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-900/50 disabled:text-zinc-600 disabled:hover:scale-100 ${
                 isRecording
-                  ? "border-rose-400/70 bg-rose-500/15 text-rose-100 shadow-md shadow-rose-950/30"
+                  ? "border-rose-300/80 bg-rose-600/90 text-white shadow-md shadow-rose-950/40"
                   : "border-zinc-700 bg-zinc-950/70 text-zinc-300 hover:border-indigo-500/60 hover:bg-indigo-950/35 hover:text-indigo-100"
               }`}
             >
-              <MicrophoneIcon className="h-5 w-5" />
+              {isRecording ? (
+                <StopRecordingIcon className="h-4 w-4" />
+              ) : (
+                <MicrophoneIcon className="h-5 w-5" />
+              )}
             </button>
           ) : null}
         </div>
@@ -407,16 +429,43 @@ export function InputBar({
           <p className="text-xs text-indigo-300">Transcribing with Gemini…</p>
         ) : isRecording ? (
           <div
-            className="rounded-lg border border-rose-500/35 bg-rose-950/25 px-3 py-2.5"
+            className="overflow-hidden rounded-xl border border-rose-500/40 bg-gradient-to-b from-rose-950/40 to-zinc-900/25 shadow-[0_0_0_1px_rgba(244,63,94,0.12),inset_0_1px_0_rgba(255,255,255,0.04)]"
             role="status"
             aria-live="polite"
+            aria-relevant="additions"
           >
-            <p className="text-sm font-medium text-rose-100/95">
-              Recording — no live text
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-rose-200/80">
-              Speak your argument, then <strong className="font-semibold text-rose-50">tap the mic again</strong> to stop. Text is added only after that.
-            </p>
+            <div
+              className="inputbar-voice-timeline"
+              aria-hidden="true"
+            />
+            <div className="flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="inputbar-voice-bars shrink-0" aria-hidden="true">
+                {VOICE_BAR_DELAYS.map((delay, i) => (
+                  <span
+                    key={i}
+                    className="inputbar-voice-bars__bar"
+                    style={{ animationDelay: delay }}
+                  />
+                ))}
+              </div>
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-400/70 opacity-50" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500 shadow-sm shadow-rose-600/50" />
+                </span>
+                <div className="min-w-0 flex-1 text-left">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-rose-200/90">
+                    Recording
+                  </p>
+                  <div className="inputbar-rec-marquee">
+                    <p className="inputbar-rec-marquee__track text-[0.7rem] leading-tight text-rose-200/80">
+                      <span>{MARQUEE_HINT_P}</span>
+                      <span>{MARQUEE_HINT_P}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
