@@ -36,6 +36,7 @@ async function readJson<T>(res: Response): Promise<T> {
 
 export function AuthCard({ nickname, onNickname }: Props) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [maskedEmail, setMaskedEmail] = useState<string | null>(null);
@@ -104,7 +105,8 @@ export function AuthCard({ nickname, onNickname }: Props) {
       setUser(nextUser);
       if (nextUser?.displayName) onNickname(nextUser.displayName);
       setCode("");
-      setNotice("Email verified. Your encrypted account is active.");
+      setOpen(false);
+      setNotice("Email verified. You are signed in.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not verify code.");
     } finally {
@@ -131,108 +133,125 @@ export function AuthCard({ nickname, onNickname }: Props) {
 
   if (!hydrated) {
     return (
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 text-sm text-zinc-500 sm:p-5">
-        Checking encrypted account...
-      </section>
+      <div className="h-9 w-24 animate-pulse rounded-full border border-zinc-800 bg-zinc-900/70" />
     );
   }
 
-  if (user) {
-    return (
-      <section className="rounded-2xl border border-emerald-400/30 bg-emerald-950/20 p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-emerald-300">
-              Verified account
-            </p>
-            <h3 className="mt-1 text-lg font-black text-zinc-50">
-              {user.displayName || user.email}
-            </h3>
-            <p className="mt-1 text-xs leading-relaxed text-zinc-400">
-              Email is encrypted at rest. Session lives in an httpOnly cookie.
-            </p>
-          </div>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={logout}
-            className="w-fit cursor-pointer rounded-xl border border-emerald-400/45 bg-emerald-400/10 px-4 py-2 text-xs font-bold uppercase tracking-wide text-emerald-100 transition-colors hover:border-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {busy ? "Signing out..." : "Sign out"}
-          </button>
-        </div>
-        {notice ? <p className="mt-3 text-xs text-emerald-200">{notice}</p> : null}
-        {error ? <p className="mt-3 text-xs text-rose-300">{error}</p> : null}
-      </section>
-    );
-  }
+  const initials = (user?.displayName || user?.email || "Profile")
+    .trim()
+    .slice(0, 1)
+    .toUpperCase();
 
   return (
-    <section className="rounded-2xl border border-amber-400/30 bg-amber-950/20 p-4 sm:p-5">
-      <div className="flex flex-col gap-4">
-        <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-300">
-            Secure login
-          </p>
-          <h3 className="mt-1 text-lg font-black text-zinc-50">
-            Verify by email, keep the same account everywhere
-          </h3>
-          <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-            No password. We send a 6-digit code, encrypt private fields in SQLite,
-            and keep the session in an httpOnly cookie.
-          </p>
-        </div>
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition-colors ${
+          user
+            ? "border-emerald-400/35 bg-emerald-400/10 text-emerald-100 hover:border-emerald-300"
+            : "border-zinc-700 bg-zinc-900/80 text-zinc-200 hover:border-amber-300/70 hover:text-amber-100"
+        }`}
+        aria-expanded={open}
+      >
+        <span
+          className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
+            user ? "bg-emerald-400/25" : "bg-amber-400/20"
+          }`}
+        >
+          {user ? initials : "?"}
+        </span>
+        <span className="hidden sm:inline">{user ? "Profile" : "Sign in"}</span>
+      </button>
 
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            className="min-w-0 rounded-xl border border-zinc-700 bg-zinc-950/70 px-4 py-3 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-amber-300/80"
-          />
-          <button
-            type="button"
-            disabled={busy || email.trim().length === 0}
-            onClick={requestCode}
-            className="cursor-pointer rounded-xl border border-amber-400/55 bg-amber-400/10 px-4 py-3 text-sm font-bold text-amber-100 transition-colors hover:border-amber-300 hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {busy ? "Sending..." : "Send code"}
-          </button>
-        </div>
-
-        {maskedEmail ? (
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-            <input
-              value={code}
-              onChange={(e) =>
-                setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-              }
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="123456"
-              className="min-w-0 rounded-xl border border-zinc-700 bg-zinc-950/70 px-4 py-3 font-mono text-sm tracking-[0.3em] text-zinc-100 outline-none transition-colors placeholder:tracking-normal placeholder:text-zinc-600 focus:border-emerald-300/80"
-            />
-            <button
-              type="button"
-              disabled={busy || code.length !== 6}
-              onClick={verifyCode}
-              className="cursor-pointer rounded-xl border border-emerald-400/55 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100 transition-colors hover:border-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+      {open ? (
+        <section className="absolute right-0 top-full z-[120] mt-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-zinc-800 bg-zinc-950/98 p-4 text-left shadow-2xl shadow-black/45 backdrop-blur">
+          <div>
+            <p
+              className={`text-[11px] font-black uppercase tracking-[0.22em] ${
+                user ? "text-emerald-300" : "text-amber-300"
+              }`}
             >
-              {busy ? "Checking..." : "Verify"}
-            </button>
-            <p className="text-xs leading-relaxed text-zinc-500 sm:col-span-2">
-              Sent to {maskedEmail}
-              {expiresAt ? `, expires at ${new Date(expiresAt).toLocaleTimeString()}` : ""}.
+              {user ? "Profile" : "Account"}
+            </p>
+            <h3 className="mt-1 text-lg font-black text-zinc-50">
+              {user
+                ? user.displayName || user.email
+                : "Save your progress"}
+            </h3>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+              {user
+                ? "Your progress can follow you across devices."
+                : "Enter your email and we will send a short sign-in code."}
             </p>
           </div>
-        ) : null}
 
-        {notice ? <p className="text-xs text-emerald-200">{notice}</p> : null}
-        {error ? <p className="text-xs text-rose-300">{error}</p> : null}
-      </div>
-    </section>
+          {user ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={logout}
+              className="mt-4 w-full cursor-pointer rounded-xl border border-emerald-400/45 bg-emerald-400/10 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-emerald-100 transition-colors hover:border-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {busy ? "Signing out..." : "Sign out"}
+            </button>
+          ) : (
+            <div className="mt-4 flex flex-col gap-3">
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className="min-w-0 rounded-xl border border-zinc-700 bg-zinc-950/70 px-3 py-2.5 text-sm text-zinc-100 outline-none transition-colors placeholder:text-zinc-600 focus:border-amber-300/80"
+                />
+                <button
+                  type="button"
+                  disabled={busy || email.trim().length === 0}
+                  onClick={requestCode}
+                  className="cursor-pointer rounded-xl border border-amber-400/55 bg-amber-400/10 px-3 py-2.5 text-xs font-bold text-amber-100 transition-colors hover:border-amber-300 hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {busy ? "Sending..." : "Send"}
+                </button>
+              </div>
+
+              {maskedEmail ? (
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <input
+                    value={code}
+                    onChange={(e) =>
+                      setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="123456"
+                    className="min-w-0 rounded-xl border border-zinc-700 bg-zinc-950/70 px-3 py-2.5 font-mono text-sm tracking-[0.3em] text-zinc-100 outline-none transition-colors placeholder:tracking-normal placeholder:text-zinc-600 focus:border-emerald-300/80"
+                  />
+                  <button
+                    type="button"
+                    disabled={busy || code.length !== 6}
+                    onClick={verifyCode}
+                    className="cursor-pointer rounded-xl border border-emerald-400/55 bg-emerald-400/10 px-3 py-2.5 text-xs font-bold text-emerald-100 transition-colors hover:border-emerald-300 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {busy ? "Checking..." : "Verify"}
+                  </button>
+                  <p className="text-xs leading-relaxed text-zinc-500 sm:col-span-2">
+                    Sent to {maskedEmail}
+                    {expiresAt
+                      ? `, expires at ${new Date(expiresAt).toLocaleTimeString()}`
+                      : ""}
+                    .
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {notice ? <p className="mt-3 text-xs text-emerald-200">{notice}</p> : null}
+          {error ? <p className="mt-3 text-xs text-rose-300">{error}</p> : null}
+        </section>
+      ) : null}
+    </div>
   );
 }
-

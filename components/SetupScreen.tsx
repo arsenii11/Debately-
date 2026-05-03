@@ -935,10 +935,16 @@ export function SetupScreen({
         );
       })}
       <div className="relative z-[100] isolate mx-auto flex w-full max-w-2xl flex-col gap-8 [pointer-events:auto]">
-        <header className="flex flex-col items-center gap-5 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">
-            Debately
-          </h1>
+        <header className="flex flex-col gap-5 text-center">
+          <div className="flex items-center justify-between gap-3">
+            <span aria-hidden className="w-24" />
+            <h1 className="text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">
+              Debately
+            </h1>
+            <div className="flex w-24 justify-end">
+              <AuthCard nickname={nickname} onNickname={onNickname} />
+            </div>
+          </div>
           <nav
             className="flex w-full max-w-lg justify-center px-0.5 sm:max-w-xl"
             aria-label="App mode"
@@ -1165,8 +1171,6 @@ export function SetupScreen({
             >
               Start Debate — Let&apos;s go ⚔
             </button>
-
-            <AuthCard nickname={nickname} onNickname={onNickname} />
 
             <section className="rounded-2xl border border-sky-400/30 bg-sky-950/20 p-4 text-left sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
