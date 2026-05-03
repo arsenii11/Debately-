@@ -12,9 +12,10 @@ export type TopicCategory = {
 
 type CacheEntry = { date: string; categories: TopicCategory[] };
 
-// Disk cache survives container restarts; /tmp is writable for the runtime user.
-const DISK_CACHE_PATH =
-  process.env.TOPICS_CACHE_PATH ?? path.join("/tmp", "debately-topics.json");
+// Disk cache survives container restarts; keep the path constrained so Next's
+// output-file tracer does not conservatively copy the whole project.
+const DEFAULT_DISK_CACHE_PATH = "/tmp/debately-topics.json";
+const ALLOWED_CACHE_PREFIXES = ["/tmp/", "/var/cache/debately/"] as const;
 
 let memoryCache: CacheEntry | null = null;
 // Single-flight lock: if a generation is in progress, all concurrent requests await it.
@@ -24,9 +25,21 @@ function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+function diskCachePath(): string {
+  const explicit = process.env.TOPICS_CACHE_PATH?.trim();
+  if (
+    explicit &&
+    ALLOWED_CACHE_PREFIXES.some((prefix) => explicit.startsWith(prefix))
+  ) {
+    return explicit;
+  }
+  return DEFAULT_DISK_CACHE_PATH;
+}
+
 async function readDiskCache(): Promise<CacheEntry | null> {
+  const cachePath = diskCachePath();
   try {
-    const raw = await fs.readFile(DISK_CACHE_PATH, "utf8");
+    const raw = await fs.readFile(/* turbopackIgnore: true */ cachePath, "utf8");
     const parsed = JSON.parse(raw) as Partial<CacheEntry>;
     if (
       parsed &&
@@ -42,21 +55,20 @@ async function readDiskCache(): Promise<CacheEntry | null> {
 }
 
 async function writeDiskCache(entry: CacheEntry): Promise<void> {
+  const cachePath = diskCachePath();
   try {
-    await fs.mkdir(path.dirname(DISK_CACHE_PATH), { recursive: true });
-    await fs.writeFile(DISK_CACHE_PATH, JSON.stringify(entry), "utf8");
+    await fs.mkdir(path.dirname(/* turbopackIgnore: true */ cachePath), {
+      recursive: true,
+    });
+    await fs.writeFile(
+      /* turbopackIgnore: true */ cachePath,
+      JSON.stringify(entry),
+      "utf8",
+    );
   } catch {
     /* best effort */
   }
 }
-
-const CATEGORY_DEFS = [
-  { id: "easy", label: "Easy" },
-  { id: "fun", label: "Fun" },
-  { id: "life", label: "Life" },
-  { id: "tech", label: "Tech" },
-  { id: "politics", label: "Politics" },
-] as const;
 
 const TOPICS_SYSTEM = `You generate debate topic suggestions grouped by category. Output only a valid JSON object. No markdown, no extra text.`;
 

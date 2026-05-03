@@ -21,6 +21,9 @@ build
 npm-debug.log*
 coverage
 *.tsbuildinfo
+.data
+*.sqlite
+*.sqlite-*
 
 # docker (файлы на хосте для compose; в образ не нужны)
 nginx
