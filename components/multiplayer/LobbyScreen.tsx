@@ -152,7 +152,7 @@ export function LobbyScreen({
           Set up the fight 🥊
         </h1>
         <p className="text-sm text-zinc-400">
-          Send this link to your opponent. Once you&apos;re both set, hit Ready,
+          Send this link to your opponent. Once you're both set, hit Ready,
           and it begins. No backing out 💀
         </p>
       </header>
@@ -247,7 +247,7 @@ export function LobbyScreen({
               ) : (
                 <p className="mt-2 text-xs text-zinc-500">
                   {isHost
-                    ? "Send them the link. They&apos;ll show up here when they open it."
+                    ? "Send them the link. They'll show up here when they open it."
                     : "Hold tight…"}
                 </p>
               )}
@@ -374,7 +374,7 @@ export function LobbyScreen({
                 ? "You can lock side choice so only you assign sides before start."
                 : sideSelectionLockedByHost
                   ? "Host locked side choice and will decide sides."
-                  : "Can&apos;t both argue the same side — one of you gets flipped automatically."}
+                  : "Can't both argue the same side — one of you gets flipped automatically."}
             </p>
           </section>
 
@@ -472,13 +472,13 @@ export function LobbyScreen({
             <div className="text-sm text-zinc-300">
               <p className="font-semibold">
                 {myReady
-                  ? "You&apos;re locked in."
-                  : "Lock in when you&apos;re ready. Your opponent will see it. 👀"}
+                  ? "You're locked in."
+                  : "Lock in when you're ready. Your opponent will see it. 👀"}
               </p>
               <p className="text-xs text-zinc-500">
                 {opponentReady
                   ? "Opponent: ready ✅"
-                  : "Opponent hasn&apos;t tapped Ready yet… 👀"}
+                  : "Opponent hasn't tapped Ready yet… 👀"}
               </p>
             </div>
             <button
@@ -491,7 +491,7 @@ export function LobbyScreen({
                   : "bg-indigo-600 text-white hover:bg-indigo-500"
               } disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500`}
             >
-              {myReady ? "Cancel ready" : "I&apos;m Ready — Lock It In ✅"}
+              {myReady ? "Cancel ready" : "I'm Ready — Lock It In ✅"}
             </button>
           </section>
         </>

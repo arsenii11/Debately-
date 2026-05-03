@@ -16,6 +16,7 @@ import {
 import { InputBar } from "./InputBar";
 import { SetupScreen } from "./SetupScreen";
 import { Timer } from "./Timer";
+import { TurnBrowserNotifyBanner } from "./TurnBrowserNotifyBanner";
 import { VerdictCard } from "./VerdictCard";
 import {
   parseFactcheckJson,
@@ -109,6 +110,7 @@ export function DebatelyApp() {
   const [showAiInfo, setShowAiInfo] = useState(false);
 
   const skipScheduled = useRef(false);
+  const prevAiThinkingRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastOpponentAnchorRef = useRef<HTMLDivElement>(null);
   const runTurnRef = useRef<
@@ -278,6 +280,35 @@ export function DebatelyApp() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [history, isAIThinking, thinkingStage, phase, verdict]);
+
+  useEffect(() => {
+    const prev = prevAiThinkingRef.current;
+    prevAiThinkingRef.current = isAIThinking;
+    if (
+      phase !== "debating" ||
+      isCheremshaSoloEgg ||
+      launchCountdown !== null
+    ) {
+      return;
+    }
+    if (!prev || isAIThinking) return;
+    if (typeof document === "undefined" || !document.hidden) return;
+    try {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification("Debately", {
+          body: "Your turn — Debately has replied.",
+          tag: "debately-solo-your-turn",
+        });
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      navigator.vibrate?.(60);
+    } catch {
+      /* ignore */
+    }
+  }, [isAIThinking, phase, isCheremshaSoloEgg, launchCountdown]);
 
   useEffect(() => {
     if (
@@ -835,7 +866,7 @@ export function DebatelyApp() {
                 launchCountdown === null &&
                 !isAIThinking &&
                 timer === 0 ? (
-                <span className="text-xs text-red-400">Time&apos;s up</span>
+                <span className="text-xs text-red-400">Time's up</span>
               ) : phase === "debating" && launchCountdown !== null ? (
                 <span className="text-xs font-medium uppercase tracking-wide text-fuchsia-400/90">
                   Starting…
@@ -931,6 +962,15 @@ export function DebatelyApp() {
           ) : null}
         </div>
       </header>
+
+      <TurnBrowserNotifyBanner
+        storageKey="debately:solo-turn-notify-tip"
+        show={
+          phase === "debating" &&
+          launchCountdown === null &&
+          !isCheremshaSoloEgg
+        }
+      />
 
       {error ? (
         <div className="shrink-0 border-b border-red-900/50 bg-red-950/40 px-4 py-2 text-center text-sm text-red-200">

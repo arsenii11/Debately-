@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { ChatArea } from "@/components/ChatArea";
 import { InputBar } from "@/components/InputBar";
 import { Timer } from "@/components/Timer";
+import { TurnBrowserNotifyBanner } from "@/components/TurnBrowserNotifyBanner";
 import { VerdictCard } from "@/components/VerdictCard";
 import { LobbyScreen } from "@/components/multiplayer/LobbyScreen";
 import { viewMultiplayerRoundsFromSide } from "@/lib/multiplayer/clientView";
@@ -140,8 +141,7 @@ function OpponentWaitBanner({
         </button>
       ) : notifySupported && Notification.permission === "granted" ? (
         <p className="text-center text-[10px] text-zinc-600">
-          You’ll get a browser alert if they send while this tab is in the
-          background.
+          You’ll get a browser alert when they send their argument.
         </p>
       ) : null}
       <p className="text-center text-[10px] text-zinc-600">
@@ -231,6 +231,10 @@ function LiveDebate(props: LiveStateProps) {
           }}
         />
       )}
+      <TurnBrowserNotifyBanner
+        storageKey="debately:mp-your-turn-notify-tip"
+        show={isMyTurn}
+      />
       <ChatArea
         topic={session.settings.topic}
         playerName={myNickname}
@@ -809,9 +813,10 @@ export function MultiplayerApp({ sessionId }: Props) {
     const prev = hadOppMoveRef.current;
     hadOppMoveRef.current = has;
 
-    if (isMyTurn || !has || prev) return;
-
-    if (typeof document === "undefined" || !document.hidden) return;
+    // Opponent text and `isMyTurn` flip in the same session snapshot (their
+    // move ends their turn and hands you the clock), so we must not require
+    // `!isMyTurn` here — that blocked all notifications.
+    if (!has || prev) return;
 
     try {
       if ("Notification" in window && Notification.permission === "granted") {
@@ -828,7 +833,7 @@ export function MultiplayerApp({ sessionId }: Props) {
     } catch {
       /* ignore */
     }
-  }, [session, mySide, isMyTurn, opponentName, sessionId]);
+  }, [session, mySide, opponentName, sessionId]);
 
   useEffect(() => {
     if (!session || session.state !== "live" || !isMyTurn) return;

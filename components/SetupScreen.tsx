@@ -1103,7 +1103,7 @@ export function SetupScreen({
               onClick={onStart}
               className="cursor-pointer rounded-xl bg-indigo-600 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100 sm:text-lg"
             >
-              Start Debate — Let&apos;s go ⚔
+              Start Debate — Let's go ⚔
             </button>
 
             <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 text-center sm:p-5">
@@ -1132,7 +1132,7 @@ export function SetupScreen({
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Today&apos;s battle ⚔
+                      Today's battle ⚔
                     </p>
                     <div className="mt-3 flex items-end gap-2">
                       <span className="text-3xl font-semibold text-zinc-100">
