@@ -9,6 +9,7 @@ import {
   hashPlayerToken,
 } from "@/lib/multiplayer/store";
 import { runVerdictForSession } from "@/lib/multiplayer/aiOrchestrator";
+import { streamAuthCookieName } from "@/lib/multiplayer/streamAuth";
 import type { MultiplayerSession } from "@/lib/multiplayer/types";
 import {
   INVALID_LOBBY_LINK_MESSAGE,
@@ -31,6 +32,15 @@ function serializeForToken(
   return JSON.stringify(publicView(session, tokenHash));
 }
 
+function safeDecodeCookieValue(value: string | undefined): string | null {
+  if (!value) return null;
+  try {
+    return decodeURIComponent(value.trim());
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request, { params }: Params) {
   const raw = (await params).id;
   const id = raw?.trim() ?? "";
@@ -48,10 +58,17 @@ export async function GET(request: Request, { params }: Params) {
     );
   }
 
-  const url = new URL(request.url);
-  const tokenFromQuery = url.searchParams.get("token");
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const tokenFromCookie = cookieHeader
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${streamAuthCookieName(id)}=`))
+    ?.split("=")
+    .slice(1)
+    .join("=");
   const headerToken = request.headers.get("x-player-token");
-  const playerToken = (tokenFromQuery ?? headerToken ?? "").trim() || null;
+  const playerToken =
+    safeDecodeCookieValue(tokenFromCookie) ?? headerToken?.trim() ?? null;
   const tokenHash = playerToken ? hashPlayerToken(playerToken) : null;
 
   const slot = playerToken ? resolveSlotByToken(session, playerToken) : null;
@@ -114,7 +131,10 @@ export async function GET(request: Request, { params }: Params) {
           result.session.state === "finished" &&
           !result.session.verdict
         ) {
-          void runVerdictForSession({ sessionId: id });
+          void runVerdictForSession({
+            sessionId: id,
+            fromSlot: result.expiredSlot ?? undefined,
+          });
         }
       }, DEADLINE_CHECK_MS);
 

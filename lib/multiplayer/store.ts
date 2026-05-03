@@ -433,28 +433,35 @@ export function touchSession(args: {
   const session = state.sessions.get(args.sessionId);
   if (!session) return null;
   const next = touchPresence(session, args.slot, Date.now());
-  state.sessions.set(next.id, next);
-  return next;
+  return commit(state, next);
 }
 
 export function expireDeadlineIfDue(
   sessionId: string,
-): { expired: boolean; session: MultiplayerSession | null } {
+): {
+  expired: boolean;
+  expiredSlot: SlotId | null;
+  session: MultiplayerSession | null;
+} {
   const state = ensureStore();
   const session = state.sessions.get(sessionId);
-  if (!session) return { expired: false, session: null };
+  if (!session) return { expired: false, expiredSlot: null, session: null };
   const now = Date.now();
   if (!isDeadlineExpired(session, now)) {
-    return { expired: false, session };
+    return { expired: false, expiredSlot: null, session };
   }
   // Auto-skip the current side's turn.
   const turnSlot =
     session.players[0].side === session.currentSide ? "A" : "B";
   const result = recordMove(session, turnSlot, "", { skipped: true, now });
   if (result.kind === "error") {
-    return { expired: false, session };
+    return { expired: false, expiredSlot: null, session };
   }
-  return { expired: true, session: commit(state, result.session) };
+  return {
+    expired: true,
+    expiredSlot: turnSlot,
+    session: commit(state, result.session),
+  };
 }
 
 export type ChangeListener = (session: MultiplayerSession) => void;

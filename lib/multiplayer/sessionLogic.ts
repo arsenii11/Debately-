@@ -187,7 +187,7 @@ export function touchPresence(
   now: number,
 ): MultiplayerSession {
   const player = getSlot(session, slot);
-  return setSlot(session, { ...player, lastSeenAt: now });
+  return bumpRevision(setSlot(session, { ...player, lastSeenAt: now }), now);
 }
 
 type LobbyUpdate = {

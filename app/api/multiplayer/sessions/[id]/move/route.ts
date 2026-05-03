@@ -34,14 +34,17 @@ export async function POST(request: Request, { params }: Params) {
   const text = typeof body.text === "string" ? body.text : "";
 
   // Auto-skip if the deadline has lapsed before the player got their move in.
-  expireDeadlineIfDue(id);
+  const expiry = expireDeadlineIfDue(id);
 
   // Re-fetch latest session so we use post-expiry state.
   const session = getSession(id);
   if (!session) return jsonError("Session not found.", 404);
   if (session.state !== "live") {
     if (session.state === "finished" && !session.verdict) {
-      void runVerdictForSession({ sessionId: id, fromSlot: auth.slot });
+      void runVerdictForSession({
+        sessionId: id,
+        fromSlot: expiry.expiredSlot ?? auth.slot,
+      });
     }
     return jsonError("Debate is not in progress.", 400);
   }

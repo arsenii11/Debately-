@@ -19,6 +19,7 @@ import {
   getSession,
   getStoreInternalsForTests,
   joinExistingSession,
+  touchSession,
 } from "@/lib/multiplayer/store";
 import { runVerdictForSession } from "@/lib/multiplayer/aiOrchestrator";
 import {
@@ -48,6 +49,8 @@ it("createSessionWithHost allows empty nickname (set later in lobby)", () => {
 
 it("applyRemoveLike removes a spectator reaction", () => {
   const { sessionId } = startedSession();
+  const move = applyMove({ sessionId, slot: "A", text: "Opening argument." });
+  expect(move.kind).toBe("ok");
   const add = applyLike({
     sessionId,
     name: "Spec",
@@ -301,6 +304,17 @@ describe("multiplayer store lifecycle", () => {
     if (u1.kind !== "ok") throw new Error("expected ok");
     expect(u1.session.revision).toBeGreaterThan(prev);
   });
+
+  it("touchSession emits a visible revision bump for presence updates", () => {
+    const { sessionId } = startedSession();
+    const before = getSession(sessionId)!;
+    const touched = touchSession({ sessionId, slot: "A" });
+    expect(touched).not.toBeNull();
+    expect(touched!.revision).toBeGreaterThan(before.revision);
+    expect(touched!.players[0].lastSeenAt).toBeGreaterThanOrEqual(
+      before.players[0].lastSeenAt,
+    );
+  });
 });
 
 describe("multiplayer store: deadline auto-skip & no-show concede", () => {
@@ -312,6 +326,7 @@ describe("multiplayer store: deadline auto-skip & no-show concede", () => {
     before.currentDeadlineAt = Date.now() - 1000;
     const r = expireDeadlineIfDue(sessionId);
     expect(r.expired).toBe(true);
+    expect(r.expiredSlot).toBe("A");
     const after = getSession(sessionId)!;
     expect(after.history[0]?.forMove).toBe("[Turn skipped — time expired]");
     expect(after.skippedTurns.FOR).toBe(1);
@@ -407,4 +422,3 @@ describe("multiplayer store: snapshot round-trip", () => {
     expect(reloaded.players[1].nickname).toBe("Bob");
   });
 });
-

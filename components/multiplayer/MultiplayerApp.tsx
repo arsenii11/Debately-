@@ -368,7 +368,10 @@ function SpectatorView({
   const [viewerName, setViewerName] = useState("");
 
   useLayoutEffect(() => {
-    setViewerName(getSpectatorDisplayName());
+    const animationFrameId = window.requestAnimationFrame(() => {
+      setViewerName(getSpectatorDisplayName());
+    });
+    return () => window.cancelAnimationFrame(animationFrameId);
   }, []);
 
   return (
@@ -532,38 +535,54 @@ export function MultiplayerApp({ sessionId }: Props) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load session.");
     }
-  }, [sessionId, tokenRevision]);
+  }, [sessionId]);
 
   useEffect(() => {
     void refreshSession();
-  }, [refreshSession]);
+  }, [refreshSession, tokenRevision]);
 
   // Subscribe to SSE for live updates.
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (typeof EventSource === "undefined") return;
+    let cancelled = false;
+    let es: EventSource | null = null;
     const token = getPlayerToken(sessionId);
-    const url = token
-      ? `/api/multiplayer/sessions/${sessionId}/stream?token=${encodeURIComponent(token)}`
-      : `/api/multiplayer/sessions/${sessionId}/stream`;
-    const es = new EventSource(url);
-    es.addEventListener("snapshot", (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data) as PublicSession;
-        // A tokenless stream can still deliver one stale "guest" snapshot right
-        // after a join. Ignore it once this browser owns a player token.
-        if (getPlayerToken(sessionId) && data.yourSlot === null) return;
-        setSession(data);
-        setError(null);
-      } catch {
-        /* ignore malformed */
-      }
-    });
-    es.onerror = () => {
-      // SSE will retry automatically; if it permanently fails, polling kicks in.
+
+    const openStream = () => {
+      if (cancelled) return;
+      es = new EventSource(`/api/multiplayer/sessions/${sessionId}/stream`);
+      es.addEventListener("snapshot", (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data) as PublicSession;
+          // A tokenless stream can still deliver one stale "guest" snapshot right
+          // after a join. Ignore it once this browser owns a player token.
+          if (getPlayerToken(sessionId) && data.yourSlot === null) return;
+          setSession(data);
+          setError(null);
+        } catch {
+          /* ignore malformed */
+        }
+      });
+      es.onerror = () => {
+        // SSE will retry automatically; if it permanently fails, polling kicks in.
+      };
     };
+
+    if (token) {
+      void fetch(`/api/multiplayer/sessions/${sessionId}/stream-auth`, {
+        method: "POST",
+        headers: authHeaders(sessionId),
+        cache: "no-store",
+        credentials: "same-origin",
+      }).finally(openStream);
+    } else {
+      openStream();
+    }
+
     return () => {
-      es.close();
+      cancelled = true;
+      es?.close();
     };
   }, [sessionId, tokenRevision]);
 

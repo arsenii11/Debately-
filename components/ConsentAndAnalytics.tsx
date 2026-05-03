@@ -8,8 +8,10 @@ import {
   allowsAnalyticsForStats,
   consentIsUnset,
   ensureCookiesMirrorStorage,
+  ensureVisitorId,
   loadUserPreferences,
   saveConsentChoice,
+  syncVisitorIdToServer,
 } from "@/lib/cookiePreferences";
 
 export function ConsentAndAnalytics() {
@@ -18,11 +20,16 @@ export function ConsentAndAnalytics() {
   const [analytics, setAnalytics] = useState(false);
 
   useLayoutEffect(() => {
+    const visitorId = ensureVisitorId();
+    void syncVisitorIdToServer(visitorId);
     ensureCookiesMirrorStorage();
     const p = loadUserPreferences();
-    setReady(true);
-    setBannerOpen(!p || p.consent === "unset");
-    setAnalytics(allowsAnalyticsForStats());
+    const animationFrameId = window.requestAnimationFrame(() => {
+      setReady(true);
+      setBannerOpen(!p || p.consent === "unset");
+      setAnalytics(allowsAnalyticsForStats());
+    });
+    return () => window.cancelAnimationFrame(animationFrameId);
   }, []);
 
   useLayoutEffect(() => {

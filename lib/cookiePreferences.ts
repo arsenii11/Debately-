@@ -1,3 +1,10 @@
+import {
+  VISITOR_COOKIE_MAX_AGE_SEC as ONE_YEAR,
+  VISITOR_COOKIE_NAME as COOKIE_VISITOR,
+  VISITOR_STORAGE_KEY as LS_VISITOR_KEY,
+  normalizeVisitorId,
+} from "@/lib/visitorIdentity";
+
 /**
  * First-party cookies + localStorage mirror: anonymous user id and consent
  * (analytics / essential-only). Client-only; call from "use client" or effects.
@@ -7,8 +14,6 @@ const LS_KEY = "debately:preferences:v1";
 
 const COOKIE_UID = "debately_uid";
 const COOKIE_AN = "debately_analytics";
-
-const ONE_YEAR = 60 * 60 * 24 * 365;
 
 export type ConsentChoice = "all" | "necessary" | "unset";
 
@@ -112,6 +117,88 @@ export function loadUserPreferences(): UserPreferences | null {
   return readLocalStorage();
 }
 
+/**
+ * Ensures a persistent anonymous visitor id (cookie + localStorage).
+ * Call once on app entry; does not depend on analytics consent.
+ */
+export function ensureVisitorId(): string {
+  if (typeof window === "undefined") return "";
+  let vid: string | undefined;
+  try {
+    const raw = localStorage.getItem(LS_VISITOR_KEY);
+    if (raw) {
+      const j = JSON.parse(raw) as { v?: number; vid?: string };
+      const storedVid = normalizeVisitorId(j.vid);
+      if (j.v === 1 && storedVid) {
+        vid = storedVid;
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  const fromCookie = normalizeVisitorId(getCookieValue(COOKIE_VISITOR));
+  if (fromCookie) {
+    if (!vid || vid !== fromCookie) {
+      vid = fromCookie;
+      try {
+        localStorage.setItem(LS_VISITOR_KEY, JSON.stringify({ v: 1, vid }));
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  if (!vid) {
+    vid = generateAnonId();
+    try {
+      localStorage.setItem(LS_VISITOR_KEY, JSON.stringify({ v: 1, vid }));
+    } catch {
+      /* ignore */
+    }
+  }
+  setBrowserCookie(COOKIE_VISITOR, vid, ONE_YEAR);
+  return vid;
+}
+
+export async function syncVisitorIdToServer(
+  visitorId: string,
+): Promise<string | null> {
+  const normalized = normalizeVisitorId(visitorId);
+  if (!normalized) return null;
+
+  try {
+    const res = await fetch("/api/visitor/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitorId: normalized }),
+      cache: "no-store",
+      credentials: "same-origin",
+      keepalive: true,
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as { visitorId?: string };
+    const serverVisitorId = normalizeVisitorId(body.visitorId);
+    if (serverVisitorId && serverVisitorId !== normalized) {
+      try {
+        localStorage.setItem(
+          LS_VISITOR_KEY,
+          JSON.stringify({ v: 1, vid: serverVisitorId }),
+        );
+      } catch {
+        /* ignore */
+      }
+      setBrowserCookie(COOKIE_VISITOR, serverVisitorId, ONE_YEAR);
+      return serverVisitorId;
+    }
+    return serverVisitorId ?? normalized;
+  } catch {
+    return null;
+  }
+}
+
+export function getVisitorId(): string {
+  return ensureVisitorId();
+}
+
 export function consentIsUnset(): boolean {
   const p = readLocalStorage();
   return !p || p.consent === "unset";
@@ -146,9 +233,11 @@ export function allowsAnalyticsForStats(): boolean {
 export function saveConsentChoice(choice: "all" | "necessary"): void {
   const now = new Date().toISOString();
   const existing = readLocalStorage();
-  const anonId = existing?.anonId && existing.anonId.length > 4
-    ? existing.anonId
-    : generateAnonId();
+  const visitorId = ensureVisitorId();
+  const anonId =
+    existing?.anonId && existing.anonId.length > 4
+      ? existing.anonId
+      : visitorId;
   const prefs: UserPreferences = {
     v: 1,
     anonId,
@@ -170,6 +259,16 @@ export function clearUserPreferencesForTesting(): void {
   if (typeof window === "undefined") return;
   deleteBrowserCookie(COOKIE_UID);
   deleteBrowserCookie(COOKIE_AN);
+  deleteBrowserCookie(COOKIE_VISITOR);
+  try {
+    localStorage.removeItem(LS_VISITOR_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
-export const COOKIE_NAMES = { uid: COOKIE_UID, analytics: COOKIE_AN } as const;
+export const COOKIE_NAMES = {
+  uid: COOKIE_UID,
+  analytics: COOKIE_AN,
+  visitor: COOKIE_VISITOR,
+} as const;
