@@ -16,6 +16,10 @@ import {
   shortAnswerScoreCeilings,
   shortAnswerScorePenalties,
 } from "@/lib/verdictPenalties";
+import {
+  applySoloWarmupVerdictBias,
+  type SoloWarmupTier,
+} from "@/lib/soloWarmup";
 import type { RoundData, Side, Verdict } from "@/lib/types";
 
 export type VerdictArgs = {
@@ -28,6 +32,7 @@ export type VerdictArgs = {
   playerName?: string;
   opponentName?: string;
   mode?: "solo" | "multiplayer";
+  soloWarmupTier?: SoloWarmupTier;
 };
 
 function fallbackBestArgFromHistory(
@@ -67,6 +72,7 @@ export async function runVerdict(args: VerdictArgs): Promise<Verdict> {
     playerName,
     opponentName,
     mode,
+    soloWarmupTier,
   } = args;
   const conceded = playerConceded === true;
 
@@ -80,6 +86,7 @@ export async function runVerdict(args: VerdictArgs): Promise<Verdict> {
     playerName,
     opponentName,
     mode,
+    soloWarmupTier,
   });
 
   const VERDICT_TOKENS_FIRST = 4096;
@@ -221,6 +228,16 @@ CRITICAL: best_arg_player and best_arg_opponent must be non-empty specific one-s
         Math.min(100, spCap + 18),
       );
       verdict = { ...verdict, score_player: spCap, score_opponent: soFloor };
+    }
+
+    if (
+      !isVerdictFallback(parsedVerdict) &&
+      (mode ?? "solo") === "solo" &&
+      !conceded &&
+      soloWarmupTier !== undefined &&
+      soloWarmupTier < 2
+    ) {
+      verdict = applySoloWarmupVerdictBias(verdict, soloWarmupTier, history);
     }
 
     if (isVerdictFallback(parsedVerdict)) {

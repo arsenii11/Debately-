@@ -35,6 +35,7 @@ import {
   recordDebatelyVerdict,
   type DebatelyProgress,
 } from "@/lib/localProgress";
+import { soloWarmupTierFromPriorDebates } from "@/lib/soloWarmup";
 import {
   DEFAULT_TURN_ROUNDS,
   DEFAULT_TURN_TIMER_SECONDS,
@@ -50,8 +51,6 @@ import type {
   TurnTimerSeconds,
   Verdict,
 } from "@/lib/types";
-
-const OPPONENT_FAILED_TEXT = "Debately failed to respond.";
 
 /** Solo-only easter egg: skip AI debate and show a static image. */
 const SOLO_CHEREMSHA_EGG_TOPIC = "arseniy_loh6767";
@@ -111,6 +110,7 @@ export function DebatelyApp() {
 
   const skipScheduled = useRef(false);
   const prevAiThinkingRef = useRef(false);
+  const lastProgressSyncRef = useRef("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastOpponentAnchorRef = useRef<HTMLDivElement>(null);
   const runTurnRef = useRef<
@@ -130,6 +130,18 @@ export function DebatelyApp() {
     () => topic.trim() === SOLO_CHEREMSHA_EGG_TOPIC,
     [topic],
   );
+  const investedMinutes = Math.max(
+    1,
+    Math.round(
+      Math.max(1, history.length) *
+        (isTimedDebate ? Math.max(60, turnTimerSeconds) : 150) /
+        60,
+    ),
+  );
+  const showEscalationNudge =
+    phase === "debating" &&
+    !isCheremshaSoloEgg &&
+    currentRound >= Math.max(2, turnRounds - 1);
   const playerDisplay = nickname.trim() || "Player";
   const playerInitial =
     playerDisplay.trim().charAt(0).toUpperCase() || "?";
@@ -278,6 +290,20 @@ export function DebatelyApp() {
   ]);
 
   useEffect(() => {
+    if (!sessionReady || !progress) return;
+    const serialized = JSON.stringify(progress);
+    if (lastProgressSyncRef.current === serialized) return;
+    lastProgressSyncRef.current = serialized;
+    void fetch("/api/auth/progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ progress }),
+    }).catch(() => {
+      /* Guests or offline clients keep using the existing local-only progress. */
+    });
+  }, [sessionReady, progress]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [history, isAIThinking, thinkingStage, phase, verdict]);
 
@@ -404,6 +430,10 @@ export function DebatelyApp() {
       setIsAIThinking(true);
 
       try {
+        const warmupTier = soloWarmupTierFromPriorDebates(
+          loadDebatelyProgress().soloDebatesCompleted,
+        );
+
         setThinkingStage("fc_player");
         setThinkingLabel("Judge is factchecking your argument…");
         let fcPlayer: FactCheck;
@@ -464,6 +494,7 @@ export function DebatelyApp() {
             currentRound: roundNumber,
             totalRounds: turnRounds,
             turnTimerSeconds,
+            soloWarmupTier: warmupTier,
           });
           opponentText =
             oppRes.text?.trim() || "Debately failed to respond.";
@@ -530,6 +561,7 @@ export function DebatelyApp() {
               opponentSide,
               history: histForVerdict,
               skippedTurns: nextSkipCount,
+              soloWarmupTier: warmupTier,
             });
             setVerdict(vRes);
             if (!isVerdictFallback(vRes)) {
@@ -580,16 +612,6 @@ export function DebatelyApp() {
   }, [inputText, runTurn]);
 
   const lastRound = history[history.length - 1] ?? null;
-  const lastRoundRetryable = Boolean(
-    lastRound &&
-      (lastRound.opponentMove?.trim() === OPPONENT_FAILED_TEXT ||
-        (lastRound.aiFactcheckPlayer &&
-          isFactcheckFallback(lastRound.aiFactcheckPlayer)) ||
-        (lastRound.aiFactcheckOpponent &&
-          isFactcheckFallback(lastRound.aiFactcheckOpponent))),
-  );
-  const verdictRetryable =
-    phase === "finished" && verdict ? isVerdictFallback(verdict) : false;
   const canRetryAi =
     !isAIThinking &&
     launchCountdown === null &&
@@ -866,7 +888,7 @@ export function DebatelyApp() {
                 launchCountdown === null &&
                 !isAIThinking &&
                 timer === 0 ? (
-                <span className="text-xs text-red-400">Time's up</span>
+                <span className="text-xs text-red-400">Time&apos;s up</span>
               ) : phase === "debating" && launchCountdown !== null ? (
                 <span className="text-xs font-medium uppercase tracking-wide text-fuchsia-400/90">
                   Starting…
@@ -972,6 +994,12 @@ export function DebatelyApp() {
         }
       />
 
+      {showEscalationNudge ? (
+        <div className="shrink-0 border-b border-amber-500/25 bg-amber-500/10 px-4 py-2 text-center text-xs font-semibold text-amber-100">
+          You&apos;ve already put about {investedMinutes} min into this table. Final stretch pays the most XP.
+        </div>
+      ) : null}
+
       {error ? (
         <div className="shrink-0 border-b border-red-900/50 bg-red-950/40 px-4 py-2 text-center text-sm text-red-200">
           {error}
@@ -1012,6 +1040,7 @@ export function DebatelyApp() {
             <VerdictCard
               verdict={verdict}
               playerName={nickname.trim() || "Player"}
+              progress={progress}
               onNewDebate={handleNew}
             />
           </div>

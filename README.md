@@ -16,6 +16,26 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Auth and encrypted account data
+
+Debately supports passwordless email login with 6-digit verification codes.
+Private account fields are encrypted before SQLite storage, searchable fields are
+stored as HMACs, and browser sessions use an `httpOnly` cookie.
+
+Recommended production env:
+
+```bash
+AUTH_SECRET="replace-with-a-long-random-secret"
+AUTH_ENCRYPTION_KEY="base64-encoded-32-byte-key-or-long-passphrase"
+AUTH_HASH_SECRET="replace-with-a-different-long-random-secret"
+AUTH_EMAIL_WEBHOOK_URL="https://your-mail-provider.example/send"
+AUTH_EMAIL_WEBHOOK_TOKEN="optional-provider-token"
+AUTH_DB_PATH="/var/cache/debately/auth.sqlite"
+```
+
+In development, if `AUTH_EMAIL_WEBHOOK_URL` is not set, verification codes are
+printed to the Next.js server log instead of being sent.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

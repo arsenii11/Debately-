@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runVerdict } from "@/lib/ai/verdict";
+import type { SoloWarmupTier } from "@/lib/soloWarmup";
 import type { RoundData, Side } from "@/lib/types";
 
 type Body = {
@@ -9,7 +10,13 @@ type Body = {
   history?: RoundData[];
   skippedTurns?: number;
   playerConceded?: boolean;
+  soloWarmupTier?: SoloWarmupTier;
 };
+
+function parseWarmupTier(raw: unknown): SoloWarmupTier | undefined {
+  if (raw === 0 || raw === 1 || raw === 2) return raw;
+  return undefined;
+}
 
 export async function POST(request: Request) {
   let body: Body;
@@ -27,6 +34,7 @@ export async function POST(request: Request) {
       ? Math.floor(body.skippedTurns)
       : 0;
   const playerConceded = body.playerConceded === true;
+  const soloWarmupTier = parseWarmupTier(body.soloWarmupTier);
 
   const verdict = await runVerdict({
     topic: body.topic ?? "",
@@ -35,6 +43,9 @@ export async function POST(request: Request) {
     history,
     skippedTurns,
     playerConceded,
+    mode: "solo",
+    soloWarmupTier:
+      playerConceded === true ? undefined : soloWarmupTier,
   });
   return NextResponse.json(verdict);
 }

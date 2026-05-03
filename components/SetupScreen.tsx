@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AuthCard } from "@/components/AuthCard";
 import {
   DEFAULT_TIMED_TURN_TIMER_SECONDS,
   UNTIMED_TURN_TIMER_SECONDS,
@@ -13,7 +14,11 @@ import {
   type TurnRounds,
   type TurnTimerSeconds,
 } from "@/lib/types";
-import type { DebatelyProgress, ProgressSkillKey } from "@/lib/localProgress";
+import {
+  getDebatelyRank,
+  type DebatelyProgress,
+  type ProgressSkillKey,
+} from "@/lib/localProgress";
 import { getNickname, setNickname as persistMpNickname } from "@/lib/multiplayer/clientAuth";
 
 type ParticleAnim =
@@ -372,6 +377,44 @@ const PROGRESS_SKILL_COLORS: Record<ProgressSkillKey, string> = {
   rhetoric: "from-amber-300 to-orange-300",
 };
 
+const DAILY_CHALLENGES = [
+  "AI should replace final exams.",
+  "Cities should ban private cars downtown.",
+  "Schools should grade students with AI judges.",
+  "Remote work makes teams stronger.",
+  "Social media should require identity checks.",
+  "Nuclear energy should be the default climate bet.",
+  "Children should learn debate before algebra.",
+] as const;
+
+function dailyChallengeFor(nowMs: number): string {
+  const d = new Date(nowMs);
+  const daySeed = Math.floor(
+    Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000,
+  );
+  return DAILY_CHALLENGES[daySeed % DAILY_CHALLENGES.length]!;
+}
+
+function formatCountdownToMidnight(nowMs: number): string {
+  const now = new Date(nowMs);
+  const end = new Date(now);
+  end.setHours(24, 0, 0, 0);
+  const total = Math.max(0, Math.floor((end.getTime() - nowMs) / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function weakestSkill(progress: DebatelyProgress | null): ProgressSkillKey {
+  const skills = progress?.skills;
+  if (!skills) return "logic";
+  return (Object.keys(PROGRESS_SKILL_LABELS) as ProgressSkillKey[]).reduce(
+    (weakest, key) => (skills[key] < skills[weakest] ? key : weakest),
+    "logic",
+  );
+}
+
 type Props = {
   nickname: string;
   topic: string;
@@ -513,13 +556,30 @@ export function SetupScreen({
   const [particleVariance, setParticleVariance] = useState<ParticleVariance[]>(() =>
     enforceNonRocketSpacing(PARTICLES.map(() => randomVariant())),
   );
-  const nextEmojiSwapAtRef = useRef<number[]>(
+  const [initialEmojiSwapAt] = useState<number[]>(() =>
     PARTICLES.map(() => Date.now() + randomInt(900, 6500)),
   );
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const nextEmojiSwapAtRef = useRef<number[]>(initialEmojiSwapAt);
   const tapFxRef = useRef(tapFx);
-  tapFxRef.current = tapFx;
   const timedModeEnabled = turnTimerSeconds > UNTIMED_TURN_TIMER_SECONDS;
   const progressSkills = progress?.skills;
+  const rank = getDebatelyRank(progress);
+  const debatesToday = progress?.debatesToday ?? 0;
+  const streakDays = progress?.streakDays ?? 0;
+  const nextLevelDelta = Math.max(0, rank.nextLevelXp - rank.xp);
+  const dailyChallenge = dailyChallengeFor(nowMs);
+  const dailyCountdown = formatCountdownToMidnight(nowMs);
+  const weakSkill = weakestSkill(progress);
+
+  useEffect(() => {
+    tapFxRef.current = tapFx;
+  }, [tapFx]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     const syncFromHash = () => {
@@ -1103,90 +1163,172 @@ export function SetupScreen({
               onClick={onStart}
               className="cursor-pointer rounded-xl bg-indigo-600 py-4 text-base font-semibold text-white shadow-lg shadow-indigo-900/30 transition-all hover:bg-indigo-500 hover:shadow-xl hover:shadow-indigo-600/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500 disabled:shadow-none disabled:hover:scale-100 sm:text-lg"
             >
-              Start Debate — Let's go ⚔
+              Start Debate — Let&apos;s go ⚔
             </button>
 
-            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 text-center sm:p-5">
-              <div className="flex flex-col gap-4 text-left">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <h3 className="text-base font-semibold text-zinc-100 sm:text-lg">
-                    Your stats 📊
+            <AuthCard nickname={nickname} onNickname={onNickname} />
+
+            <section className="rounded-2xl border border-sky-400/30 bg-sky-950/20 p-4 text-left sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-[0.22em] text-sky-300">
+                    Daily table
+                  </p>
+                  <h3 className="mt-1 text-lg font-black leading-tight text-zinc-50">
+                    {dailyChallenge}
                   </h3>
-                  <span className="rounded-xl border border-zinc-700 bg-zinc-950/50 px-4 py-3 text-right">
-                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                      🔥 Win streak
+                </div>
+                <span className="rounded-xl border border-sky-400/30 bg-zinc-950/60 px-3 py-2 font-mono text-sm font-bold text-sky-100">
+                  {dailyCountdown}
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => onTopic(dailyChallenge)}
+                  className="cursor-pointer rounded-xl border border-sky-400/45 bg-sky-400/10 px-4 py-3 text-sm font-bold text-sky-100 transition-colors hover:border-sky-300 hover:bg-sky-400/20"
+                >
+                  Play daily challenge
+                </button>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/45 px-4 py-3">
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                    Debately remembers
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-300">
+                    Your softest reel is {PROGRESS_SKILL_LABELS[weakSkill]}. Expect pressure there.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-2xl border border-amber-400/35 bg-[radial-gradient(circle_at_top,#713f1233,transparent_45%),linear-gradient(135deg,#09090b,#18181b_48%,#0f172a)] p-4 text-left shadow-[0_0_36px_rgba(251,191,36,0.10)] sm:p-5">
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.24em] text-amber-300">
+                      Daily machine
+                    </p>
+                    <h3 className="mt-1 text-xl font-black text-zinc-50 sm:text-2xl">
+                      Level {rank.level} · {rank.levelName}
+                    </h3>
+                  </div>
+                  <div className="rounded-xl border border-amber-400/35 bg-amber-400/10 px-4 py-3 text-right">
+                    <span className="block text-[11px] font-semibold uppercase tracking-wide text-amber-200/80">
+                      Total XP
                     </span>
-                    <span className="mt-1 block text-3xl font-semibold tabular-nums text-zinc-100">
-                      {progress?.streakDays ?? 0}
+                    <span className="mt-1 block text-3xl font-black tabular-nums text-amber-100">
+                      {rank.xp}
                     </span>
-                    <span className="block text-xs text-zinc-500">
-                      {(progress?.streakDays ?? 0) === 0
-                        ? "0 days — start today 👀"
-                        : (progress?.streakDays ?? 0) === 1
-                          ? "day"
-                          : "days"}
-                    </span>
-                  </span>
+                  </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Today's battle ⚔
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+                    <span className="font-semibold text-zinc-300">
+                      {rank.chestLabel}
+                    </span>
+                    <span className="font-mono text-amber-200">
+                      {nextLevelDelta} XP to next level
+                    </span>
+                  </div>
+                  <div className="h-3 overflow-hidden rounded-full border border-zinc-700 bg-zinc-950">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-amber-300 via-emerald-300 to-sky-300 shadow-[0_0_18px_rgba(251,191,36,0.35)]"
+                      style={{ width: `${rank.progressPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-xl border border-zinc-700/80 bg-zinc-950/55 p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                      Streak fire
                     </p>
-                    <div className="mt-3 flex items-end gap-2">
-                      <span className="text-3xl font-semibold text-zinc-100">
-                        {progress?.debatesToday ?? 0}
+                    <div className="mt-2 flex items-end gap-2">
+                      <span className="text-3xl font-black tabular-nums text-zinc-50">
+                        {streakDays}
                       </span>
-                      <span className="pb-1 text-sm text-zinc-400">
-                        {(progress?.debatesToday ?? 0) === 0
-                          ? "debates — your rivals are already arguing 👀"
-                          : (progress?.debatesToday ?? 0) === 1
-                            ? "debate today"
-                            : "debates today"}
+                      <span className="pb-1 text-xs font-semibold text-zinc-400">
+                        {streakDays === 1 ? "day" : "days"}
                       </span>
                     </div>
                     <p className="mt-2 text-xs leading-relaxed text-zinc-500">
                       {progress?.graceAvailable === false
-                        ? "Grace day used. Play today to keep the streak."
-                        : "Miss 2 days and your streak is gone 🔥"}
+                        ? "Grace spent. One debate keeps the flame alive."
+                        : "Two missed days cash out the flame."}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                        Your weak spots 🎯
-                      </p>
-                      <span className="text-xs text-zinc-600">
-                        based on your last verdicts
+                  <div className="rounded-xl border border-zinc-700/80 bg-zinc-950/55 p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                      Today spins
+                    </p>
+                    <div className="mt-2 flex items-end gap-2">
+                      <span className="text-3xl font-black tabular-nums text-zinc-50">
+                        {debatesToday}
+                      </span>
+                      <span className="pb-1 text-xs font-semibold text-zinc-400">
+                        {debatesToday === 1 ? "run" : "runs"}
                       </span>
                     </div>
-                    <div className="mt-3 grid gap-2">
-                      {(
-                        Object.keys(PROGRESS_SKILL_LABELS) as ProgressSkillKey[]
-                      ).map((key) => {
-                        const value = progressSkills?.[key] ?? 50;
-                        return (
-                          <div key={key} className="flex flex-col gap-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="font-medium text-zinc-300">
-                                {PROGRESS_SKILL_LABELS[key]}
-                              </span>
-                              <span className="font-mono text-zinc-500">
-                                {value}%
-                              </span>
-                            </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
-                              <div
-                                className={`h-full rounded-full bg-gradient-to-r ${PROGRESS_SKILL_COLORS[key]}`}
-                                style={{ width: `${value}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
+                    <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                      {debatesToday === 0
+                        ? "First run primes the chest."
+                        : "Run it back while the table is hot."}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-zinc-700/80 bg-zinc-950/55 p-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                      Chest odds
+                    </p>
+                    <div className="mt-2 flex items-end gap-2">
+                      <span className="text-3xl font-black tabular-nums text-zinc-50">
+                        {rank.progressPct}
+                      </span>
+                      <span className="pb-1 text-xs font-semibold text-zinc-400">
+                        %
+                      </span>
                     </div>
+                    <p className="mt-2 text-xs leading-relaxed text-zinc-500">
+                      Sharper verdicts push the bar faster.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      Skill reels
+                    </p>
+                    <span className="text-xs text-zinc-600">
+                      latest verdict memory
+                    </span>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {(
+                      Object.keys(PROGRESS_SKILL_LABELS) as ProgressSkillKey[]
+                    ).map((key) => {
+                      const value = progressSkills?.[key] ?? 50;
+                      return (
+                        <div key={key} className="flex flex-col gap-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="font-medium text-zinc-300">
+                              {PROGRESS_SKILL_LABELS[key]}
+                            </span>
+                            <span className="font-mono text-zinc-500">
+                              {value}%
+                            </span>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
+                            <div
+                              className={`h-full rounded-full bg-gradient-to-r ${PROGRESS_SKILL_COLORS[key]}`}
+                              style={{ width: `${value}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

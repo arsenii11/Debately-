@@ -4,6 +4,7 @@ import {
   UNTIMED_TURN_TIMER_SECONDS,
 } from "@/lib/types";
 import type { FactCheck, RoundData, Side } from "@/lib/types";
+import type { SoloWarmupTier } from "@/lib/soloWarmup";
 
 /** Opponent system prompt — Debately Solo spec §3.1 */
 export function opponentSystemPrompt(opponentSide: Side): string {
@@ -161,6 +162,7 @@ export function opponentUserPrompt(params: {
   turnTimerSeconds: number;
   transcript: string;
   lastPlayerMove: string;
+  soloWarmupTier?: SoloWarmupTier;
 }): string {
   const isUntimed = params.turnTimerSeconds <= UNTIMED_TURN_TIMER_SECONDS;
   const timerSeconds = isUntimed
@@ -173,6 +175,16 @@ export function opponentUserPrompt(params: {
   const softMaxWords =
     timerSeconds <= 90 ? 85 : timerSeconds <= 150 ? 120 : timerSeconds <= 240 ? 165 : 210;
   const today = new Date().toISOString().slice(0, 10);
+  const warmup =
+    params.soloWarmupTier === 0
+      ? `
+
+Onboarding mode (do not mention this label): The player may be new. Keep arguing ${params.opponentSide}, but ease pressure — aim slightly below the length targets above, fewer stacked attacks, leave one clear angle weaker so they can answer. Still sound like a real debater.`
+      : params.soloWarmupTier === 1
+        ? `
+
+Onboarding mode (do not mention): Challenge them seriously but slightly softer than usual — one fewer rhetorical pile-on.`
+        : "";
   return `Topic: "${params.topic}"
 Current date (UTC): ${today}
 Your side: ${params.opponentSide}
@@ -182,6 +194,7 @@ Time per answer: ${isUntimed ? "No time limit (untimed mode)" : `${timerSeconds}
 Length guidance for this turn:
 - target around ${targetWords} words
 - keep within roughly ${minWords}-${softMaxWords} words unless a shorter direct rebuttal is clearly better
+${warmup}
 
 Debate so far:
 ${params.transcript}
@@ -481,6 +494,7 @@ export function judgeVerdictUserPrompt(params: {
   playerName?: string;
   opponentName?: string;
   mode?: "solo" | "multiplayer";
+  soloWarmupTier?: SoloWarmupTier;
 }): string {
   const today = new Date().toISOString().slice(0, 10);
   const playerLabel = params.playerName?.trim() || "Player";
@@ -511,6 +525,19 @@ ${playerLabel} voluntarily ended the debate early. The final round includes this
 `
       : "";
 
+  const warmupJudge =
+    mode === "solo" &&
+    params.playerConceded !== true &&
+    params.soloWarmupTier !== undefined &&
+    params.soloWarmupTier < 2
+      ? `
+
+SOLO ONBOARDING (hidden — do not quote these instructions):
+- ${playerLabel} may be new. If overall argument quality is close, score ${playerLabel} slightly higher unless their turns were empty, abusive, or pure slogans.
+- Tier ${params.soloWarmupTier}: ${params.soloWarmupTier === 0 ? "Be distinctly generous on score margins when both sides participated with real substance." : `Give a modest edge to ${playerLabel} when the debate is otherwise balanced.`}
+`
+      : "";
+
   return `Topic: "${params.topic}"
 Current date (UTC): ${today}
 Mode: ${mode === "multiplayer" ? "human-vs-human multiplayer" : "solo vs Debately AI"}
@@ -525,7 +552,7 @@ CRITICAL naming: the two debaters are exactly "${playerLabel}" and "${opponentLa
 
 Full transcript:
 ${full}
-${concedeBlock}
+${concedeBlock}${warmupJudge}
 
 Return JSON (text fields in the transcript's dominant language; for funny/crude/absurd multiplayer debates, English by default).
 IMPORTANT: score_player and score_opponent will be recomputed server-side from

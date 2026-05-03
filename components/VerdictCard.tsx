@@ -2,11 +2,17 @@
 
 import { useState } from "react";
 import type { Verdict } from "@/lib/types";
+import {
+  estimateVerdictXp,
+  getDebatelyRank,
+  type DebatelyProgress,
+} from "@/lib/localProgress";
 
 type Props = {
   verdict: Verdict;
   playerName: string;
   opponentName?: string;
+  progress?: DebatelyProgress | null;
   onNewDebate: () => void;
   newDebateLabel?: string;
   resultUrl?: string;
@@ -69,6 +75,30 @@ function buildComebackOutro(verdict: Verdict): {
   };
 }
 
+function buildNearMiss(verdict: Verdict): string | null {
+  const delta = verdict.score_opponent - verdict.score_player;
+  if (delta <= 0 || delta > 12) return null;
+  return `Near miss: ${delta} more ${delta === 1 ? "point" : "points"} would have flipped the table.`;
+}
+
+function buildAchievements(
+  verdict: Verdict,
+  progress: DebatelyProgress | null | undefined,
+): string[] {
+  const achievements: string[] = [];
+  const totalDebates = progress?.soloDebatesCompleted ?? 0;
+  const delta = Math.abs(verdict.score_player - verdict.score_opponent);
+  const bestScore = Math.max(
+    ...rows.map(({ key }) => verdict.breakdown[key][0]),
+  );
+  if (totalDebates <= 1) achievements.push("First blood");
+  if (verdict.score_player > verdict.score_opponent) achievements.push("Judge cracked");
+  if (delta <= 7) achievements.push("Photo finish");
+  if (bestScore >= 78) achievements.push("Rare argument");
+  if ((progress?.streakDays ?? 0) >= 3) achievements.push("Hot streak");
+  return achievements.slice(0, 4);
+}
+
 function CrownIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -86,6 +116,7 @@ export function VerdictCard({
   verdict,
   playerName,
   opponentName,
+  progress,
   onNewDebate,
   newDebateLabel,
   resultUrl,
@@ -116,10 +147,21 @@ export function VerdictCard({
         : null;
   const playerInsight = buildPlayerInsight(verdict);
   const comeback = buildComebackOutro(verdict);
+  const rank = getDebatelyRank(progress ?? null);
+  const xpReward = estimateVerdictXp(verdict);
+  const scoreDelta = verdict.score_player - verdict.score_opponent;
+  const nearMiss = buildNearMiss(verdict);
+  const achievements = buildAchievements(verdict, progress);
+  const payoutLabel =
+    scoreDelta > 0
+      ? "Win payout"
+      : scoreDelta === 0
+        ? "Draw payout"
+        : "Comeback payout";
 
   return (
     <div className="mx-auto w-full max-w-[460px] px-2">
-      <div className="rounded-2xl border-2 border-amber-400/40 bg-zinc-950/80 p-6 shadow-xl shadow-amber-900/10">
+      <div className="rounded-2xl border-2 border-amber-400/45 bg-[radial-gradient(circle_at_top,#713f1233,transparent_48%),#09090b] p-6 shadow-xl shadow-amber-900/15">
         <p className="text-center text-xs font-bold uppercase tracking-[0.25em] text-amber-400">
           ⚖ Final verdict
         </p>
@@ -134,6 +176,36 @@ export function VerdictCard({
             Draw — tied score
           </p>
         )}
+
+        <div className="mt-6 rounded-2xl border border-amber-400/35 bg-amber-400/10 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.22em] text-amber-200">
+                {payoutLabel}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-zinc-100">
+                Level {rank.level} · {rank.levelName}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-4xl font-black tabular-nums text-amber-100">
+                +{xpReward}
+              </p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-amber-200/75">
+                XP
+              </p>
+            </div>
+          </div>
+          <div className="mt-3 h-3 overflow-hidden rounded-full border border-amber-300/25 bg-zinc-950">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-amber-300 via-emerald-300 to-sky-300"
+              style={{ width: `${rank.progressPct}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs font-medium text-amber-100/80">
+            {rank.chestLabel}
+          </p>
+        </div>
 
         <div className="mt-6 flex items-stretch justify-center gap-4 sm:gap-8">
           <div
@@ -265,6 +337,35 @@ export function VerdictCard({
           </div>
         ) : null}
 
+        {nearMiss || (winner === "opponent" && (progress?.streakDays ?? 0) > 0) ? (
+          <div className="mt-4 rounded-xl border border-rose-400/35 bg-rose-500/10 p-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-rose-200">
+              Series under threat
+            </p>
+            <p className="mt-2 text-sm font-semibold leading-relaxed text-rose-100">
+              {nearMiss ?? `Your ${progress?.streakDays ?? 0}-day streak is exposed. One clean win steadies it.`}
+            </p>
+          </div>
+        ) : null}
+
+        {achievements.length > 0 ? (
+          <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/55 p-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
+              Achievements unlocked
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {achievements.map((achievement) => (
+                <span
+                  key={achievement}
+                  className="rounded-full border border-amber-400/35 bg-amber-400/10 px-3 py-1 text-xs font-bold text-amber-100"
+                >
+                  {achievement}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-indigo-500/20 bg-indigo-950/20 p-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-400">
@@ -307,9 +408,9 @@ export function VerdictCard({
         <button
           type="button"
           onClick={onNewDebate}
-          className="mt-3 w-full cursor-pointer rounded-xl border border-zinc-600 py-3 text-sm font-semibold text-zinc-200 transition-all hover:border-zinc-500 hover:bg-zinc-800/60 hover:text-white active:scale-[0.99]"
+          className="mt-3 w-full cursor-pointer rounded-xl border border-amber-400/55 bg-amber-400/10 py-3 text-sm font-black uppercase tracking-wide text-amber-100 transition-all hover:border-amber-300 hover:bg-amber-400/20 hover:text-white active:scale-[0.99]"
         >
-          {newDebateLabel ?? "New Debate"}
+          {newDebateLabel ?? "Run it back"}
         </button>
       </div>
     </div>

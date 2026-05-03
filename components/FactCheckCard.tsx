@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FactCheck } from "@/lib/types";
 
 const statusStyles = {
@@ -14,11 +14,74 @@ type Props = {
   data: FactCheck;
 };
 
+function buildBonusCopy(data: FactCheck): {
+  label: string;
+  text: string;
+  tone: string;
+} {
+  const score = Math.min(100, Math.max(0, Math.round(data.relevance)));
+  const factCount = data.facts.length;
+  const disputedCount = data.facts.filter((f) => f.status !== "verified").length;
+  const seed = score + factCount * 17 + disputedCount * 31 + data.flags.length * 13;
+  const pool = [
+    {
+      label: "Argument streak",
+      text:
+        score >= 72
+          ? "The judge found a clean line. Keep pressing this angle."
+          : "The line landed, but the judge wants sharper evidence.",
+      tone: "border-emerald-400/35 bg-emerald-400/10 text-emerald-100",
+    },
+    {
+      label: "Rare angle",
+      text:
+        factCount >= 2
+          ? "Multiple checkable claims detected. That gives the round more weight."
+          : "One focused claim is on the table. Add one more concrete proof next turn.",
+      tone: "border-sky-400/35 bg-sky-400/10 text-sky-100",
+    },
+    {
+      label: "Volatility bonus",
+      text:
+        disputedCount > 0
+          ? "Risky claim spotted. High upside if you can defend it, painful if you cannot."
+          : "Low-risk argument. Stable, but not explosive yet.",
+      tone: "border-amber-400/35 bg-amber-400/10 text-amber-100",
+    },
+    {
+      label: "Pressure card",
+      text:
+        score >= 60
+          ? "Debately has to answer this. Your next move can snowball it."
+          : "Debately gets room to counter. Your next move needs a stronger hook.",
+      tone: "border-fuchsia-400/35 bg-fuchsia-400/10 text-fuchsia-100",
+    },
+  ];
+  return pool[seed % pool.length]!;
+}
+
 export function FactCheckCard({ variant, data }: Props) {
   const title =
     variant === "player" ? "JUDGE — your argument" : "JUDGE — Debately";
+  const revealKey = [
+    variant,
+    Math.round(data.relevance),
+    data.facts.length,
+    data.flags.length,
+    data.facts[0]?.claim ?? "",
+  ].join(":");
+
+  return <FactCheckReveal key={revealKey} title={title} data={data} />;
+}
+
+function FactCheckReveal({
+  title,
+  data,
+}: Pick<Props, "data"> & { title: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [revealed, setRevealed] = useState(false);
   const score = Math.min(100, Math.max(0, Math.round(data.relevance)));
+  const bonus = useMemo(() => buildBonusCopy(data), [data]);
   const firstClaim = data.facts[0]?.claim?.trim() ?? "";
   const shortClaim =
     firstClaim.length > 96 ? `${firstClaim.slice(0, 93)}...` : firstClaim;
@@ -28,6 +91,11 @@ export function FactCheckCard({ variant, data }: Props) {
       : data.facts.length === 1
         ? shortClaim
         : `${shortClaim} (+${data.facts.length - 1} more)`;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setRevealed(true), 1150);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-md">
@@ -43,26 +111,52 @@ export function FactCheckCard({ variant, data }: Props) {
         </p>
         <div className="mt-4 border-t border-zinc-800 pt-3">
           <div className="flex items-center justify-between text-xs text-zinc-400">
-            <span>Score</span>
+            <span>{revealed ? "Score" : "Score wheel"}</span>
             <span className="font-mono text-zinc-200">
-              {score}/100
+              {revealed ? `${score}/100` : "??/100"}
             </span>
           </div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-800">
             <div
-              className="h-full rounded-full bg-amber-500/70"
-              style={{ width: `${score}%` }}
+              className={`h-full rounded-full ${
+                revealed
+                  ? "bg-amber-500/70"
+                  : "animate-pulse bg-gradient-to-r from-amber-400 via-fuchsia-400 to-sky-300"
+              }`}
+              style={{ width: revealed ? `${score}%` : "100%" }}
             />
           </div>
         </div>
+        {!revealed ? (
+          <div className="mt-3 grid grid-cols-3 gap-1.5" aria-hidden>
+            {["Evidence", "Logic", "Impact"].map((label) => (
+              <div
+                key={label}
+                className="overflow-hidden rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-center"
+              >
+                <span className="block animate-pulse text-[10px] font-black uppercase tracking-wide text-amber-200">
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className={`mt-3 rounded-xl border p-3 ${bonus.tone}`}>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em]">
+              {bonus.label}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed">{bonus.text}</p>
+          </div>
+        )}
         <button
           type="button"
+          disabled={!revealed}
           onClick={() => setExpanded((v) => !v)}
-          className="mt-3 cursor-pointer rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-100"
+          className="mt-3 cursor-pointer rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-300 transition-colors hover:border-zinc-500 hover:bg-zinc-800/70 hover:text-zinc-100 disabled:cursor-wait disabled:opacity-50"
         >
-          {expanded ? "Hide review" : "Show review"}
+          {!revealed ? "Rolling..." : expanded ? "Hide review" : "Show review"}
         </button>
-        {expanded && (
+        {revealed && expanded && (
           <>
             <ul className="mt-3 space-y-3">
               {data.facts.length > 0 ? (

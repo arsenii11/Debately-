@@ -11,7 +11,13 @@ import { extractBalancedJsonObject } from "@/lib/extractJson";
 import { stripReasoningLeaks } from "@/lib/stripReasoningLeaks";
 import { countWords } from "@/lib/truncateWords";
 import { DEFAULT_TIMED_TURN_TIMER_SECONDS } from "@/lib/types";
+import type { SoloWarmupTier } from "@/lib/soloWarmup";
 import type { RoundData, Side } from "@/lib/types";
+
+function parseWarmupTier(raw: unknown): SoloWarmupTier | undefined {
+  if (raw === 0 || raw === 1 || raw === 2) return raw;
+  return undefined;
+}
 
 function getOpponentLengthProfile(turnTimerSeconds: number): {
   softMaxWords: number;
@@ -64,6 +70,7 @@ type Body = {
   currentRound?: number;
   totalRounds?: number;
   turnTimerSeconds?: number;
+  soloWarmupTier?: SoloWarmupTier;
 };
 
 type OpponentResponse = {
@@ -140,6 +147,7 @@ export async function POST(request: Request) {
         turnTimerSeconds,
         transcript,
         lastPlayerMove,
+        soloWarmupTier: parseWarmupTier(body.soloWarmupTier),
       }),
       responseMimeType: "application/json" as const,
       maxOutputTokens: lengthProfile.maxOutputTokens,

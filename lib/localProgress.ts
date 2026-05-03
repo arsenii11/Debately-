@@ -7,7 +7,19 @@ export type DebatelyProgress = {
   streakDays: number;
   graceAvailable: boolean;
   debatesToday: number;
+  /** Finished solo debates (used for onboarding difficulty). */
+  soloDebatesCompleted: number;
   skills: Record<ProgressSkillKey, number>;
+};
+
+export type DebatelyRank = {
+  xp: number;
+  level: number;
+  levelName: string;
+  currentLevelXp: number;
+  nextLevelXp: number;
+  progressPct: number;
+  chestLabel: string;
 };
 
 const STORAGE_KEY = "debately:progress:v1";
@@ -18,11 +30,21 @@ const SKILL_KEYS: ProgressSkillKey[] = [
   "rhetoric",
 ];
 
+const LEVEL_NAMES = [
+  "Rookie Talker",
+  "Claim Grinder",
+  "Logic Dealer",
+  "Evidence Shark",
+  "Rhetoric Boss",
+  "Debate Whale",
+] as const;
+
 const DEFAULT_PROGRESS: DebatelyProgress = {
   lastDebateDate: null,
   streakDays: 0,
   graceAvailable: true,
   debatesToday: 0,
+  soloDebatesCompleted: 0,
   skills: {
     factual: 50,
     logic: 50,
@@ -71,6 +93,10 @@ function normalizeProgress(raw: unknown): DebatelyProgress {
       typeof obj.debatesToday === "number" && obj.debatesToday > 0
         ? Math.floor(obj.debatesToday)
         : 0,
+    soloDebatesCompleted:
+      typeof obj.soloDebatesCompleted === "number" && obj.soloDebatesCompleted > 0
+        ? Math.floor(obj.soloDebatesCompleted)
+        : 0,
     skills,
   };
 }
@@ -105,7 +131,76 @@ export function loadDebatelyProgress(): DebatelyProgress {
   if (gap === 2 && progress.graceAvailable) {
     return { ...progress, debatesToday: 0, graceAvailable: false };
   }
-  return { ...DEFAULT_PROGRESS, skills: progress.skills };
+  return {
+    ...DEFAULT_PROGRESS,
+    skills: progress.skills,
+    soloDebatesCompleted: progress.soloDebatesCompleted,
+  };
+}
+
+function averageSkill(progress: DebatelyProgress): number {
+  const total = SKILL_KEYS.reduce((sum, key) => sum + progress.skills[key], 0);
+  return Math.round(total / SKILL_KEYS.length);
+}
+
+function levelFloor(level: number): number {
+  return (level - 1) * (level - 1) * 220;
+}
+
+export function calculateDebatelyXp(progress: DebatelyProgress | null): number {
+  if (!progress) return 0;
+  return (
+    progress.soloDebatesCompleted * 140 +
+    progress.streakDays * 85 +
+    progress.debatesToday * 45 +
+    Math.max(0, averageSkill(progress) - 50) * 12
+  );
+}
+
+export function getDebatelyRank(
+  progress: DebatelyProgress | null,
+): DebatelyRank {
+  const xp = calculateDebatelyXp(progress);
+  let level = 1;
+  while (level < 99 && xp >= levelFloor(level + 1)) {
+    level += 1;
+  }
+  const currentLevelXp = levelFloor(level);
+  const nextLevelXp = levelFloor(level + 1);
+  const span = Math.max(1, nextLevelXp - currentLevelXp);
+  const progressPct = Math.max(
+    0,
+    Math.min(100, Math.round(((xp - currentLevelXp) / span) * 100)),
+  );
+  const levelName =
+    LEVEL_NAMES[Math.min(LEVEL_NAMES.length - 1, Math.floor((level - 1) / 3))] ??
+    LEVEL_NAMES[0];
+  const chestLabel =
+    progressPct >= 92
+      ? "Jackpot chest armed"
+      : progressPct >= 70
+        ? "Rare chest warming up"
+        : progressPct >= 35
+          ? "Bronze chest loading"
+          : "Empty chest. Feed it arguments.";
+
+  return {
+    xp,
+    level,
+    levelName,
+    currentLevelXp,
+    nextLevelXp,
+    progressPct,
+    chestLabel,
+  };
+}
+
+export function estimateVerdictXp(verdict: Verdict): number {
+  const scoreBonus = Math.max(0, verdict.score_player - 45);
+  const winBonus = verdict.score_player > verdict.score_opponent ? 90 : 25;
+  const closeGameBonus =
+    Math.abs(verdict.score_player - verdict.score_opponent) <= 7 ? 35 : 0;
+  return 110 + scoreBonus + winBonus + closeGameBonus;
 }
 
 export function recordDebatelyVerdict(verdict: Verdict): DebatelyProgress {
@@ -131,6 +226,7 @@ export function recordDebatelyVerdict(verdict: Verdict): DebatelyProgress {
     streakDays,
     graceAvailable: gap === 2 ? false : current.graceAvailable,
     debatesToday,
+    soloDebatesCompleted: current.soloDebatesCompleted + 1,
     skills,
   };
   writeStoredProgress(next);
