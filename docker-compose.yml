@@ -7,8 +7,8 @@
 # HTTPS: см. DOCKER.md. Кратко: выпусти сертификат с профилем certbot, затем в .env задай
 # NGINX_CONF=default-https.conf (и поправь домен в nginx/default-https.conf).
 #
-# Важно: GEMINI_* можно переопределять через .env, но безопаснее задавать тут литералами,
-# а не через ${...}, чтобы избежать пустых подстановок.
+# Важно: GEMINI_VERTEX_PROJECT задаётся в .env (не коммитится). Подстановка ${...:?}
+# падает с ошибкой, если переменная не задана, чтобы не уехать с пустым project id.
 services:
   app:
     build: .
@@ -19,8 +19,8 @@ services:
     environment:
       NODE_ENV: production
       GEMINI_USE_VERTEX: "true"
-      GEMINI_VERTEX_PROJECT: REDACTED-PROJECT-ID
-      GEMINI_VERTEX_LOCATION: us-central1
+      GEMINI_VERTEX_PROJECT: ${GEMINI_VERTEX_PROJECT:?set GEMINI_VERTEX_PROJECT in .env}
+      GEMINI_VERTEX_LOCATION: ${GEMINI_VERTEX_LOCATION:-us-central1}
       # Drop gemini-3-flash-preview: project doesn't have access (404).
       # Re-add once the model is enabled in Vertex Model Garden.
       MODELS: gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash-001
@@ -67,8 +67,8 @@ services:
       - .env
     environment:
       GEMINI_USE_VERTEX: "true"
-      GEMINI_VERTEX_PROJECT: REDACTED-PROJECT-ID
-      GEMINI_VERTEX_LOCATION: us-central1
+      GEMINI_VERTEX_PROJECT: ${GEMINI_VERTEX_PROJECT:?set GEMINI_VERTEX_PROJECT in .env}
+      GEMINI_VERTEX_LOCATION: ${GEMINI_VERTEX_LOCATION:-us-central1}
       # Same fallback chain as prod so tests cover it.
       MODELS: gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.0-flash-001
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/vertex-sa.json
