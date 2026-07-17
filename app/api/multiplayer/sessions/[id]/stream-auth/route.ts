@@ -40,7 +40,7 @@ export async function POST(request: Request, { params }: Params) {
     );
   }
 
-  const session = getSession(id);
+  const session = await getSession(id);
   if (!session) {
     return NextResponse.json(
       { error: "session_gone", message: SESSION_GONE_MESSAGE },

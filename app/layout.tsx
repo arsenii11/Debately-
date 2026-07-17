@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Debately Solo",
-  description: "Debate an AI opponent with a neutral Judge",
+  title: "Debately — AI-assisted debate practice",
+  description:
+    "Practice debates against AI or a friend with fact-checking, scoring, and an automated judge.",
 };
 
 // `interactive-widget=resizes-content` makes the visual viewport shrink when

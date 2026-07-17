@@ -1,56 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Debately
 
-## Getting Started
+Debately is an AI-assisted debate practice platform. It supports solo debates
+against an AI opponent and real-time debates between two people, with automated
+fact-checking, hints, scoring, and a final judge verdict.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Solo debates against an AI opponent
+- Human-versus-human sessions shared by link
+- Live lobby, reconnect, spectator, and reaction support
+- Per-turn AI fact-checking and optional hints
+- Voice transcription
+- Structured verdicts, scores, and shareable result pages
+- Passwordless email accounts with encrypted private fields
+- Local progress tracking and a Debate School preview
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Architecture
 
-## Auth and encrypted account data
+Debately is a Next.js application with server-side API routes. Gemini provides
+the AI opponent, fact-checks, hints, transcription, and verdict generation.
+Multiplayer state can be coordinated through Redis, while account data is kept
+in SQLite with encrypted private fields and HMAC-based lookups. The application
+can run directly or as a container behind Nginx.
 
-Debately supports passwordless email login with 6-digit verification codes.
-Private account fields are encrypted before SQLite storage, searchable fields are
-stored as HMACs, and browser sessions use an `httpOnly` cookie.
+The main areas of the codebase are:
 
-Recommended production env:
+- `app/` — pages and API routes
+- `components/` — solo and multiplayer UI
+- `lib/ai/` — AI workflows
+- `lib/auth/` — passwordless authentication and encrypted account storage
+- `lib/multiplayer/` — sessions, authorization, persistence, and live updates
+- `lib/prompts.ts` — opponent and judge behavior
 
-```bash
-AUTH_SECRET="replace-with-a-long-random-secret"
-AUTH_ENCRYPTION_KEY="base64-encoded-32-byte-key-or-long-passphrase"
-AUTH_HASH_SECRET="replace-with-a-different-long-random-secret"
-AUTH_EMAIL_WEBHOOK_URL="https://your-mail-provider.example/send"
-AUTH_EMAIL_WEBHOOK_TOKEN="optional-provider-token"
-AUTH_DB_PATH="/var/cache/debately/auth.sqlite"
-```
+## Privacy and security
 
-In development, if `AUTH_EMAIL_WEBHOOK_URL` is not set, verification codes are
-printed to the Next.js server log instead of being sent.
+Runtime credentials belong in environment variables or a secret manager. Local
+environment files, credentials, databases, and generated build output are
+excluded from version control.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+AI output can be inaccurate. Debately's fact-checks and verdicts are automated
+assessments, not professional advice or authoritative statements of fact.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Please report security issues privately as described in
+[`SECURITY.md`](SECURITY.md).
 
-## Learn More
+## Contributing
 
-To learn more about Next.js, take a look at the following resources:
+Issues and pull requests are welcome. Keep changes focused, include tests for
+behavioral changes, and do not commit credentials, personal data, or production
+databases.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The source code is licensed under the
+[GNU Affero General Public License v3.0](LICENSE) (`AGPL-3.0-only`). Modified
+versions made available over a network must offer their corresponding source
+code to the users of that service. Debately's name, logos, and branding are not
+granted for reuse by the software license.

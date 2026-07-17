@@ -24,7 +24,7 @@ export async function GET(request: Request, { params }: Params) {
       { status: 400 },
     );
   }
-  const session = getSession(id);
+  const session = await getSession(id);
   if (!session) {
     return NextResponse.json(
       { error: "session_gone", message: SESSION_GONE_MESSAGE },
@@ -35,7 +35,7 @@ export async function GET(request: Request, { params }: Params) {
   if (token) {
     const slot = resolveSlotByToken(session, token);
     if (slot) {
-      const refreshed = touchSession({ sessionId: id, slot });
+      const refreshed = await touchSession({ sessionId: id, slot });
       if (refreshed) {
         return NextResponse.json(publicViewForRequest(refreshed, request));
       }

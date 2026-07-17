@@ -102,7 +102,9 @@ export default function TermsPage() {
               intended debate format;
             </li>
             <li>
-              reverse-engineer, scrape, or systematically extract data from the Service;
+              probe or reverse-engineer the hosted Service to bypass access controls, or scrape
+              or systematically extract its data; this does not limit rights granted by the
+              open-source license for the published source code;
             </li>
             <li>
               use automated scripts or bots to submit requests, which may harm service
@@ -142,8 +144,10 @@ export default function TermsPage() {
             7. Intellectual property
           </h2>
           <p>
-            All software, design, and branding of the Service are owned by or licensed to
-            Bluume. You retain ownership of any original text you submit. By submitting content
+            The published Debately source code is available under the GNU Affero General Public
+            License v3.0. Debately branding, service content, and other materials not covered by
+            that license remain owned by or licensed to Bluume. You retain ownership of any original
+            text you submit. By submitting content
             to the Service, you grant Bluume a limited, non-exclusive, royalty-free license to
             process and temporarily store that content solely to provide the Service to you,
             including multiplayer synchronization, resume-by-link behavior, AI processing,

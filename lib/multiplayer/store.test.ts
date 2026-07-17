@@ -41,17 +41,17 @@ beforeEach(() => {
   getStoreInternalsForTests().reset();
 });
 
-it("createSessionWithHost allows empty nickname (set later in lobby)", () => {
-  const { session, slot } = createSessionWithHost({ nickname: "" });
+it("createSessionWithHost allows empty nickname (set later in lobby)", async () => {
+  const { session, slot } = await createSessionWithHost({ nickname: "" });
   const p = session.players.find((x) => x.slot === slot);
   expect(p?.nickname).toBe("");
 });
 
-it("applyRemoveLike removes a spectator reaction", () => {
-  const { sessionId } = startedSession();
-  const move = applyMove({ sessionId, slot: "A", text: "Opening argument." });
+it("applyRemoveLike removes a spectator reaction", async () => {
+  const { sessionId } = await startedSession();
+  const move = await applyMove({ sessionId, slot: "A", text: "Opening argument." });
   expect(move.kind).toBe("ok");
-  const add = applyLike({
+  const add = await applyLike({
     sessionId,
     name: "Spec",
     round: 1,
@@ -59,8 +59,8 @@ it("applyRemoveLike removes a spectator reaction", () => {
     kind: "like",
   });
   expect(add.kind).toBe("ok");
-  expect(getSession(sessionId)?.likes.length).toBe(1);
-  const rem = applyRemoveLike({
+  expect((await getSession(sessionId))?.likes.length).toBe(1);
+  const rem = await applyRemoveLike({
     sessionId,
     name: "Spec",
     round: 1,
@@ -68,23 +68,23 @@ it("applyRemoveLike removes a spectator reaction", () => {
     kind: "like",
   });
   expect(rem.kind).toBe("ok");
-  expect(getSession(sessionId)?.likes.length).toBe(0);
+  expect((await getSession(sessionId))?.likes.length).toBe(0);
 });
 
-function startedSession(): {
+async function startedSession(): Promise<{
   sessionId: string;
   hostToken: string;
   guestToken: string;
-} {
-  const host = createSessionWithHost({ nickname: "Alice" });
-  const join = joinExistingSession({
+}> {
+  const host = await createSessionWithHost({ nickname: "Alice" });
+  const join = await joinExistingSession({
     sessionId: host.session.id,
     nickname: "Bob",
   });
   if (join.kind !== "ok") throw new Error("expected fresh join");
 
   // Both players agree on settings and mark ready.
-  applyLobbyUpdate({
+  await applyLobbyUpdate({
     sessionId: host.session.id,
     slot: "A",
     update: {
@@ -94,17 +94,17 @@ function startedSession(): {
       turnTimerSeconds: 60,
     },
   });
-  applyLobbyUpdate({
+  await applyLobbyUpdate({
     sessionId: host.session.id,
     slot: "B",
     update: { side: "AGAINST" },
   });
-  applyLobbyUpdate({
+  await applyLobbyUpdate({
     sessionId: host.session.id,
     slot: "A",
     update: { ready: true },
   });
-  const ready = applyLobbyUpdate({
+  const ready = await applyLobbyUpdate({
     sessionId: host.session.id,
     slot: "B",
     update: { ready: true },
@@ -119,74 +119,74 @@ function startedSession(): {
 }
 
 describe("lobby permissions", () => {
-  it("allows only host to set rounds and timer", () => {
-    const host = createSessionWithHost({ nickname: "Alice" });
-    const join = joinExistingSession({
+  it("allows only host to set rounds and timer", async () => {
+    const host = await createSessionWithHost({ nickname: "Alice" });
+    const join = await joinExistingSession({
       sessionId: host.session.id,
       nickname: "Bob",
     });
     if (join.kind !== "ok") throw new Error("expected fresh join");
 
-    applyLobbyUpdate({
+    await applyLobbyUpdate({
       sessionId: host.session.id,
       slot: "B",
       update: { turnRounds: 8, turnTimerSeconds: 300 },
     });
-    let session = getSession(host.session.id)!;
+    let session = (await getSession(host.session.id))!;
     expect(session.players[1].proposal.turnRounds).toBeNull();
     expect(session.players[1].proposal.turnTimerSeconds).toBeNull();
 
-    applyLobbyUpdate({
+    await applyLobbyUpdate({
       sessionId: host.session.id,
       slot: "A",
       update: { turnRounds: 8, turnTimerSeconds: 300 },
     });
-    session = getSession(host.session.id)!;
+    session = (await getSession(host.session.id))!;
     expect(session.players[0].proposal.turnRounds).toBe(8);
     expect(session.players[0].proposal.turnTimerSeconds).toBe(300);
   });
 
-  it("prevents guest side changes when host lock is enabled", () => {
-    const host = createSessionWithHost({ nickname: "Alice" });
-    const join = joinExistingSession({
+  it("prevents guest side changes when host lock is enabled", async () => {
+    const host = await createSessionWithHost({ nickname: "Alice" });
+    const join = await joinExistingSession({
       sessionId: host.session.id,
       nickname: "Bob",
     });
     if (join.kind !== "ok") throw new Error("expected fresh join");
 
-    applyLobbyUpdate({
+    await applyLobbyUpdate({
       sessionId: host.session.id,
       slot: "A",
       update: { sideSelectionLockedByHost: true, side: "FOR" },
     });
-    applyLobbyUpdate({
+    await applyLobbyUpdate({
       sessionId: host.session.id,
       slot: "B",
       update: { side: "AGAINST" },
     });
-    let session = getSession(host.session.id)!;
+    let session = (await getSession(host.session.id))!;
     expect(session.sideSelectionLockedByHost).toBe(true);
     expect(session.players[1].proposal.side).toBeNull();
 
-    applyLobbyUpdate({
+    await applyLobbyUpdate({
       sessionId: host.session.id,
       slot: "A",
       update: { sideSelectionLockedByHost: false },
     });
-    applyLobbyUpdate({
+    await applyLobbyUpdate({
       sessionId: host.session.id,
       slot: "B",
       update: { side: "AGAINST" },
     });
-    session = getSession(host.session.id)!;
+    session = (await getSession(host.session.id))!;
     expect(session.players[1].proposal.side).toBe("AGAINST");
   });
 });
 
 describe("multiplayer store lifecycle", () => {
-  it("create → join → propose → ready×2 starts the debate", () => {
-    const { sessionId } = startedSession();
-    const session = getSession(sessionId);
+  it("create → join → propose → ready×2 starts the debate", async () => {
+    const { sessionId } = await startedSession();
+    const session = await getSession(sessionId);
     expect(session?.state).toBe("live");
     expect(session?.settings.topic).toBe("AI will improve education.");
     expect(session?.settings.turnRounds).toBe(3);
@@ -197,73 +197,73 @@ describe("multiplayer store lifecycle", () => {
     expect(session?.currentSide).toBe("FOR");
   });
 
-  it("alternates sides each turn and finishes after the final round", () => {
-    const { sessionId } = startedSession();
+  it("alternates sides each turn and finishes after the final round", async () => {
+    const { sessionId } = await startedSession();
     // Round 1 FOR
-    let r = applyMove({ sessionId, slot: "A", text: "FOR opens." });
+    let r = await applyMove({ sessionId, slot: "A", text: "FOR opens." });
     expect(r.kind).toBe("ok");
     if (r.kind === "ok") expect(r.finished).toBe(false);
-    let session = getSession(sessionId)!;
+    let session = (await getSession(sessionId))!;
     expect(session.currentSide).toBe("AGAINST");
     expect(session.currentRound).toBe(1);
 
     // Round 1 AGAINST
-    r = applyMove({ sessionId, slot: "B", text: "AGAINST rebuts." });
+    r = await applyMove({ sessionId, slot: "B", text: "AGAINST rebuts." });
     expect(r.kind).toBe("ok");
-    session = getSession(sessionId)!;
+    session = (await getSession(sessionId))!;
     expect(session.currentRound).toBe(2);
     expect(session.currentSide).toBe("FOR");
 
     // Round 2 FOR
-    r = applyMove({ sessionId, slot: "A", text: "FOR closes." });
+    r = await applyMove({ sessionId, slot: "A", text: "FOR closes." });
     expect(r.kind).toBe("ok");
     if (r.kind === "ok") expect(r.finished).toBe(false);
 
     // Round 2 AGAINST
-    r = applyMove({ sessionId, slot: "B", text: "AGAINST closes." });
+    r = await applyMove({ sessionId, slot: "B", text: "AGAINST closes." });
     expect(r.kind).toBe("ok");
     if (r.kind === "ok") expect(r.finished).toBe(false);
-    session = getSession(sessionId)!;
+    session = (await getSession(sessionId))!;
     expect(session.currentRound).toBe(3);
     expect(session.currentSide).toBe("FOR");
 
     // Round 3 FOR
-    r = applyMove({ sessionId, slot: "A", text: "FOR final push." });
+    r = await applyMove({ sessionId, slot: "A", text: "FOR final push." });
     expect(r.kind).toBe("ok");
     if (r.kind === "ok") expect(r.finished).toBe(false);
 
     // Round 3 AGAINST → final
-    r = applyMove({ sessionId, slot: "B", text: "AGAINST final answer." });
+    r = await applyMove({ sessionId, slot: "B", text: "AGAINST final answer." });
     expect(r.kind).toBe("ok");
     if (r.kind === "ok") expect(r.finished).toBe(true);
-    session = getSession(sessionId)!;
+    session = (await getSession(sessionId))!;
     expect(session.state).toBe("finished");
     expect(session.currentDeadlineAt).toBeNull();
   });
 
-  it("rejects moves out of turn", () => {
-    const { sessionId } = startedSession();
-    const wrong = applyMove({ sessionId, slot: "B", text: "early!" });
+  it("rejects moves out of turn", async () => {
+    const { sessionId } = await startedSession();
+    const wrong = await applyMove({ sessionId, slot: "B", text: "early!" });
     expect(wrong.kind).toBe("error");
   });
 
-  it("concede mid-game finishes the debate", () => {
-    const { sessionId } = startedSession();
-    applyMove({ sessionId, slot: "A", text: "FOR opens." });
-    const result = applyConcede({ sessionId, slot: "B" });
+  it("concede mid-game finishes the debate", async () => {
+    const { sessionId } = await startedSession();
+    await applyMove({ sessionId, slot: "A", text: "FOR opens." });
+    const result = await applyConcede({ sessionId, slot: "B" });
     expect(result.kind).toBe("ok");
-    const session = getSession(sessionId)!;
+    const session = (await getSession(sessionId))!;
     expect(session.state).toBe("finished");
     expect(session.concededBy).toBe("B");
     expect(session.currentDeadlineAt).toBeNull();
   });
 
   it("concede before 2 full rounds uses forfeit verdict, not full judge", async () => {
-    const { sessionId } = startedSession();
-    const result = applyConcede({ sessionId, slot: "B" });
+    const { sessionId } = await startedSession();
+    const result = await applyConcede({ sessionId, slot: "B" });
     expect(result.kind).toBe("ok");
     await runVerdictForSession({ sessionId, fromSlot: "B" });
-    const s = getSession(sessionId)!;
+    const s = (await getSession(sessionId))!;
     expect(s.verdict).not.toBeNull();
     expect(s.verdict!.score_player).toBe(100);
     expect(s.verdict!.score_opponent).toBe(0);
@@ -271,24 +271,24 @@ describe("multiplayer store lifecycle", () => {
   });
 
   it("concede after 1 full round still uses forfeit verdict", async () => {
-    const { sessionId } = startedSession();
-    const m1 = applyMove({ sessionId, slot: "A", text: "FOR opens." });
-    const m2 = applyMove({ sessionId, slot: "B", text: "AGAINST rebuts." });
+    const { sessionId } = await startedSession();
+    const m1 = await applyMove({ sessionId, slot: "A", text: "FOR opens." });
+    const m2 = await applyMove({ sessionId, slot: "B", text: "AGAINST rebuts." });
     expect(m1.kind).toBe("ok");
     expect(m2.kind).toBe("ok");
-    const c = applyConcede({ sessionId, slot: "A" });
+    const c = await applyConcede({ sessionId, slot: "A" });
     expect(c.kind).toBe("ok");
     await runVerdictForSession({ sessionId, fromSlot: "A" });
-    const s = getSession(sessionId)!;
+    const s = (await getSession(sessionId))!;
     expect(s.verdict).not.toBeNull();
     expect(s.verdict!.score_player).toBe(0);
     expect(s.verdict!.score_opponent).toBe(100);
   });
 
-  it("revision is strictly monotonic for any visible state change", () => {
-    const host = createSessionWithHost({ nickname: "Alice" });
+  it("revision is strictly monotonic for any visible state change", async () => {
+    const host = await createSessionWithHost({ nickname: "Alice" });
     let prev = host.session.revision;
-    const join = joinExistingSession({
+    const join = await joinExistingSession({
       sessionId: host.session.id,
       nickname: "Bob",
     });
@@ -296,7 +296,7 @@ describe("multiplayer store lifecycle", () => {
     expect(join.session.revision).toBeGreaterThan(prev);
     prev = join.session.revision;
 
-    const u1 = applyLobbyUpdate({
+    const u1 = await applyLobbyUpdate({
       sessionId: host.session.id,
       slot: "A",
       update: { topic: "Cats > dogs" },
@@ -305,10 +305,10 @@ describe("multiplayer store lifecycle", () => {
     expect(u1.session.revision).toBeGreaterThan(prev);
   });
 
-  it("touchSession emits a visible revision bump for presence updates", () => {
-    const { sessionId } = startedSession();
-    const before = getSession(sessionId)!;
-    const touched = touchSession({ sessionId, slot: "A" });
+  it("touchSession emits a visible revision bump for presence updates", async () => {
+    const { sessionId } = await startedSession();
+    const before = (await getSession(sessionId))!;
+    const touched = await touchSession({ sessionId, slot: "A" });
     expect(touched).not.toBeNull();
     expect(touched!.revision).toBeGreaterThan(before.revision);
     expect(touched!.players[0].lastSeenAt).toBeGreaterThanOrEqual(
@@ -318,22 +318,22 @@ describe("multiplayer store lifecycle", () => {
 });
 
 describe("multiplayer store: deadline auto-skip & no-show concede", () => {
-  it("auto-skips the current side when the deadline passes", () => {
-    const { sessionId } = startedSession();
-    const before = getSession(sessionId)!;
+  it("auto-skips the current side when the deadline passes", async () => {
+    const { sessionId } = await startedSession();
+    const before = (await getSession(sessionId))!;
     expect(before.currentDeadlineAt).not.toBeNull();
     // Force the deadline into the past.
     before.currentDeadlineAt = Date.now() - 1000;
-    const r = expireDeadlineIfDue(sessionId);
+    const r = await expireDeadlineIfDue(sessionId);
     expect(r.expired).toBe(true);
     expect(r.expiredSlot).toBe("A");
-    const after = getSession(sessionId)!;
+    const after = (await getSession(sessionId))!;
     expect(after.history[0]?.forMove).toBe("[Turn skipped — time expired]");
     expect(after.skippedTurns.FOR).toBe(1);
     expect(after.currentSide).toBe("AGAINST");
   });
 
-  it("auto-concedes after three consecutive skips on the same side", () => {
+  it("auto-concedes after three consecutive skips on the same side", async () => {
     expect(SKIP_AUTO_CONCEDE_THRESHOLD).toBe(3);
     // Build a session manually so we can craft a 3-round game.
     const empty = createEmptySession(Date.now());
@@ -402,8 +402,8 @@ describe("multiplayer store: deadline auto-skip & no-show concede", () => {
 
 describe("multiplayer store: snapshot round-trip", () => {
   it("writes and reloads the in-memory map", async () => {
-    const { sessionId } = startedSession();
-    applyMove({ sessionId, slot: "A", text: "FOR opens." });
+    const { sessionId } = await startedSession();
+    await applyMove({ sessionId, slot: "A", text: "FOR opens." });
 
     await getStoreInternalsForTests().flush();
 

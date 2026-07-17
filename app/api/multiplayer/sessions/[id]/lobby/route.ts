@@ -23,7 +23,7 @@ type Body = {
 
 export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
-  const auth = requireSlot(id, request);
+  const auth = await requireSlot(id, request);
   if (!auth.ok) return jsonError(auth.reason, auth.status);
 
   let body: Body;
@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: Params) {
     return jsonError("Invalid JSON body.", 400);
   }
 
-  const result = applyLobbyUpdate({
+  const result = await applyLobbyUpdate({
     sessionId: id,
     slot: auth.slot,
     update: body,

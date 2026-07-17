@@ -22,7 +22,7 @@ type Body = { text?: string };
 
 export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
-  const auth = requireSlot(id, request);
+  const auth = await requireSlot(id, request);
   if (!auth.ok) return jsonError(auth.reason, auth.status);
 
   let body: Body;
@@ -34,10 +34,10 @@ export async function POST(request: Request, { params }: Params) {
   const text = typeof body.text === "string" ? body.text : "";
 
   // Auto-skip if the deadline has lapsed before the player got their move in.
-  const expiry = expireDeadlineIfDue(id);
+  const expiry = await expireDeadlineIfDue(id);
 
   // Re-fetch latest session so we use post-expiry state.
-  const session = getSession(id);
+  const session = await getSession(id);
   if (!session) return jsonError("Session not found.", 404);
   if (session.state !== "live") {
     if (session.state === "finished" && !session.verdict) {
@@ -52,7 +52,7 @@ export async function POST(request: Request, { params }: Params) {
   const sideThatMoves = session.currentSide;
   const roundThatMoves = session.currentRound;
 
-  const result = applyMove({
+  const result = await applyMove({
     sessionId: id,
     slot: auth.slot,
     text,

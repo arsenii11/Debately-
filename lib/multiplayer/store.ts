@@ -3,6 +3,11 @@ import { promises as fsp, readFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { debatelyLog } from "@/lib/debatelyLog";
 import {
+  getRedisClient,
+  getRedisSubscriber,
+  isRedisConfigured,
+} from "@/lib/redis";
+import {
   DEFAULT_SESSION_TTL_MS,
   applyFactcheck,
   createEmptySession,
@@ -36,6 +41,11 @@ import type { FactCheck, Verdict } from "@/lib/types";
 const SNAPSHOT_INTERVAL_MS = 5_000;
 const MAX_SESSIONS = 5_000;
 const DEFAULT_SNAPSHOT_PATH = "/var/cache/debately/sessions.json";
+const REDIS_SESSION_PREFIX = "debately:session:";
+const REDIS_SESSION_LOCK_PREFIX = "debately:session-lock:";
+const REDIS_SESSION_CHANNEL_PREFIX = "debately:session-events:";
+const REDIS_LOCK_TTL_MS = 5_000;
+const REDIS_LOCK_WAIT_MS = 2_500;
 
 type Snapshot = {
   v: 1;
@@ -195,6 +205,131 @@ function normalizeLikeEntry(l: SpecLike): SpecLike {
   return { name: l.name, round: l.round, side: l.side, at: l.at, kind };
 }
 
+function redisSessionKey(id: string): string {
+  return `${REDIS_SESSION_PREFIX}${id}`;
+}
+
+function redisSessionLockKey(id: string): string {
+  return `${REDIS_SESSION_LOCK_PREFIX}${id}`;
+}
+
+function redisSessionChannel(id: string): string {
+  return `${REDIS_SESSION_CHANNEL_PREFIX}${id}`;
+}
+
+function redisSessionTtlMs(session: MultiplayerSession, now = Date.now()): number {
+  return Math.max(1_000, session.expiresAt - now);
+}
+
+function parseRedisSession(raw: string | null, id?: string): MultiplayerSession | null {
+  if (!raw) return null;
+  try {
+    const session = JSON.parse(raw) as MultiplayerSession;
+    if (!session || typeof session !== "object") return null;
+    if (typeof session.id !== "string") return null;
+    if (id && session.id !== id) return null;
+    if (typeof session.expiresAt !== "number" || session.expiresAt < Date.now()) {
+      return null;
+    }
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+async function publishRedisSession(session: MultiplayerSession): Promise<void> {
+  const client = await getRedisClient();
+  if (!client) return;
+  await client.publish(redisSessionChannel(session.id), JSON.stringify(session));
+}
+
+async function redisReadSession(id: string): Promise<MultiplayerSession | null> {
+  const client = await getRedisClient();
+  if (!client) return null;
+  const session = parseRedisSession(await client.get(redisSessionKey(id)), id);
+  if (!session) {
+    await client.del(redisSessionKey(id)).catch(() => undefined);
+  }
+  return session;
+}
+
+async function redisWriteSession(
+  session: MultiplayerSession,
+  mode: "create" | "update",
+): Promise<boolean> {
+  const client = await getRedisClient();
+  if (!client) return false;
+  const args =
+    mode === "create"
+      ? ({
+          PX: redisSessionTtlMs(session),
+          NX: true,
+        } as const)
+      : ({
+          PX: redisSessionTtlMs(session),
+        } as const);
+  const result = await client.set(
+    redisSessionKey(session.id),
+    JSON.stringify(session),
+    args,
+  );
+  const ok = mode === "update" ? result === "OK" : result === "OK";
+  if (ok) await publishRedisSession(session);
+  return ok;
+}
+
+async function acquireRedisSessionLock(sessionId: string): Promise<string | null> {
+  const client = await getRedisClient();
+  if (!client) return null;
+  const token = generatePlayerToken();
+  const deadline = Date.now() + REDIS_LOCK_WAIT_MS;
+  while (Date.now() < deadline) {
+    const result = await client.set(redisSessionLockKey(sessionId), token, {
+      NX: true,
+      PX: REDIS_LOCK_TTL_MS,
+    });
+    if (result === "OK") return token;
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  }
+  return null;
+}
+
+async function releaseRedisSessionLock(
+  sessionId: string,
+  token: string,
+): Promise<void> {
+  const client = await getRedisClient();
+  if (!client) return;
+  await client
+    .eval(
+      `if redis.call("GET", KEYS[1]) == ARGV[1] then return redis.call("DEL", KEYS[1]) else return 0 end`,
+      {
+        keys: [redisSessionLockKey(sessionId)],
+        arguments: [token],
+      },
+    )
+    .catch(() => undefined);
+}
+
+async function withRedisSessionLock<T>(
+  sessionId: string,
+  fn: (session: MultiplayerSession) => Promise<T> | T,
+): Promise<T | null> {
+  const token = await acquireRedisSessionLock(sessionId);
+  if (!token) return null;
+  try {
+    const session = await redisReadSession(sessionId);
+    if (!session) return null;
+    return await fn(session);
+  } finally {
+    await releaseRedisSessionLock(sessionId, token);
+  }
+}
+
+function shouldUseRedisStore(): boolean {
+  return isRedisConfigured();
+}
+
 export function publicView(
   session: MultiplayerSession,
   yourTokenHash: string | null,
@@ -225,10 +360,31 @@ export type CreateSessionResult = {
   playerToken: string;
 };
 
-export function createSessionWithHost(args: {
+export async function createSessionWithHost(args: {
   nickname: string;
   now?: number;
-}): CreateSessionResult {
+}): Promise<CreateSessionResult> {
+  if (shouldUseRedisStore()) {
+    const now = args.now ?? Date.now();
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const playerToken = generatePlayerToken();
+      const tokenHash = hashPlayerToken(playerToken);
+      const empty = createEmptySession(now);
+      const joined = joinSession(empty, {
+        tokenHash,
+        nickname: args.nickname,
+        now,
+      });
+      if ("error" in joined) {
+        throw new Error(joined.error);
+      }
+      if (await redisWriteSession(joined.session, "create")) {
+        return { session: joined.session, slot: joined.slot, playerToken };
+      }
+    }
+    throw new Error("Failed to allocate a unique session id.");
+  }
+
   const state = ensureStore();
   const now = args.now ?? Date.now();
   evictExpired(state, now);
@@ -247,7 +403,8 @@ export function createSessionWithHost(args: {
   return { session, slot: joined.slot, playerToken };
 }
 
-export function getSession(id: string): MultiplayerSession | null {
+export async function getSession(id: string): Promise<MultiplayerSession | null> {
+  if (shouldUseRedisStore()) return redisReadSession(id);
   const state = ensureStore();
   evictExpired(state, Date.now());
   return state.sessions.get(id) ?? null;
@@ -266,11 +423,45 @@ export type JoinResult =
   | { kind: "already"; session: MultiplayerSession; slot: SlotId }
   | { kind: "error"; reason: string };
 
-export function joinExistingSession(args: {
+export async function joinExistingSession(args: {
   sessionId: string;
   nickname: string;
   existingToken?: string | null;
-}): JoinResult {
+}): Promise<JoinResult> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      if (args.existingToken) {
+        const knownSlot = findSlotByTokenHash(
+          session,
+          hashPlayerToken(args.existingToken),
+        );
+        if (knownSlot) {
+          const updated = touchPresence(session, knownSlot, Date.now());
+          await redisWriteSession(updated, "update");
+          return { kind: "already" as const, session: updated, slot: knownSlot };
+        }
+      }
+      const now = Date.now();
+      const playerToken = generatePlayerToken();
+      const result = joinSession(session, {
+        tokenHash: hashPlayerToken(playerToken),
+        nickname: args.nickname,
+        now,
+      });
+      if ("error" in result) {
+        return { kind: "error" as const, reason: result.error };
+      }
+      await redisWriteSession(result.session, "update");
+      return {
+        kind: "ok" as const,
+        session: result.session,
+        slot: result.slot,
+        playerToken,
+      };
+    });
+    return locked ?? { kind: "error", reason: "Session not found." };
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return { kind: "error", reason: "Session not found." };
@@ -309,11 +500,27 @@ export type LobbyUpdateResult =
   | { kind: "ok"; session: MultiplayerSession; started: boolean }
   | { kind: "error"; reason: string };
 
-export function applyLobbyUpdate(args: {
+export async function applyLobbyUpdate(args: {
   sessionId: string;
   slot: SlotId;
   update: Parameters<typeof updateLobby>[2];
-}): LobbyUpdateResult {
+}): Promise<LobbyUpdateResult> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const now = Date.now();
+      const updated = updateLobby(session, args.slot, args.update, now);
+      const started = tryStartLive(updated, now);
+      const next = started.state === "live" ? started : updated;
+      await redisWriteSession(next, "update");
+      return {
+        kind: "ok" as const,
+        session: next,
+        started: started.state === "live" && updated.state === "lobby",
+      };
+    });
+    return locked ?? { kind: "error", reason: "Session not found." };
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return { kind: "error", reason: "Session not found." };
@@ -337,11 +544,21 @@ export type ComposerDraftResult =
   | { kind: "ok"; session: MultiplayerSession }
   | { kind: "error"; reason: string };
 
-export function applyComposerDraft(args: {
+export async function applyComposerDraft(args: {
   sessionId: string;
   slot: SlotId;
   wordCount: number;
-}): ComposerDraftResult {
+}): Promise<ComposerDraftResult> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const result = recordComposerDraft(session, args.slot, args.wordCount, Date.now());
+      if (result.kind === "error") return result;
+      await redisWriteSession(result.session, "update");
+      return { kind: "ok" as const, session: result.session };
+    });
+    return locked ?? { kind: "error", reason: "Session not found." };
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return { kind: "error", reason: "Session not found." };
@@ -351,12 +568,25 @@ export function applyComposerDraft(args: {
   return { kind: "ok", session: commit(state, result.session) };
 }
 
-export function applyMove(args: {
+export async function applyMove(args: {
   sessionId: string;
   slot: SlotId;
   text: string;
   skipped?: boolean;
-}): MoveResult {
+}): Promise<MoveResult> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const result = recordMove(session, args.slot, args.text, {
+        skipped: Boolean(args.skipped),
+        now: Date.now(),
+      });
+      if (result.kind === "error") return result;
+      await redisWriteSession(result.session, "update");
+      return { kind: "ok" as const, session: result.session, finished: result.finished };
+    });
+    return locked ?? { kind: "error", reason: "Session not found." };
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return { kind: "error", reason: "Session not found." };
@@ -370,12 +600,26 @@ export function applyMove(args: {
   return { kind: "ok", session: committed, finished: result.finished };
 }
 
-export function applyFactcheckResult(args: {
+export async function applyFactcheckResult(args: {
   sessionId: string;
   round: number;
   side: "FOR" | "AGAINST";
   factcheck: FactCheck;
-}): MultiplayerSession | null {
+}): Promise<MultiplayerSession | null> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const next = applyFactcheck(session, {
+        round: args.round,
+        side: args.side,
+        factcheck: args.factcheck,
+        now: Date.now(),
+      });
+      await redisWriteSession(next, "update");
+      return next;
+    });
+    return locked;
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return null;
@@ -389,10 +633,19 @@ export function applyFactcheckResult(args: {
   return commit(state, next);
 }
 
-export function applyVerdict(args: {
+export async function applyVerdict(args: {
   sessionId: string;
   verdict: Verdict;
-}): MultiplayerSession | null {
+}): Promise<MultiplayerSession | null> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const next = setVerdict(session, args.verdict, Date.now());
+      await redisWriteSession(next, "update");
+      return next;
+    });
+    return locked;
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return null;
@@ -401,10 +654,19 @@ export function applyVerdict(args: {
   return commit(state, next);
 }
 
-export function applyConcede(args: {
+export async function applyConcede(args: {
   sessionId: string;
   slot: SlotId;
-}): { kind: "ok"; session: MultiplayerSession } | { kind: "error"; reason: string } {
+}): Promise<{ kind: "ok"; session: MultiplayerSession } | { kind: "error"; reason: string }> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const next = recordConcede(session, args.slot, Date.now());
+      await redisWriteSession(next, "update");
+      return { kind: "ok" as const, session: next };
+    });
+    return locked ?? { kind: "error", reason: "Session not found." };
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return { kind: "error", reason: "Session not found." };
@@ -413,10 +675,20 @@ export function applyConcede(args: {
   return { kind: "ok", session: commit(state, next) };
 }
 
-export function consumeHintForSlot(args: {
+export async function consumeHintForSlot(args: {
   sessionId: string;
   slot: SlotId;
-}): { kind: "ok"; session: MultiplayerSession } | { kind: "error"; reason: string } {
+}): Promise<{ kind: "ok"; session: MultiplayerSession } | { kind: "error"; reason: string }> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const result = consumeHint(session, args.slot, Date.now());
+      if ("error" in result) return { kind: "error" as const, reason: result.error };
+      await redisWriteSession(result, "update");
+      return { kind: "ok" as const, session: result };
+    });
+    return locked ?? { kind: "error", reason: "Session not found." };
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return { kind: "error", reason: "Session not found." };
@@ -425,10 +697,19 @@ export function consumeHintForSlot(args: {
   return { kind: "ok", session: commit(state, result) };
 }
 
-export function touchSession(args: {
+export async function touchSession(args: {
   sessionId: string;
   slot: SlotId;
-}): MultiplayerSession | null {
+}): Promise<MultiplayerSession | null> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const next = touchPresence(session, args.slot, Date.now());
+      await redisWriteSession(next, "update");
+      return next;
+    });
+    return locked;
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return null;
@@ -436,13 +717,35 @@ export function touchSession(args: {
   return commit(state, next);
 }
 
-export function expireDeadlineIfDue(
+export async function expireDeadlineIfDue(
   sessionId: string,
-): {
+): Promise<{
   expired: boolean;
   expiredSlot: SlotId | null;
   session: MultiplayerSession | null;
-} {
+}> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(sessionId, async (session) => {
+      const now = Date.now();
+      if (!isDeadlineExpired(session, now)) {
+        return { expired: false, expiredSlot: null, session };
+      }
+      const turnSlot: SlotId =
+        session.players[0].side === session.currentSide ? "A" : "B";
+      const result = recordMove(session, turnSlot, "", { skipped: true, now });
+      if (result.kind === "error") {
+        return { expired: false, expiredSlot: null, session };
+      }
+      await redisWriteSession(result.session, "update");
+      return {
+        expired: true,
+        expiredSlot: turnSlot,
+        session: result.session,
+      };
+    });
+    return locked ?? { expired: false, expiredSlot: null, session: null };
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(sessionId);
   if (!session) return { expired: false, expiredSlot: null, session: null };
@@ -466,10 +769,24 @@ export function expireDeadlineIfDue(
 
 export type ChangeListener = (session: MultiplayerSession) => void;
 
-export function subscribeToSession(
+export async function subscribeToSession(
   sessionId: string,
   listener: ChangeListener,
-): () => void {
+): Promise<() => void> {
+  if (shouldUseRedisStore()) {
+    const subscriber = await getRedisSubscriber();
+    if (!subscriber) return () => {};
+    const channel = redisSessionChannel(sessionId);
+    const onMessage = (message: string) => {
+      const session = parseRedisSession(message, sessionId);
+      if (session) listener(session);
+    };
+    await subscriber.subscribe(channel, onMessage);
+    return () => {
+      void subscriber.unsubscribe(channel, onMessage).catch(() => undefined);
+    };
+  }
+
   const state = ensureStore();
   const event = `change:${sessionId}`;
   state.emitter.on(event, listener);
@@ -484,13 +801,23 @@ export type ApplyLikeResult =
   | { kind: "ok"; session: MultiplayerSession }
   | { kind: "error"; reason: string };
 
-export function applyLike(args: {
+export async function applyLike(args: {
   sessionId: string;
   name: string;
   round: number;
   side: Side;
   kind?: SpecReactionKind;
-}): ApplyLikeResult {
+}): Promise<ApplyLikeResult> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const result = recordLike(session, { ...args, now: Date.now() });
+      if (result.kind === "error") return result;
+      await redisWriteSession(result.session, "update");
+      return { kind: "ok" as const, session: result.session };
+    });
+    return locked ?? { kind: "error", reason: "Session not found." };
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return { kind: "error", reason: "Session not found." };
@@ -499,13 +826,23 @@ export function applyLike(args: {
   return { kind: "ok", session: commit(state, result.session) };
 }
 
-export function applyRemoveLike(args: {
+export async function applyRemoveLike(args: {
   sessionId: string;
   name: string;
   round: number;
   side: Side;
   kind?: SpecReactionKind;
-}): ApplyLikeResult {
+}): Promise<ApplyLikeResult> {
+  if (shouldUseRedisStore()) {
+    const locked = await withRedisSessionLock(args.sessionId, async (session) => {
+      const result = removeLike(session, { ...args, now: Date.now() });
+      if (result.kind === "error") return result;
+      await redisWriteSession(result.session, "update");
+      return { kind: "ok" as const, session: result.session };
+    });
+    return locked ?? { kind: "error", reason: "Session not found." };
+  }
+
   const state = ensureStore();
   const session = state.sessions.get(args.sessionId);
   if (!session) return { kind: "error", reason: "Session not found." };

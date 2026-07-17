@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         Privacy Policy
       </h1>
       <p className="mb-10 text-sm text-zinc-500">
-        Effective date: April 26, 2026 (updated April 28, 2026) · Bluume, Inc
+        Effective date: April 26, 2026 (updated July 17, 2026) · Bluume, Inc
       </p>
 
       <section className="flex flex-col gap-8 text-[15px] leading-relaxed">
@@ -51,8 +51,12 @@ export default function PrivacyPage() {
           </p>
           <ul className="flex list-disc flex-col gap-2 pl-5">
             <li>
-              <strong className="text-zinc-200">No user accounts.</strong> You never register,
-              log in, or provide an email address.
+              <strong className="text-zinc-200">Optional user accounts.</strong> You can use
+              Debately without an account or sign in using a one-time code sent by email. For
+              signed-in users, we store an encrypted email address and optional display name,
+              keyed hashes used to find records safely, verification status, account dates,
+              hashed verification codes, and hashed session tokens. Verification codes expire
+              after 10 minutes and signed-in sessions expire after 30 days.
             </li>
             <li>
               <strong className="text-zinc-200">Cookies and local storage for preferences.</strong>{" "}
@@ -192,10 +196,13 @@ export default function PrivacyPage() {
           </h2>
           <p className="mb-3">
             Depending on where you live, you may have rights including access, rectification,
-            erasure, restriction, portability, and objection. We do not run user accounts, so
-            solo usage has no server-side profile attached to you. Completed multiplayer debates
-            are stored anonymously for up to 30 days. To request early deletion of a specific
-            result, email us with the session link; we will delete it within 72 hours.
+            erasure, restriction, portability, and objection. Guest solo usage has no
+            server-side account profile attached to it. If you sign in, your account stores the
+            information described above and may store encrypted progress data so it can be
+            synchronized. Completed multiplayer debates are retained for up to 30 days. To
+            request account-data access or deletion, or early deletion of a specific result,
+            email us from the account address or include the session link. We will respond to
+            verified requests within the period required by applicable law.
           </p>
           <p>
             If you have concerns, email us at{" "}

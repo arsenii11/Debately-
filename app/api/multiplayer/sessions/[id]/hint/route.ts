@@ -15,7 +15,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
-  const auth = requireSlot(id, request);
+  const auth = await requireSlot(id, request);
   if (!auth.ok) return jsonError(auth.reason, auth.status);
   const session = auth.session;
   if (!isPlayerOnTurn(session, auth.slot)) {
@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: Params) {
   const opponent = session.players.find((p) => p.slot !== auth.slot)!;
   if (!opponent.side) return jsonError("Opponent missing.", 400);
 
-  const result = consumeHintForSlot({ sessionId: id, slot: auth.slot });
+  const result = await consumeHintForSlot({ sessionId: id, slot: auth.slot });
   if (result.kind === "error") return jsonError(result.reason, 429);
 
   const history = viewHistoryFromSide(result.session.history, me.side);

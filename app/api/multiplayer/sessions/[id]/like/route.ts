@@ -54,8 +54,8 @@ export async function POST(request: Request, { params }: Params) {
 
   const remove = body.remove === true;
   const result = remove
-    ? applyRemoveLike({ sessionId: id, name, round, side, kind })
-    : applyLike({ sessionId: id, name, round, side, kind });
+    ? await applyRemoveLike({ sessionId: id, name, round, side, kind })
+    : await applyLike({ sessionId: id, name, round, side, kind });
   if (result.kind === "error") return jsonError(result.reason, 400);
 
   return NextResponse.json({ session: publicViewForRequest(result.session, request) });

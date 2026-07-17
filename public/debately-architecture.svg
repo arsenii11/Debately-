@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2600" height="1500" viewBox="0 0 2600 1500">
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#64748b"/>
+    </marker>
+    <linearGradient id="titleGradient" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="45%" stop-color="#16a34a"/>
+      <stop offset="100%" stop-color="#9333ea"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="2600" height="1500" fill="#ffffff"/>
+  <circle cx="2140" cy="170" r="300" fill="#dbeafe" opacity="0.34"/>
+  <circle cx="260" cy="1250" r="340" fill="#dcfce7" opacity="0.30"/>
+  <circle cx="1480" cy="1370" r="320" fill="#f3e8ff" opacity="0.28"/>
+
+  <text x="120" y="112" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="70" font-weight="950" fill="url(#titleGradient)"><tspan x="120" dy="0">Debately Architecture</tspan></text>
+  <text x="122" y="170" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="31" font-weight="520" fill="#475569"><tspan x="122" dy="0">Redis-backed multiplayer, distributed SSE, AI orchestration, and global Gemini pacing</tspan></text>
+
+
+
+    <rect x="80" y="250" width="430" height="1030" rx="42" fill="#eff6ff" stroke="#93c5fd" stroke-width="4"/>
+    <text x="128" y="316" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="34" font-weight="900" fill="#0f172a"><tspan x="128" dy="0">Users</tspan></text>
+
+
+    <rect x="610" y="250" width="460" height="1030" rx="42" fill="#f0fdf4" stroke="#86efac" stroke-width="4"/>
+    <text x="658" y="316" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="34" font-weight="900" fill="#0f172a"><tspan x="658" dy="0">Edge + App</tspan></text>
+
+
+    <rect x="1140" y="250" width="570" height="1030" rx="42" fill="#fffbeb" stroke="#f59e0b" stroke-width="4"/>
+    <text x="1188" y="316" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="34" font-weight="900" fill="#0f172a"><tspan x="1188" dy="0">Redis Coordination</tspan></text>
+
+
+    <rect x="1790" y="250" width="520" height="1030" rx="42" fill="#faf5ff" stroke="#c084fc" stroke-width="4"/>
+    <text x="1838" y="316" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="34" font-weight="900" fill="#0f172a"><tspan x="1838" dy="0">AI Layer</tspan></text>
+
+
+
+  <path d="M 450 445 C 567.5 445, 567.5 445, 685 445" fill="none" stroke="#64748b" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 450 655 C 567.5 655, 567.5 655, 685 655" fill="none" stroke="#64748b" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 450 865 C 567.5 865, 567.5 865, 685 865" fill="none" stroke="#64748b" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 850 535 L 850 620" fill="none" stroke="#64748b" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 850 535 L 850 830" fill="none" stroke="#64748b" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+
+  <path d="M 1010 704 C 1110 704, 1110 430, 1210 430" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 1010 704 C 1110 704, 1110 610, 1210 610" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 1010 704 C 1110 704, 1110 790, 1210 790" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 1010 704 C 1110 704, 1110 970, 1210 970" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 1010 914 C 1110 914, 1110 430, 1210 430" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 1010 914 C 1110 914, 1110 610, 1210 610" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 1010 914 C 1110 914, 1110 790, 1210 790" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 1010 914 C 1110 914, 1110 970, 1210 970" fill="none" stroke="#16a34a" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+
+  <path d="M 1610 430 C 1730 430, 1730 445, 1850 445" fill="none" stroke="#9333ea" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 1610 790 C 1730 790, 1730 445, 1850 445" fill="none" stroke="#9333ea" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 1610 970 C 1730 970, 1730 445, 1850 445" fill="none" stroke="#9333ea" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 2035 535 L 2035 620" fill="none" stroke="#9333ea" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 2035 535 L 2035 800" fill="none" stroke="#9333ea" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+  <path d="M 2035 535 L 2035 980" fill="none" stroke="#9333ea" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" />
+
+  <path d="M 1850 704 C 1730 704, 1730 430, 1610 430" fill="none" stroke="#a855f7" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" stroke-dasharray="14 14"/>
+  <path d="M 1850 880 C 1730 880, 1730 430, 1610 430" fill="none" stroke="#a855f7" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" stroke-dasharray="14 14"/>
+  <path d="M 1850 1060 C 1730 1060, 1730 430, 1610 430" fill="none" stroke="#a855f7" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" stroke-dasharray="14 14"/>
+  <path d="M 1210 610 C 830 610, 830 865, 450 865" fill="none" stroke="#d97706" stroke-width="5" stroke-linecap="round" marker-end="url(#arrow)" opacity="0.95" stroke-dasharray="14 14"/>
+
+
+
+    <rect x="155" y="367" width="310" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="145" y="355" width="310" height="155" rx="28" fill="#dbeafe" stroke="#2563eb" stroke-width="4"/>
+    <circle cx="207" cy="423" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="207" y="433" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="207" dy="0">A</tspan></text>
+    <text x="257" y="413" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="257" dy="0">Debater A</tspan></text>
+    <text x="257" y="456.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="257" dy="0">submits moves and</tspan><tspan x="257" dy="23.599999999999998">receives SSE</tspan></text>
+
+
+    <rect x="155" y="577" width="310" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="145" y="565" width="310" height="155" rx="28" fill="#dbeafe" stroke="#2563eb" stroke-width="4"/>
+    <circle cx="207" cy="633" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="207" y="643" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="207" dy="0">B</tspan></text>
+    <text x="257" y="623" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="257" dy="0">Debater B</tspan></text>
+    <text x="257" y="666.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="257" dy="0">same room, any app</tspan><tspan x="257" dy="23.599999999999998">replica</tspan></text>
+
+
+    <rect x="155" y="787" width="310" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="145" y="775" width="310" height="155" rx="28" fill="#e0f2fe" stroke="#0891b2" stroke-width="4"/>
+    <circle cx="207" cy="843" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="207" y="853" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="207" dy="0">S</tspan></text>
+    <text x="257" y="833" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="257" dy="0">Spectator</tspan></text>
+    <text x="257" y="876.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="257" dy="0">reactions and live</tspan><tspan x="257" dy="23.599999999999998">stream</tspan></text>
+
+
+
+    <rect x="695" y="367" width="330" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="685" y="355" width="330" height="155" rx="28" fill="#ecfeff" stroke="#0891b2" stroke-width="4"/>
+    <circle cx="747" cy="423" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="747" y="433" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="747" dy="0">LB</tspan></text>
+    <text x="797" y="413" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="797" dy="0">nginx / LB</tspan></text>
+    <text x="797" y="456.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="797" dy="0">routes HTTP and</tspan><tspan x="797" dy="23.599999999999998">SSE</tspan></text>
+
+
+    <rect x="695" y="632" width="330" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="685" y="620" width="330" height="155" rx="28" fill="#dcfce7" stroke="#16a34a" stroke-width="4"/>
+    <circle cx="747" cy="688" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="747" y="698" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="747" dy="0">N1</tspan></text>
+    <text x="797" y="678" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="797" dy="0">Next.js</tspan><tspan x="797" dy="33.04">Replica 1</tspan></text>
+    <text x="797" y="735.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="797" dy="0">API routes and</tspan><tspan x="797" dy="23.599999999999998">local SSE clients</tspan></text>
+
+
+    <rect x="695" y="842" width="330" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="685" y="830" width="330" height="155" rx="28" fill="#dcfce7" stroke="#16a34a" stroke-width="4"/>
+    <circle cx="747" cy="898" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="747" y="908" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="747" dy="0">N2</tspan></text>
+    <text x="797" y="888" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="797" dy="0">Next.js</tspan><tspan x="797" dy="33.04">Replica 2</tspan></text>
+    <text x="797" y="945.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="797" dy="0">same stateless app</tspan><tspan x="797" dy="23.599999999999998">surface</tspan></text>
+
+
+
+    <rect x="1220" y="367" width="400" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="1210" y="355" width="400" height="155" rx="28" fill="#fef3c7" stroke="#d97706" stroke-width="4"/>
+    <circle cx="1272" cy="423" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="1272" y="433" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="1272" dy="0">DB</tspan></text>
+    <text x="1322" y="413" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="1322" dy="0">Session</tspan><tspan x="1322" dy="33.04">Store</tspan></text>
+    <text x="1322" y="470.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="1322" dy="0">TTL JSON state per</tspan><tspan x="1322" dy="23.599999999999998">debate room</tspan></text>
+
+
+    <rect x="1220" y="547" width="400" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="1210" y="535" width="400" height="155" rx="28" fill="#fde68a" stroke="#d97706" stroke-width="4"/>
+    <circle cx="1272" cy="603" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="1272" y="613" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="1272" dy="0">PS</tspan></text>
+    <text x="1322" y="593" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="1322" dy="0">Pub/Sub</tspan></text>
+    <text x="1322" y="636.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="1322" dy="0">SSE fanout across</tspan><tspan x="1322" dy="23.599999999999998">replicas</tspan></text>
+
+
+    <rect x="1220" y="727" width="400" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="1210" y="715" width="400" height="155" rx="28" fill="#ffedd5" stroke="#ea580c" stroke-width="4"/>
+    <circle cx="1272" cy="783" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="1272" y="793" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="1272" dy="0">L</tspan></text>
+    <text x="1322" y="773" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="1322" dy="0">Locks</tspan></text>
+    <text x="1322" y="816.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="1322" dy="0">session</tspan><tspan x="1322" dy="23.599999999999998">transitions and AI</tspan><tspan x="1322" dy="23.599999999999998">jobs</tspan></text>
+
+
+    <rect x="1220" y="907" width="400" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="1210" y="895" width="400" height="155" rx="28" fill="#fef9c3" stroke="#ca8a04" stroke-width="4"/>
+    <circle cx="1272" cy="963" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="1272" y="973" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="1272" dy="0">T</tspan></text>
+    <text x="1322" y="953" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="1322" dy="0">Global</tspan><tspan x="1322" dy="33.04">Pacing</tspan></text>
+    <text x="1322" y="1010.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="1322" dy="0">shared Gemini</tspan><tspan x="1322" dy="23.599999999999998">next_allowed_at</tspan></text>
+
+
+
+    <rect x="1860" y="367" width="365" height="155" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="1850" y="355" width="365" height="155" rx="28" fill="#f3e8ff" stroke="#9333ea" stroke-width="4"/>
+    <circle cx="1912" cy="423" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="1912" y="433" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="1912" dy="0">AI</tspan></text>
+    <text x="1962" y="413" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="1962" dy="0">Gemini /</tspan><tspan x="1962" dy="33.04">Vertex</tspan></text>
+    <text x="1962" y="470.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="1962" dy="0">model calls with</tspan><tspan x="1962" dy="23.599999999999998">search</tspan></text>
+
+
+    <rect x="1860" y="632" width="365" height="150" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="1850" y="620" width="365" height="150" rx="28" fill="#ede9fe" stroke="#7c3aed" stroke-width="4"/>
+    <circle cx="1912" cy="688" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="1912" y="698" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="1912" dy="0">OP</tspan></text>
+    <text x="1962" y="678" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="1962" dy="0">Opponent</tspan></text>
+    <text x="1962" y="721.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="1962" dy="0">aggressive but</tspan><tspan x="1962" dy="23.599999999999998">bounded</tspan></text>
+
+
+    <rect x="1860" y="812" width="365" height="150" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="1850" y="800" width="365" height="150" rx="28" fill="#fae8ff" stroke="#c026d3" stroke-width="4"/>
+    <circle cx="1912" cy="868" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="1912" y="878" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="1912" dy="0">FC</tspan></text>
+    <text x="1962" y="858" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="1962" dy="0">Factcheck</tspan><tspan x="1962" dy="33.04">Judge</tspan></text>
+    <text x="1962" y="915.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="1962" dy="0">argument layer</tspan><tspan x="1962" dy="23.599999999999998">verification</tspan></text>
+
+
+    <rect x="1860" y="992" width="365" height="150" rx="28" fill="#0f172a" opacity="0.07"/>
+    <rect x="1850" y="980" width="365" height="150" rx="28" fill="#fce7f3" stroke="#db2777" stroke-width="4"/>
+    <circle cx="1912" cy="1048" r="38" fill="#ffffff" opacity="0.86"/>
+       <text x="1912" y="1058" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="850" fill="#0f172a"><tspan x="1912" dy="0">V</tspan></text>
+    <text x="1962" y="1038" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="28" font-weight="850" fill="#0f172a"><tspan x="1962" dy="0">Final</tspan><tspan x="1962" dy="33.04">Verdict</tspan></text>
+    <text x="1962" y="1095.4" text-anchor="start" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="20" font-weight="520" fill="#475569"><tspan x="1962" dy="0">breakdown plus</tspan><tspan x="1962" dy="23.599999999999998">server score</tspan></text>
+
+
+
+  <rect x="420" y="1300" width="1560" height="160" rx="34" fill="#f8fafc" stroke="#cbd5e1" stroke-width="3"/>
+  <text x="1200" y="1358" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="30" font-weight="850" fill="#0f172a"><tspan x="1200" dy="0">Core flow: argue -&gt; fact-check -&gt; counterargue -&gt; fact-check again -&gt; judge the whole exchange</tspan></text>
+  <text x="1200" y="1415" text-anchor="middle" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" font-size="24" font-weight="520" fill="#64748b"><tspan x="1200" dy="0">Redis removes the single-instance bottleneck while keeping the architecture intentionally lightweight.</tspan></text>
+</svg>

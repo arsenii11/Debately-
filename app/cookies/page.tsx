@@ -97,6 +97,13 @@ export default function CookiesPage() {
               <code className="rounded bg-zinc-800 px-1 text-xs">0</code> if
               you chose essential only. Duration: up to one year.
             </li>
+            <li>
+              <code className="rounded bg-zinc-800 px-1 text-xs">
+                debately_session
+              </code>{" "}
+              — an HTTP-only authentication cookie set after passwordless email
+              verification. Duration: up to 30 days or until you sign out.
+            </li>
           </ul>
           <p>
             The same data is duplicated in{" "}

@@ -191,38 +191,29 @@ docker compose up -d --build
 | `GEMINI_API_KEY_SECRET_RESOURCE` | Полный путь к секрету в GCP Secret Manager (без `GEMINI_API_KEY`) |
 | `NGINX_CONF` | Имя файла в каталоге `nginx/`, монтируемого как конфиг (по умолчанию `default.conf`; для HTTPS после выпуска сертификата — `default-https.conf`) |
 | `MULTIPLAYER_SNAPSHOT_PATH` | Путь до JSON-снапшота multiplayer-сессий. По умолчанию `/var/cache/debately/sessions.json` (том `cache-data` уже примонтирован в `docker-compose.yml`). |
+| `REDIS_URL` / `MULTIPLAYER_REDIS_URL` | Redis connection string. Если задан, multiplayer-сессии, SSE fanout и Gemini pacing используют Redis; без него включается in-memory fallback со снапшотом. |
 
 ---
 
-## Multiplayer (`/play/<id>`): ограничения текущей реализации
+## Multiplayer (`/play/<id>`): Redis-backed режим
 
-Фича «Play with a friend» хранит сессии **в памяти одного Node-процесса** (`Map<sessionId, MultiplayerSession>`) с периодическим JSON-снапшотом на диск (`MULTIPLAYER_SNAPSHOT_PATH`, по умолчанию том `/var/cache/debately`). Это даёт:
+В `docker-compose.yml` и `docker-compose.app-only.yml` Redis включён как сервис `redis`, а `app` получает `REDIS_URL=redis://redis:6379`.
 
-- мгновенные обновления через **Server-Sent Events** (`/api/multiplayer/sessions/:id/stream`);
-- восстановление активных лобби/дебатов после перезапуска процесса (читается снапшот при старте);
-- TTL ~12 часов и LRU-вытеснение при превышении лимита сессий.
+Когда Redis задан:
 
-### Что **не** работает «из коробки»
+- multiplayer-сессии хранятся в Redis JSON-ключах `debately:session:<id>` с TTL;
+- изменения сессий защищены short-lived Redis locks `debately:session-lock:<id>`;
+- SSE-подписки получают изменения через Redis Pub/Sub `debately:session-events:<id>`, поэтому клиенты могут висеть на разных `app` репликах;
+- AI factcheck/verdict защищены idempotency locks `debately:job:*`, чтобы две реплики не запускали одну и ту же модельную работу;
+- Gemini pacing использует общий Redis key `debately:gemini:next_allowed_at`, чтобы несколько реплик не пробивали provider rate limits параллельными локальными очередями.
 
-- **Несколько инстансов / контейнеров `app`.** Каждый процесс держит собственный `Map`, и игроки, попавшие на разные реплики (через L4-балансировщик без sticky-сессий), не увидят ходов друг друга. Поэтому пока деплой сделан как **один контейнер `app`** за nginx (см. `docker-compose.yml`).
-- **Горизонтальное масштабирование** сейчас сводится к вертикальному (один Node-процесс, больше CPU/RAM).
-- **Снапшот на shared-volume** не решает проблему сам по себе: чтения отстают и нет согласованности, нужна общая шина событий.
+Если Redis не задан, приложение откатывается к прежнему in-memory store (`Map<sessionId, MultiplayerSession>`) с периодическим JSON-снапшотом на диск (`MULTIPLAYER_SNAPSHOT_PATH`). Этот режим удобен для dev/tests, но рассчитан на один Node-процесс.
 
-### Когда пора уезжать на Redis
+### Что ещё можно улучшить
 
-Если упираемся в одно из:
+Текущий Redis approach намеренно лёгкий: без BullMQ/Kafka/event sourcing. Следующие шаги, если трафик вырастет:
 
-- больше одной реплики `app` (HA, blue/green с активной парой, autoscaling);
-- более ~5 000 одновременных открытых лобби;
-- частые рестарты процесса с потерей последних 1–5 секунд (между снапшотами);
-- интерес к глобальной аналитике / метрикам поверх сессий.
-
-Тогда план миграции:
-
-1. Заменить `Map` на Redis: `HSET mp:session:<id>` + `EXPIRE` для TTL.
-2. Снять `EventEmitter` и подписку SSE на **Redis Pub/Sub** (`PUBLISH mp:change:<id> <revision>`), а внутри `/stream` слушать канал.
-3. Атомарность переходов состояний — через `WATCH/MULTI/EXEC` или Lua-скрипт (`recordMove`, `applyFactcheck`, `setVerdict`).
-4. Хранить только идемпотентные хэши токенов; токены никогда не уходят в Redis.
-5. Удалить логику JSON-снапшотов, оставить ENV-флаг для downgrade обратно на in-memory.
-
-Точка интеграции в коде: `lib/multiplayer/store.ts` (всё снаружи использует только её API). Контракт публичных функций (`createSessionWithHost`, `getSession`, `applyMove`, `subscribeToSession`, …) можно реализовать поверх Redis без изменения роутов и UI.
+1. Вынести AI factcheck/verdict в отдельные worker jobs.
+2. Добавить per-task очереди и приоритеты (opponent reply выше фонового factcheck).
+3. Добавить health/circuit-breaker по моделям вместо только последовательного failover.
+4. Перейти с whole-session JSON на hash/field layout, если сессии станут большими.

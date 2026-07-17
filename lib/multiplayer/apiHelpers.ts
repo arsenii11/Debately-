@@ -27,11 +27,11 @@ type AuthSuccess = {
   slot: SlotId;
 };
 
-export function requireSlot(
+export async function requireSlot(
   sessionId: string,
   request: Request,
-): AuthSuccess | AuthFailure {
-  const session = getSession(sessionId);
+): Promise<AuthSuccess | AuthFailure> {
+  const session = await getSession(sessionId);
   if (!session) {
     return { ok: false, status: 404, reason: "Session not found." };
   }

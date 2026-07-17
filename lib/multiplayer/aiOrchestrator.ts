@@ -3,6 +3,11 @@ import { runVerdict } from "@/lib/ai/verdict";
 import { debatelyLog } from "@/lib/debatelyLog";
 import { SURRENDER_PLAYER_MOVE } from "@/lib/debateSurrender";
 import {
+  isRedisConfigured,
+  releaseRedisLock,
+  tryAcquireRedisLock,
+} from "@/lib/redis";
+import {
   applyFactcheckResult,
   applyVerdict,
   getSession,
@@ -19,6 +24,7 @@ const inflightFactcheck = new Set<string>();
 const inflightVerdict = new Set<string>();
 
 const MIN_FULL_ROUNDS_FOR_CONCEDE_JUDGEMENT = 2;
+const AI_JOB_LOCK_TTL_MS = 3 * 60 * 1000;
 
 function forfeitVerdictWhenEarlyConcede(session: MultiplayerSession): Verdict {
   const conceded = session.concededBy!;
@@ -86,11 +92,22 @@ export async function runFactcheckForMove(args: {
   const key = `${args.sessionId}:${args.round}:${args.side}`;
   if (inflightFactcheck.has(key)) return;
   inflightFactcheck.add(key);
+  const redisLockKey = `debately:job:factcheck:${key}`;
+  const redisLockToken = isRedisConfigured()
+    ? await tryAcquireRedisLock(redisLockKey, AI_JOB_LOCK_TTL_MS)
+    : null;
+  if (isRedisConfigured() && !redisLockToken) {
+    inflightFactcheck.delete(key);
+    return;
+  }
   try {
-    const session = getSession(args.sessionId);
+    const session = await getSession(args.sessionId);
     if (!session) return;
     const round = session.history[args.round - 1];
     if (!round) return;
+    const existing =
+      args.side === "FOR" ? round.factcheckFor : round.factcheckAgainst;
+    if (existing) return;
     const moveText =
       args.side === "FOR" ? (round.forMove ?? "") : (round.againstMove ?? "");
     if (!moveText) return;
@@ -105,7 +122,7 @@ export async function runFactcheckForMove(args: {
       previousMoveText,
       round: args.round,
     });
-    applyFactcheckResult({
+    await applyFactcheckResult({
       sessionId: args.sessionId,
       round: args.round,
       side: args.side,
@@ -117,6 +134,9 @@ export async function runFactcheckForMove(args: {
       sessionId: args.sessionId,
     });
   } finally {
+    if (redisLockToken) {
+      await releaseRedisLock(redisLockKey, redisLockToken);
+    }
     inflightFactcheck.delete(key);
   }
 }
@@ -127,14 +147,22 @@ export async function runVerdictForSession(args: {
 }): Promise<void> {
   if (inflightVerdict.has(args.sessionId)) return;
   inflightVerdict.add(args.sessionId);
+  const redisLockKey = `debately:job:verdict:${args.sessionId}`;
+  const redisLockToken = isRedisConfigured()
+    ? await tryAcquireRedisLock(redisLockKey, AI_JOB_LOCK_TTL_MS)
+    : null;
+  if (isRedisConfigured() && !redisLockToken) {
+    inflightVerdict.delete(args.sessionId);
+    return;
+  }
   try {
-    const session = getSession(args.sessionId);
+    const session = await getSession(args.sessionId);
     if (!session) return;
     if (session.verdict) return;
     if (session.concededBy) {
       const fullRounds = countCompletedDebateRounds(session);
       if (fullRounds < MIN_FULL_ROUNDS_FOR_CONCEDE_JUDGEMENT) {
-        applyVerdict({
+        await applyVerdict({
           sessionId: args.sessionId,
           verdict: forfeitVerdictWhenEarlyConcede(session),
         });
@@ -171,13 +199,16 @@ export async function runVerdictForSession(args: {
       mode: "multiplayer",
     });
     const verdict = normalizeVerdictToSlotA(verdictRaw, anchorSlot);
-    applyVerdict({ sessionId: args.sessionId, verdict });
+    await applyVerdict({ sessionId: args.sessionId, verdict });
   } catch (err) {
     debatelyLog("verdict", "error", "multiplayer verdict failed", {
       err: err instanceof Error ? err.message : String(err),
       sessionId: args.sessionId,
     });
   } finally {
+    if (redisLockToken) {
+      await releaseRedisLock(redisLockKey, redisLockToken);
+    }
     inflightVerdict.delete(args.sessionId);
   }
 }

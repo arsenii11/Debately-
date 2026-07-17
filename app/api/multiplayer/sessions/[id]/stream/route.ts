@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: Params) {
       { status: 400 },
     );
   }
-  const session = getSession(id);
+  const session = await getSession(id);
   if (!session) {
     return NextResponse.json(
       { error: "session_gone", message: SESSION_GONE_MESSAGE },
@@ -76,7 +76,7 @@ export async function GET(request: Request, { params }: Params) {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
+    async start(controller) {
       let closed = false;
       const writeEvent = (event: string | null, data: string) => {
         if (closed) return;
@@ -106,12 +106,12 @@ export async function GET(request: Request, { params }: Params) {
       // Mark presence on connect.
       let latestSnapshot = session;
       if (slot) {
-        const refreshed = touchSession({ sessionId: id, slot });
+        const refreshed = await touchSession({ sessionId: id, slot });
         if (refreshed) latestSnapshot = refreshed;
       }
       writeEvent("snapshot", serializeForToken(latestSnapshot, tokenHash));
 
-      const unsubscribe = subscribeToSession(id, (next) => {
+      const unsubscribe = await subscribeToSession(id, (next) => {
         latestSnapshot = next;
         writeEvent("snapshot", serializeForToken(next, tokenHash));
       });
@@ -119,23 +119,25 @@ export async function GET(request: Request, { params }: Params) {
       const heartbeat = setInterval(() => {
         writeComment("ping");
         if (slot) {
-          touchSession({ sessionId: id, slot });
+          void touchSession({ sessionId: id, slot });
         }
       }, HEARTBEAT_MS);
 
       const deadlineTimer = setInterval(() => {
-        const result = expireDeadlineIfDue(id);
-        if (
-          result.expired &&
-          result.session &&
-          result.session.state === "finished" &&
-          !result.session.verdict
-        ) {
-          void runVerdictForSession({
-            sessionId: id,
-            fromSlot: result.expiredSlot ?? undefined,
-          });
-        }
+        void (async () => {
+          const result = await expireDeadlineIfDue(id);
+          if (
+            result.expired &&
+            result.session &&
+            result.session.state === "finished" &&
+            !result.session.verdict
+          ) {
+            void runVerdictForSession({
+              sessionId: id,
+              fromSlot: result.expiredSlot ?? undefined,
+            });
+          }
+        })();
       }, DEADLINE_CHECK_MS);
 
       const cleanup = () => {

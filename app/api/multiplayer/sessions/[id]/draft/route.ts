@@ -14,7 +14,7 @@ type Body = { wordCount?: number };
 
 export async function POST(request: Request, { params }: Params) {
   const { id } = await params;
-  const auth = requireSlot(id, request);
+  const auth = await requireSlot(id, request);
   if (!auth.ok) return jsonError(auth.reason, auth.status);
 
   let body: Body;
@@ -29,7 +29,7 @@ export async function POST(request: Request, { params }: Params) {
       ? body.wordCount
       : 0;
 
-  const result = applyComposerDraft({
+  const result = await applyComposerDraft({
     sessionId: id,
     slot: auth.slot,
     wordCount: raw,

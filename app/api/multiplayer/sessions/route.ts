@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     typeof body.nickname === "string" ? body.nickname.trim().slice(0, 32) : "";
 
   try {
-    const { session, slot, playerToken } = createSessionWithHost({ nickname });
+    const { session, slot, playerToken } = await createSessionWithHost({ nickname });
     return NextResponse.json({
       sessionId: session.id,
       slot,

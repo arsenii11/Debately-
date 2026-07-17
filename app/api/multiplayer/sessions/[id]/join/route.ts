@@ -35,7 +35,7 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Nickname required." }, { status: 400 });
   }
   const existingToken = readPlayerToken(request);
-  const result = joinExistingSession({
+  const result = await joinExistingSession({
     sessionId: id,
     nickname,
     existingToken,
