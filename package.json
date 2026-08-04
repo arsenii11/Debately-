@@ -18,10 +18,11 @@
   },
   "dependencies": {
     "@google-cloud/secret-manager": "^6.1.1",
-    "@google/generative-ai": "^0.24.1",
+    "@langchain/core": "^1.2.4",
+    "@langchain/google": "^0.2.1",
+    "@langchain/langgraph": "^1.4.9",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.9.0",
-    "google-auth-library": "^10.6.2",
     "next": "16.2.2",
     "react": "19.2.4",
     "react-dom": "19.2.4",

@@ -1,5 +1,6 @@
 import { clipForLog, debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
+import { runLangGraphWorkflow } from "@/lib/ai/langgraphWorkflow";
 import { VERDICT_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
 import {
   JUDGE_VERDICT_COMPACT_RETRY_SUFFIX,
@@ -21,6 +22,11 @@ import {
   type SoloWarmupTier,
 } from "@/lib/soloWarmup";
 import type { RoundData, Side, Verdict } from "@/lib/types";
+
+type VerdictGraphState = Record<string, unknown> & {
+  raw: string;
+  parsedVerdict: Verdict;
+};
 
 export type VerdictArgs = {
   topic: string;
@@ -120,35 +126,67 @@ export async function runVerdict(args: VerdictArgs): Promise<Verdict> {
       }
     }
 
-    let raw = await callVerdict(baseUserPrompt, VERDICT_TOKENS_FIRST);
-    let parsedVerdict = parseVerdictJson(raw);
-
-    if (isVerdictFallback(parsedVerdict)) {
-      debatelyLog("verdict", "warn", "verdict parse failed; retrying compact", {
-        rawLen: raw.length,
-        rawResponse: raw,
-      });
-      raw = await callVerdict(
-        baseUserPrompt + JUDGE_VERDICT_COMPACT_RETRY_SUFFIX,
-        VERDICT_TOKENS_RETRY,
-      );
-      parsedVerdict = parseVerdictJson(raw);
-    }
-
-    if (!isVerdictFallback(parsedVerdict) && verdictNeedsRetry(parsedVerdict)) {
-      debatelyLog(
-        "verdict",
-        "warn",
-        "verdict missing best-args/complete summary; retrying compact",
-        { rawLen: raw.length, rawPreview: clipForLog(raw) },
-      );
-      raw = await callVerdict(
-        `${baseUserPrompt}${JUDGE_VERDICT_COMPACT_RETRY_SUFFIX}
+    const graphState = await runLangGraphWorkflow<VerdictGraphState>(
+      {
+        raw: "",
+        parsedVerdict: VERDICT_PARSE_FALLBACK,
+      },
+      [
+        {
+          name: "primary_verdict",
+          run: async () => {
+            const raw = await callVerdict(
+              baseUserPrompt,
+              VERDICT_TOKENS_FIRST,
+            );
+            return { raw, parsedVerdict: parseVerdictJson(raw) };
+          },
+        },
+        {
+          name: "retry_unparseable_verdict",
+          run: async (state) => {
+            if (!isVerdictFallback(state.parsedVerdict)) {
+              return {};
+            }
+            debatelyLog("verdict", "warn", "verdict parse failed; retrying compact", {
+              rawLen: state.raw.length,
+              rawResponse: state.raw,
+            });
+            const raw = await callVerdict(
+              baseUserPrompt + JUDGE_VERDICT_COMPACT_RETRY_SUFFIX,
+              VERDICT_TOKENS_RETRY,
+            );
+            return { raw, parsedVerdict: parseVerdictJson(raw) };
+          },
+        },
+        {
+          name: "retry_incomplete_verdict",
+          run: async (state) => {
+            if (
+              isVerdictFallback(state.parsedVerdict) ||
+              !verdictNeedsRetry(state.parsedVerdict)
+            ) {
+              return {};
+            }
+            debatelyLog(
+              "verdict",
+              "warn",
+              "verdict missing best-args/complete summary; retrying compact",
+              { rawLen: state.raw.length, rawPreview: clipForLog(state.raw) },
+            );
+            const raw = await callVerdict(
+              `${baseUserPrompt}${JUDGE_VERDICT_COMPACT_RETRY_SUFFIX}
 CRITICAL: best_arg_player and best_arg_opponent must be non-empty specific one-sentence arguments.`,
-        VERDICT_TOKENS_RETRY,
-      );
-      parsedVerdict = parseVerdictJson(raw);
-    }
+              VERDICT_TOKENS_RETRY,
+            );
+            return { raw, parsedVerdict: parseVerdictJson(raw) };
+          },
+        },
+      ],
+    );
+
+    const raw = graphState.raw;
+    let parsedVerdict = graphState.parsedVerdict;
 
     if (isVerdictFallback(parsedVerdict)) {
       debatelyLog("verdict", "error", "verdict still fallback after retry", {

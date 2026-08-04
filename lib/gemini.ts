@@ -1,20 +1,15 @@
-import type { ResponseSchema } from "@google/generative-ai";
-import { GoogleGenerativeAI, GoogleGenerativeAIFetchError } from "@google/generative-ai";
-import { GoogleAuth } from "google-auth-library";
 import { debatelyLog } from "@/lib/debatelyLog";
 import { runSerializedGemini } from "@/lib/geminiQueue";
 import { resolveGeminiApiKey } from "@/lib/geminiKey";
+import { generateWithLangChainGoogle } from "@/lib/langchainGemini";
+import type { GeminiResponseSchema } from "@/lib/geminiSchemas";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const DEFAULT_REQUEST_TIMEOUT_MS = 65_000;
 const DEFAULT_SEARCH_TIMEOUT_MS = 30_000;
-const DEFAULT_VERTEX_LOCATION = "us-central1";
 /** Fewer attempts: each retry waits (capped); failing fast beats multi-minute hangs. */
 const MAX_GEMINI_ATTEMPTS = 4;
 const DEFAULT_SEARCH_MAX_ATTEMPTS = 3;
-const VERTEX_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
-
-let vertexAuth: GoogleAuth | null = null;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -81,115 +76,6 @@ function shouldUseVertexBackend(): boolean {
   return !["0", "false", "no", "off"].includes(raw);
 }
 
-function getVertexProjectId(): string {
-  const project =
-    process.env.GEMINI_VERTEX_PROJECT?.trim() ||
-    process.env.GOOGLE_CLOUD_PROJECT?.trim() ||
-    process.env.GCLOUD_PROJECT?.trim() ||
-    process.env.GCP_PROJECT?.trim() ||
-    "";
-  if (!project) {
-    throw new Error(
-      "Missing Vertex project id. Set GEMINI_VERTEX_PROJECT (or GOOGLE_CLOUD_PROJECT/GCP_PROJECT).",
-    );
-  }
-  return project;
-}
-
-function getVertexLocation(): string {
-  return (
-    process.env.GEMINI_VERTEX_LOCATION?.trim() ||
-    process.env.GOOGLE_CLOUD_LOCATION?.trim() ||
-    DEFAULT_VERTEX_LOCATION
-  );
-}
-
-async function getVertexAccessToken(): Promise<string> {
-  if (!vertexAuth) {
-    vertexAuth = new GoogleAuth({ scopes: [VERTEX_SCOPE] });
-  }
-  const client = await vertexAuth.getClient();
-  const tok = await client.getAccessToken();
-  const token = typeof tok === "string" ? tok : tok?.token ?? "";
-  if (!token) {
-    throw new Error(
-      "Could not acquire Vertex access token via ADC. Check service account/credentials.",
-    );
-  }
-  return token;
-}
-
-async function generateWithVertex(params: {
-  model: string;
-  systemInstruction: string;
-  userPrompt: string;
-  generationConfig: Record<string, unknown>;
-  enableSearch: boolean;
-  timeoutMs: number;
-}): Promise<string> {
-  const project = getVertexProjectId();
-  const location = getVertexLocation();
-  const token = await getVertexAccessToken();
-  const model = params.model.trim().replace(/^models\//, "");
-  const url =
-    `https://${location}-aiplatform.googleapis.com/v1/projects/${project}` +
-    `/locations/${location}/publishers/google/models/${model}:generateContent`;
-
-  const body: Record<string, unknown> = {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: params.userPrompt }],
-      },
-    ],
-    systemInstruction: {
-      role: "system",
-      parts: [{ text: params.systemInstruction }],
-    },
-    generationConfig: params.generationConfig,
-    ...(params.enableSearch ? { tools: [buildSearchTool()] } : {}),
-  };
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), params.timeoutMs);
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-    const raw = await res.text();
-    if (!res.ok) {
-      throw new Error(`[Vertex AI ${res.status}] ${raw}`);
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      throw new Error(`Vertex returned non-JSON response: ${raw.slice(0, 300)}`);
-    }
-
-    const parts =
-      (parsed as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-      }).candidates?.[0]?.content?.parts ?? [];
-    const text = parts
-      .map((p) => p.text ?? "")
-      .join("")
-      .trim();
-    if (!text) {
-      throw new Error("Empty response from Gemini");
-    }
-    return text;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 /** Parse server retry hint from error message (429 / quota). Uncapped raw ms. */
 function parseRetryDelayMsFromError(err: unknown): number | null {
   const msg = err instanceof Error ? err.message : String(err);
@@ -218,10 +104,6 @@ function parseRetryDelayMsFromError(err: unknown): number | null {
 }
 
 function isRetryableQuotaError(e: unknown): boolean {
-  if (e instanceof GoogleGenerativeAIFetchError) {
-    const s = e.status;
-    return s === 429 || s === 503;
-  }
   const msg = e instanceof Error ? e.message : String(e);
   return /429|503|Too Many Requests|Service Unavailable|RESOURCE_EXHAUSTED|quota exceeded/i.test(
     msg,
@@ -236,21 +118,10 @@ function isRetryableTransientError(e: unknown): boolean {
 }
 
 function isModelUnavailableError(e: unknown): boolean {
-  if (e instanceof GoogleGenerativeAIFetchError) {
-    if (e.status === 404) return true;
-  }
   const msg = e instanceof Error ? e.message : String(e);
   return /404|not found|no longer available|unknown model|model .* unavailable/i.test(
     msg,
   );
-}
-
-function buildSearchTool(): Record<string, unknown> {
-  const mode = process.env.GEMINI_SEARCH_TOOL?.trim();
-  if (mode === "googleSearchRetrieval") {
-    return { googleSearchRetrieval: {} };
-  }
-  return { googleSearch: {} };
 }
 
 function isSearchToolConfigError(e: unknown): boolean {
@@ -269,7 +140,7 @@ export async function generateGeminiText(params: {
   userPrompt: string;
   maxOutputTokens?: number;
   responseMimeType?: "text/plain" | "application/json";
-  responseSchema?: ResponseSchema;
+  responseSchema?: GeminiResponseSchema;
   temperature?: number;
   enableSearch?: boolean;
 }): Promise<string> {
@@ -279,15 +150,6 @@ export async function generateGeminiText(params: {
     const modelCandidates = getModelCandidates();
     const requestTimeoutMs = getRequestTimeoutMs();
 
-    const genAI = useVertex ? null : new GoogleGenerativeAI(apiKey as string);
-    const baseGenerationConfig = {
-      ...(params.maxOutputTokens !== undefined
-        ? { maxOutputTokens: params.maxOutputTokens }
-        : {}),
-      ...(params.temperature !== undefined
-        ? { temperature: params.temperature }
-        : {}),
-    };
     const searchRequested = params.enableSearch ?? true;
     const maxAttempts = searchRequested
       ? Math.min(MAX_GEMINI_ATTEMPTS, getSearchMaxAttempts())
@@ -317,41 +179,27 @@ export async function generateGeminiText(params: {
             );
             loggedJsonSearchCompat = true;
           }
-          const generationConfig = {
-            ...baseGenerationConfig,
-            ...(!jsonWithSearchUnsupported && params.responseMimeType
-              ? { responseMimeType: params.responseMimeType }
-              : {}),
-            ...(!jsonWithSearchUnsupported &&
+          const effectiveResponseSchema =
+            !jsonWithSearchUnsupported &&
             params.responseSchema &&
             params.responseMimeType === "application/json"
-              ? { responseSchema: params.responseSchema }
-              : {}),
-          };
+              ? params.responseSchema
+              : undefined;
           const effectiveTimeoutMs = searchEnabled
             ? getSearchTimeoutMs(requestTimeoutMs)
             : requestTimeoutMs;
-          const text = useVertex
-            ? await generateWithVertex({
-                model: modelName,
-                systemInstruction: params.systemInstruction,
-                userPrompt: params.userPrompt,
-                generationConfig,
-                enableSearch: searchEnabled,
-                timeoutMs: effectiveTimeoutMs,
-              })
-            : (
-                await (genAI as GoogleGenerativeAI)
-                  .getGenerativeModel({
-                    model: modelName,
-                    systemInstruction: params.systemInstruction,
-                    generationConfig,
-                    ...(searchEnabled ? { tools: [buildSearchTool()] } : {}),
-                  } as any)
-                  .generateContent(params.userPrompt, {
-                    timeout: effectiveTimeoutMs,
-                  })
-              ).response.text();
+          const text = await generateWithLangChainGoogle({
+            model: modelName,
+            systemInstruction: params.systemInstruction,
+            userPrompt: params.userPrompt,
+            maxOutputTokens: params.maxOutputTokens,
+            responseSchema: effectiveResponseSchema,
+            temperature: params.temperature,
+            enableSearch: searchEnabled,
+            timeoutMs: effectiveTimeoutMs,
+            useVertex,
+            apiKey,
+          });
           if (!text?.trim()) {
             throw new Error("Empty response from Gemini");
           }

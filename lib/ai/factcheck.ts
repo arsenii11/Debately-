@@ -1,5 +1,6 @@
 import { debatelyLog } from "@/lib/debatelyLog";
 import { generateGeminiText } from "@/lib/gemini";
+import { runLangGraphWorkflow } from "@/lib/ai/langgraphWorkflow";
 import { FACTCHECK_RESPONSE_SCHEMA } from "@/lib/geminiSchemas";
 import { clampFactcheckArgumentScore } from "@/lib/factcheckScoreAdjust";
 import {
@@ -14,6 +15,8 @@ import {
   isPlayfulDebateTopic,
 } from "@/lib/prompts";
 import type { FactCheck, Side } from "@/lib/types";
+
+type FactcheckModelParams = Parameters<typeof generateGeminiText>[0];
 
 export type FactcheckArgs = {
   topic: string;
@@ -98,7 +101,7 @@ function shouldExpandFactcheck(moveText: string, parsed: FactCheck): boolean {
   return commentChars < 180;
 }
 
-export async function runFactcheck(args: FactcheckArgs): Promise<FactCheck> {
+function buildFactcheckModelParams(args: FactcheckArgs): FactcheckModelParams {
   const {
     topic,
     moveText,
@@ -115,7 +118,7 @@ export async function runFactcheck(args: FactcheckArgs): Promise<FactCheck> {
     speaker === "player" && round <= 1 && hasNoPreviousArgument;
   const vibeFirstTopic = isPlayfulDebateTopic(topic);
 
-  const factcheckParams = {
+  return {
     systemInstruction: JUDGE_FACTCHECK_SYSTEM,
     userPrompt: judgeFactcheckUserPrompt({
       topic,
@@ -134,147 +137,207 @@ export async function runFactcheck(args: FactcheckArgs): Promise<FactCheck> {
       ? { responseSchema: FACTCHECK_RESPONSE_SCHEMA }
       : {}),
   };
+}
+
+type FactcheckGraphState = Record<string, unknown> & {
+  args: FactcheckArgs;
+  factcheckParams: FactcheckModelParams;
+  raw: string;
+  parsed: FactCheck;
+  normalized: FactCheck;
+};
+
+export async function runFactcheck(args: FactcheckArgs): Promise<FactCheck> {
+  const factcheckParams = buildFactcheckModelParams(args);
+  const vibeFirstTopic = isPlayfulDebateTopic(args.topic);
 
   try {
-    const raw = await generateGeminiText(factcheckParams);
-    let parsed = parseFactcheckJson(raw);
-    if (
-      (
-        isFactcheckFallback(parsed) ||
-        hasMalformedFactText(parsed) ||
-        rawLooksTruncatedJson(raw)
-      ) &&
-      raw.trim().length > 0
-    ) {
-      debatelyLog(
-        "factcheck",
-        "warn",
-        "parse fallback with non-empty body; retry without search (structured)",
-        { rawLen: raw.length, rawPreview: raw.slice(0, 400) },
-      );
-      try {
-        const raw2 = await generateGeminiText({
-          ...factcheckParams,
-          userPrompt:
-            factcheckParams.userPrompt + JUDGE_FACTCHECK_COMPACT_RETRY_SUFFIX,
-          enableSearch: false,
-          responseSchema: FACTCHECK_RESPONSE_SCHEMA,
-          maxOutputTokens: 2000,
-          temperature: 0.2,
-        });
-        const parsed2 = parseFactcheckJson(raw2);
-        if (!isFactcheckFallback(parsed2)) {
-          parsed = parsed2;
-        } else {
-          debatelyLog(
-            "factcheck",
-            "warn",
-            "structured retry still fallback",
-            { rawLen: raw2.length, rawPreview: raw2.slice(0, 400) },
-          );
-          try {
-            const raw3 = await generateGeminiText({
-              ...factcheckParams,
-              userPrompt:
-                factcheckParams.userPrompt +
-                JUDGE_FACTCHECK_COMPACT_RETRY_SUFFIX,
-              enableSearch: false,
-              responseSchema: undefined,
-              maxOutputTokens: 1400,
-              temperature: 0.1,
-            });
-            const parsed3 = parseFactcheckJson(raw3);
-            if (!isFactcheckFallback(parsed3)) {
-              parsed = parsed3;
+    const graphState = await runLangGraphWorkflow<FactcheckGraphState>(
+      {
+        args,
+        factcheckParams,
+        raw: "",
+        parsed: FACTCHECK_PARSE_FALLBACK,
+        normalized: FACTCHECK_PARSE_FALLBACK,
+      },
+      [
+        {
+          name: "primary_factcheck",
+          run: async (state) => {
+            const raw = await generateGeminiText(state.factcheckParams);
+            let parsed = parseFactcheckJson(raw);
+            if (
+              (
+                isFactcheckFallback(parsed) ||
+                hasMalformedFactText(parsed) ||
+                rawLooksTruncatedJson(raw)
+              ) &&
+              raw.trim().length > 0
+            ) {
+              debatelyLog(
+                "factcheck",
+                "warn",
+                "parse fallback with non-empty body; retry without search (structured)",
+                { rawLen: raw.length, rawPreview: raw.slice(0, 400) },
+              );
+              try {
+                const raw2 = await generateGeminiText({
+                  ...state.factcheckParams,
+                  userPrompt:
+                    state.factcheckParams.userPrompt +
+                    JUDGE_FACTCHECK_COMPACT_RETRY_SUFFIX,
+                  enableSearch: false,
+                  responseSchema: FACTCHECK_RESPONSE_SCHEMA,
+                  maxOutputTokens: 2000,
+                  temperature: 0.2,
+                });
+                const parsed2 = parseFactcheckJson(raw2);
+                if (!isFactcheckFallback(parsed2)) {
+                  parsed = parsed2;
+                } else {
+                  debatelyLog(
+                    "factcheck",
+                    "warn",
+                    "structured retry still fallback",
+                    { rawLen: raw2.length, rawPreview: raw2.slice(0, 400) },
+                  );
+                  try {
+                    const raw3 = await generateGeminiText({
+                      ...state.factcheckParams,
+                      userPrompt:
+                        state.factcheckParams.userPrompt +
+                        JUDGE_FACTCHECK_COMPACT_RETRY_SUFFIX,
+                      enableSearch: false,
+                      responseSchema: undefined,
+                      maxOutputTokens: 1400,
+                      temperature: 0.1,
+                    });
+                    const parsed3 = parseFactcheckJson(raw3);
+                    if (!isFactcheckFallback(parsed3)) {
+                      parsed = parsed3;
+                    }
+                  } catch (lastErr) {
+                    debatelyLog(
+                      "factcheck",
+                      "warn",
+                      "last-chance no-schema retry failed",
+                      {
+                        err:
+                          lastErr instanceof Error
+                            ? lastErr.message
+                            : String(lastErr),
+                      },
+                    );
+                  }
+                }
+              } catch (retryErr) {
+                debatelyLog(
+                  "factcheck",
+                  "warn",
+                  "structured retry without search failed",
+                  {
+                    err:
+                      retryErr instanceof Error
+                        ? retryErr.message
+                        : String(retryErr),
+                  },
+                );
+              }
             }
-          } catch (lastErr) {
+            return { raw, parsed };
+          },
+        },
+        {
+          name: "expand_if_thin",
+          run: async (state) => {
+            let parsed = state.parsed;
+            if (!shouldExpandFactcheck(args.moveText, parsed)) {
+              return {};
+            }
             debatelyLog(
               "factcheck",
               "warn",
-              "last-chance no-schema retry failed",
-              { err: lastErr instanceof Error ? lastErr.message : String(lastErr) },
+              "factcheck too short for long argument; retrying expanded",
+              {
+                moveWords: countWords(args.moveText),
+                facts: parsed.facts.length,
+                commentChars: parsed.facts.reduce(
+                  (sum, f) => sum + f.comment.trim().length,
+                  0,
+                ),
+              },
             );
-          }
-        }
-      } catch (retryErr) {
-        debatelyLog(
-          "factcheck",
-          "warn",
-          "structured retry without search failed",
-          { err: retryErr instanceof Error ? retryErr.message : String(retryErr) },
-        );
-      }
-    }
-    if (shouldExpandFactcheck(moveText, parsed)) {
-      debatelyLog(
-        "factcheck",
-        "warn",
-        "factcheck too short for long argument; retrying expanded",
-        {
-          moveWords: countWords(moveText),
-          facts: parsed.facts.length,
-          commentChars: parsed.facts.reduce(
-            (sum, f) => sum + f.comment.trim().length,
-            0,
-          ),
-        },
-      );
-      try {
-        const expansionSuffix = vibeFirstTopic
-          ? `\n\nEXPANSION RETRY: Still thin — add at most one extra row only if a second distinct point exists; otherwise sharpen the single vibe/banter row. Max 2 rows for humor topics; focus on delivery.`
-          : `\n\nEXPANSION RETRY: The previous factcheck was too short. Extract 2-3 factual claims (when present) and provide concise but complete comments for each claim (up to 2 short sentences each). Keep strict JSON shape.`;
-        const rawExpanded = await generateGeminiText({
-          ...factcheckParams,
-          userPrompt: factcheckParams.userPrompt + expansionSuffix,
-          enableSearch: false,
-          responseSchema: FACTCHECK_RESPONSE_SCHEMA,
-          maxOutputTokens: vibeFirstTopic ? 1600 : 2600,
-          temperature: vibeFirstTopic ? 0.45 : 0.2,
-        });
-        const parsedExpanded = parseFactcheckJson(rawExpanded);
-        if (
-          !isFactcheckFallback(parsedExpanded) &&
-          !hasMalformedFactText(parsedExpanded)
-        ) {
-          parsed = parsedExpanded;
-        }
-      } catch (expandedErr) {
-        debatelyLog(
-          "factcheck",
-          "warn",
-          "expanded factcheck retry failed",
-          { err: expandedErr instanceof Error ? expandedErr.message : String(expandedErr) },
-        );
-      }
-    }
-    const normalized = finalizeFactcheck(moveText, parsed);
-    if (isFactcheckFallback(parsed)) {
-      debatelyLog("factcheck", "error", "JSON parse produced fallback", {
-        rawLen: raw.length,
-        rawResponse: raw,
-      });
-    } else {
-      if (normalized.relevance !== parsed.relevance) {
-        debatelyLog(
-          "factcheck",
-          "warn",
-          "argument score adjusted after model output",
-          {
-            moveText,
-            modelRelevance: parsed.relevance,
-            finalRelevance: normalized.relevance,
+            try {
+              const expansionSuffix = vibeFirstTopic
+                ? `\n\nEXPANSION RETRY: Still thin — add at most one extra row only if a second distinct point exists; otherwise sharpen the single vibe/banter row. Max 2 rows for humor topics; focus on delivery.`
+                : `\n\nEXPANSION RETRY: The previous factcheck was too short. Extract 2-3 factual claims (when present) and provide concise but complete comments for each claim (up to 2 short sentences each). Keep strict JSON shape.`;
+              const rawExpanded = await generateGeminiText({
+                ...state.factcheckParams,
+                userPrompt: state.factcheckParams.userPrompt + expansionSuffix,
+                enableSearch: false,
+                responseSchema: FACTCHECK_RESPONSE_SCHEMA,
+                maxOutputTokens: vibeFirstTopic ? 1600 : 2600,
+                temperature: vibeFirstTopic ? 0.45 : 0.2,
+              });
+              const parsedExpanded = parseFactcheckJson(rawExpanded);
+              if (
+                !isFactcheckFallback(parsedExpanded) &&
+                !hasMalformedFactText(parsedExpanded)
+              ) {
+                parsed = parsedExpanded;
+              }
+            } catch (expandedErr) {
+              debatelyLog(
+                "factcheck",
+                "warn",
+                "expanded factcheck retry failed",
+                {
+                  err:
+                    expandedErr instanceof Error
+                      ? expandedErr.message
+                      : String(expandedErr),
+                },
+              );
+            }
+            return { parsed };
           },
-        );
-      }
-      debatelyLog("factcheck", "info", "factcheck ok", {
-        rawLen: raw.length,
-        facts: normalized.facts.length,
-        relevance: normalized.relevance,
-        rawResponse: raw,
-        parsedResponse: JSON.stringify(normalized),
-      });
-    }
-    return normalized;
+        },
+        {
+          name: "normalize_and_log",
+          run: (state) => {
+            const normalized = finalizeFactcheck(args.moveText, state.parsed);
+            if (isFactcheckFallback(state.parsed)) {
+              debatelyLog("factcheck", "error", "JSON parse produced fallback", {
+                rawLen: state.raw.length,
+                rawResponse: state.raw,
+              });
+            } else {
+              if (normalized.relevance !== state.parsed.relevance) {
+                debatelyLog(
+                  "factcheck",
+                  "warn",
+                  "argument score adjusted after model output",
+                  {
+                    moveText: args.moveText,
+                    modelRelevance: state.parsed.relevance,
+                    finalRelevance: normalized.relevance,
+                  },
+                );
+              }
+              debatelyLog("factcheck", "info", "factcheck ok", {
+                rawLen: state.raw.length,
+                facts: normalized.facts.length,
+                relevance: normalized.relevance,
+                rawResponse: state.raw,
+                parsedResponse: JSON.stringify(normalized),
+              });
+            }
+            return { normalized };
+          },
+        },
+      ],
+    );
+    return graphState.normalized;
   } catch (e) {
     debatelyLog(
       "factcheck",
@@ -289,7 +352,7 @@ export async function runFactcheck(args: FactcheckArgs): Promise<FactCheck> {
         responseSchema: FACTCHECK_RESPONSE_SCHEMA,
       });
       const parsedRetry = parseFactcheckJson(rawRetry);
-      const normalizedRetry = finalizeFactcheck(moveText, parsedRetry);
+      const normalizedRetry = finalizeFactcheck(args.moveText, parsedRetry);
       if (isFactcheckFallback(parsedRetry)) {
         debatelyLog("factcheck", "error", "retry parse still fallback", {
           rawLen: rawRetry.length,

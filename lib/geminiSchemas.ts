@@ -1,75 +1,78 @@
-import { SchemaType } from "@google/generative-ai";
-import type { ResponseSchema } from "@google/generative-ai";
+export type GeminiResponseSchema = {
+  type: "object";
+  properties: Record<string, unknown>;
+  required: string[];
+};
 
-/** Forces valid JSON shape for judge factcheck (Gemini structured output). */
-export const FACTCHECK_RESPONSE_SCHEMA: ResponseSchema = {
-  type: SchemaType.OBJECT,
+/** Forces valid JSON shape for judge factcheck (LangChain structured output). */
+export const FACTCHECK_RESPONSE_SCHEMA = {
+  type: "object",
   properties: {
     facts: {
-      type: SchemaType.ARRAY,
+      type: "array",
       items: {
-        type: SchemaType.OBJECT,
+        type: "object",
         properties: {
-          claim: { type: SchemaType.STRING },
-          status: { type: SchemaType.STRING },
-          comment: { type: SchemaType.STRING },
+          claim: { type: "string" },
+          status: { type: "string" },
+          comment: { type: "string" },
         },
         required: ["claim", "status", "comment"],
       },
     },
-    relevance: { type: SchemaType.NUMBER },
+    relevance: { type: "number" },
     flags: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
+      type: "array",
+      items: { type: "string" },
     },
     flag_details: {
-      type: SchemaType.ARRAY,
-      items: { type: SchemaType.STRING },
+      type: "array",
+      items: { type: "string" },
     },
   },
   required: ["facts", "relevance", "flags", "flag_details"],
-};
+} satisfies GeminiResponseSchema;
 
 /** Structured JSON for opponent replies. */
-export const OPPONENT_RESPONSE_SCHEMA: ResponseSchema = {
-  type: SchemaType.OBJECT,
+export const OPPONENT_RESPONSE_SCHEMA = {
+  type: "object",
   properties: {
-    text: { type: SchemaType.STRING },
+    text: { type: "string" },
   },
   required: ["text"],
-};
+} satisfies GeminiResponseSchema;
 
-/** Structured JSON for final verdict (Gemini). */
-export const VERDICT_RESPONSE_SCHEMA: ResponseSchema = {
-  type: SchemaType.OBJECT,
+/** Structured JSON for final verdict. */
+export const VERDICT_RESPONSE_SCHEMA = {
+  type: "object",
   properties: {
-    score_player: { type: SchemaType.NUMBER },
-    score_opponent: { type: SchemaType.NUMBER },
+    score_player: { type: "number" },
+    score_opponent: { type: "number" },
     breakdown: {
-      type: SchemaType.OBJECT,
+      type: "object",
       properties: {
         factual: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.NUMBER },
+          type: "array",
+          items: { type: "number" },
         },
         logic: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.NUMBER },
+          type: "array",
+          items: { type: "number" },
         },
         relevance: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.NUMBER },
+          type: "array",
+          items: { type: "number" },
         },
         rhetoric: {
-          type: SchemaType.ARRAY,
-          items: { type: SchemaType.NUMBER },
+          type: "array",
+          items: { type: "number" },
         },
       },
       required: ["factual", "logic", "relevance", "rhetoric"],
     },
-    summary: { type: SchemaType.STRING },
-    best_arg_player: { type: SchemaType.STRING },
-    best_arg_opponent: { type: SchemaType.STRING },
+    summary: { type: "string" },
+    best_arg_player: { type: "string" },
+    best_arg_opponent: { type: "string" },
   },
   required: [
     "score_player",
@@ -79,4 +82,4 @@ export const VERDICT_RESPONSE_SCHEMA: ResponseSchema = {
     "best_arg_player",
     "best_arg_opponent",
   ],
-};
+} satisfies GeminiResponseSchema;
